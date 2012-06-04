@@ -1,0 +1,26 @@
+{
+  "name": "packrattle",
+  "version": "1.0.0",
+  "description": "packrat parser-combinator library",
+  "keywords": [ "parser", "packrat", "coffee-script" ],
+  "author": "Robey Pointer <robeypointer@gmail.com>",
+  "scripts": {
+    "test": "cake test"
+  },
+  "dependencies": {
+    "coffee-script": "*"
+  },
+  "devDependencies": {
+    "fibers": "*",
+    "glob": "*",
+    "mocha": "*",
+    "should": "*",
+    "sync": "*"
+  },
+  "main": "./lib/packrattle",
+  "files": [
+    "Cakefile",
+    "lib",
+    "test"
+  ]
+}
