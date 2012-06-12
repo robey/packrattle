@@ -44,88 +44,88 @@ describe "ParserState", ->
 describe "Parser", ->
   it "intentionally fails", ->
     p = parser.reject
-    rv = p.exec("")
+    rv = p.parse("")
     rv.state.pos.should.equal(0)
     rv.message.should.match(/failure/)
 
   it "matches a literal", ->
     p = parser.string("hello")
-    rv = p.exec("cat")
+    rv = p.parse("cat")
     rv.state.pos.should.equal(0)
     rv.message.should.match(/hello/)
-    rv = p.exec("hellon")
+    rv = p.parse("hellon")
     rv.state.pos.should.equal(5)
     rv.match.should.equal("hello")
 
   it "skips whitespace", ->
     p = parser.string("hello").skip(/\s+/)
-    rv = p.exec("    hello")
+    rv = p.parse("    hello")
     rv.state.pos.should.equal(9)
     rv.match.should.eql("hello")
 
   it "transforms a match", ->
     p = parser.string("hello").onMatch((s) -> s.toUpperCase())
-    rv = p.exec("cat")
+    rv = p.parse("cat")
     rv.state.pos.should.equal(0)
     rv.message.should.match(/hello/)
-    rv = p.exec("hellon")
+    rv = p.parse("hellon")
     rv.state.pos.should.equal(5)
     rv.match.should.equal("HELLO")
 
   it "transforms a match into a constant", ->
     p = parser.string("hello").onMatch("yes")
-    rv = p.exec("hello")
+    rv = p.parse("hello")
     rv.state.pos.should.equal(5)
     rv.match.should.eql("yes")
 
   it "transforms the error message", ->
     p = parser.string("hello").onFail("Try a greeting.")
-    rv = p.exec("cat")
+    rv = p.parse("cat")
     rv.state.pos.should.equal(0)
     rv.message.should.eql("Try a greeting.")
-    rv = p.exec("hellon")
+    rv = p.parse("hellon")
     rv.state.pos.should.equal(5)
     rv.match.should.equal("hello")
 
   it "matches with a condition", ->
     p = parser.regex(/\d+/).matchIf((s) -> parseInt(s[0]) % 2 == 0).onFail("Expected an even number")
-    rv = p.exec("103")
+    rv = p.parse("103")
     rv.state.pos.should.equal(0)
     rv.message.should.match(/even number/)
-    rv = p.exec("104")
+    rv = p.parse("104")
     rv.state.pos.should.equal(3)
     rv.match[0].should.eql("104")
 
   it "can negate", ->
     p = parser.string("hello").not()
-    rv = p.exec("cat")
+    rv = p.parse("cat")
     rv.state.pos.should.equal(0)
     rv.match.should.eql("")
-    rv = p.exec("hello")
+    rv = p.parse("hello")
     rv.state.pos.should.equal(0)
     rv.message.should.match(/hello/)
 
   it "can perform an 'or'", ->
     p = parser.string("hello").or(parser.string("goodbye"))
-    rv = p.exec("cat")
+    rv = p.parse("cat")
     rv.state.pos.should.equal(0)
     rv.message.should.match(/'hello' or 'goodbye'/)
-    rv = p.exec("hello")
+    rv = p.parse("hello")
     rv.state.pos.should.equal(5)
     rv.match.should.equal("hello")
-    rv = p.exec("goodbye")
+    rv = p.parse("goodbye")
     rv.state.pos.should.equal(7)
     rv.match.should.equal("goodbye")
 
   it "can do a sequence", ->
     p = parser.string("abc").then(parser.string("123"))
-    rv = p.exec("abc123")
+    rv = p.parse("abc123")
     rv.state.pos.should.equal(6)
     rv.match.should.eql([ "abc", "123" ])
-    rv = p.exec("abcd")
+    rv = p.parse("abcd")
     rv.state.pos.should.equal(3)
     rv.message.should.match(/123/)
-    rv = p.exec("123")
+    rv = p.parse("123")
     rv.state.pos.should.equal(0)
     rv.message.should.match(/abc/)
 
@@ -135,54 +135,54 @@ describe "Parser", ->
       parser.string("123").drop(),
       parser.string("xyz")
     )
-    rv = p.exec("abc123xyz")
+    rv = p.parse("abc123xyz")
     rv.state.pos.should.equal(9)
     rv.match.should.eql([ "abc", "xyz" ])
 
   it "implicitly turns strings into parsers", ->
     p = parser.seq("abc", "123").or("xyz")
-    rv = p.exec("abc123")
+    rv = p.parse("abc123")
     rv.state.pos.should.equal(6)
     rv.match.should.eql([ "abc", "123" ])
-    rv = p.exec("xyz")
+    rv = p.parse("xyz")
     rv.state.pos.should.equal(3)
     rv.match.should.eql("xyz")
 
   it "strings together a chained sequence implicitly", ->
     p = [ "abc", parser.drop(/\d+/), "xyz" ]
-    rv = parser.exec(p, "abc11xyz")
+    rv = parser.parse(p, "abc11xyz")
     rv.state.pos.should.equal(8)
     rv.match.should.eql([ "abc", "xyz" ])
 
   it "handles regexen", ->
     p = parser.seq(/\s*/, "if")
-    rv = p.exec("   if")
+    rv = p.parse("   if")
     rv.state.pos.should.equal(5)
     rv.match[0][0].should.eql("   ")
     rv.match[1].should.eql("if")
-    rv = p.exec("if")
+    rv = p.parse("if")
     rv.state.pos.should.equal(2)
     rv.match[0][0].should.eql("")
     rv.match[1].should.eql("if")
-    rv = p.exec(";  if")
+    rv = p.parse(";  if")
     rv.state.pos.should.equal(0)
     rv.message.should.match(/if/)
     # try some basic cases too.
     p = parser.regex(/h(i)?/)
-    rv = p.exec("no")
+    rv = p.parse("no")
     rv.state.pos.should.equal(0)
     rv.message.should.match(/h\(i\)\?/)
-    rv = p.exec("hit")
+    rv = p.parse("hit")
     rv.state.pos.should.equal(2)
     rv.match[0].should.eql("hi")
     rv.match[1].should.eql("i")
 
   it "parses optionals", ->
     p = [ "abc", parser.optional(/\d+/), "xyz" ]
-    rv = parser.exec(p, "abcxyz")
+    rv = parser.parse(p, "abcxyz")
     rv.state.pos.should.equal(6)
     rv.match.should.eql([ "abc", "", "xyz" ])
-    rv = parser.exec(p, "abc99xyz")
+    rv = parser.parse(p, "abc99xyz")
     rv.state.pos.should.equal(8)
     rv.match[0].should.eql("abc")
     rv.match[1][0].should.eql("99")
@@ -190,37 +190,37 @@ describe "Parser", ->
 
   it "repeats", ->
     p = parser.repeat("hi")
-    rv = p.exec("h")
+    rv = p.parse("h")
     rv.state.pos.should.equal(0)
     rv.message.should.match(/at least 1 of 'hi'/)
-    rv = p.exec("hi")
+    rv = p.parse("hi")
     rv.state.pos.should.equal(2)
     rv.match.should.eql([ "hi" ])
-    rv = p.exec("hiho")
+    rv = p.parse("hiho")
     rv.state.pos.should.equal(2)
     rv.match.should.eql([ "hi" ])
-    rv = p.exec("hihihi!")
+    rv = p.parse("hihihi!")
     rv.state.pos.should.equal(6)
     rv.match.should.eql([ "hi", "hi", "hi" ])
 
   it "repeats with minimum count", ->
     p = parser.string("hi").repeat(3)
-    rv = p.exec("hihi!")
+    rv = p.parse("hihi!")
     rv.state.pos.should.equal(4)
     rv.message.should.match(/at least 3 of 'hi'/)
-    rv = p.exec("hihihi!")
+    rv = p.parse("hihihi!")
     rv.state.pos.should.equal(6)
     rv.match.should.eql([ "hi", "hi", "hi" ])
 
   it "repeats with separators", ->
     p = parser.repeat("hi", 2, ",")
-    rv = p.exec("hi,hi,hi")
+    rv = p.parse("hi,hi,hi")
     rv.state.pos.should.equal(8)
     rv.match.should.eql([ "hi", "hi", "hi" ])
 
   it "resolves a lazy parser", ->
     p = parser.seq ":", -> /\w+/
-    rv = p.exec(":hello")
+    rv = p.parse(":hello")
     rv.state.pos.should.equal(6)
     rv.match[0].should.eql(":")
     rv.match[1][0].should.eql("hello")
@@ -230,25 +230,41 @@ describe "Parser", ->
     p = parser.seq ":", ->
       count++
       parser.regex(/\w+/).onMatch (m) -> m[0].toUpperCase()
-    rv = p.exec(":hello")
+    rv = p.parse(":hello")
     rv.state.pos.should.equal(6)
     rv.match.should.eql([ ":", "HELLO" ])
     count.should.equal(1)
-    rv = p.exec(":goodbye")
+    rv = p.parse(":goodbye")
     rv.state.pos.should.equal(8)
     rv.match.should.eql([ ":", "GOODBYE" ])
+    count.should.equal(1)
+
+  it "only parseutes a parser once per string/position", ->
+    count = 0
+    p = parser.seq "hello", /\s*/, parser.string("there").onMatch (x) ->
+      count++
+      x
+    s = parser.newState("hello  there!")
+    count.should.equal(0)
+    rv = p.parse(s)
+    rv.ok.should.equal(true)
+    rv.match[2].should.eql("there")
+    count.should.equal(1)
+    rv = p.parse(s)
+    rv.ok.should.equal(true)
+    rv.match[2].should.eql("there")
     count.should.equal(1)
 
 describe "Parser#foldLeft", ->
   it "matches one", ->
     p = parser.foldLeft(tail: parser.regex(/\d+/).onMatch((x) -> x[0]), sep: /\s*,\s*/)
-    rv = p.exec("98")
+    rv = p.parse("98")
     rv.state.pos.should.equal(2)
     rv.match.should.eql([ "98" ])
 
   it "matches several", ->
     p = parser.foldLeft(tail: parser.regex(/\d+/).onMatch((x) -> x[0]), sep: /\s*,\s*/)
-    rv = p.exec("98, 99 ,100")
+    rv = p.parse("98, 99 ,100")
     rv.state.pos.should.equal(11)
     rv.match.should.eql([ "98", "99", "100" ])
 
@@ -259,13 +275,13 @@ describe "Parser#foldLeft", ->
       accumulator: (item) -> [ parseInt(item) ]
       fold: (sum, sep, item) -> sum.unshift(parseInt(item)); sum
     )
-    rv = p.exec("98, 99 ,100")
+    rv = p.parse("98, 99 ,100")
     rv.state.pos.should.equal(11)
     rv.match.should.eql([ 100, 99, 98 ])
 
   it "ignores trailing separators", ->
     p = parser.foldLeft(tail: parser.regex(/\d+/).onMatch((x) -> x[0]), sep: /\s*,\s*/)
-    rv = p.exec("98, wut")
+    rv = p.parse("98, wut")
     rv.state.pos.should.equal(2)
     rv.match.should.eql([ "98" ])
 
@@ -275,7 +291,7 @@ describe "Parser#foldLeft", ->
       tail: parser.regex(/\d+/).onMatch((x) -> parseInt(x[0]))
       sep: /\s*,\s*/
     )
-    rv = p.exec("10,11")
+    rv = p.parse("10,11")
     rv.state.pos.should.equal(5)
     rv.match.should.eql([ 16, 11 ])
 
@@ -290,17 +306,17 @@ describe "Parser example", ->
   expr = term.reduce($("+").or("-").skip(ws), binary)
 
   it "recognizes a number", ->
-    rv = expr.exec("900")
+    rv = expr.parse("900")
     rv.ok.should.eql(true)
     rv.match.should.eql(900)
 
   it "recognizes addition", ->
-    rv = expr.exec("2 + 3")
+    rv = expr.parse("2 + 3")
     rv.ok.should.eql(true)
     rv.match.should.eql(op: "+", left: 2, right: 3)
 
   it "recognizes a complex expression", ->
-    rv = expr.exec("1 + 2 * 3 + 4 * (5 + 6)")
+    rv = expr.parse("1 + 2 * 3 + 4 * (5 + 6)")
     rv.ok.should.eql(true)
     rv.match.should.eql(
       op: "+"
@@ -332,7 +348,7 @@ describe "Parser example", ->
       accumulator: (n) -> n
       fold: (sum, op, n) -> sum + n
     )
-    rv = expr.exec("2+3+4")
+    rv = expr.parse("2+3+4")
     rv.ok.should.eql(true)
     rv.state.pos.should.equal(5)
     rv.match.should.equal(9)
@@ -340,7 +356,7 @@ describe "Parser example", ->
   it "can add with reduce", ->
     number = parser.regex(/\d+/).onMatch (m) -> parseInt(m[0])
     expr = number.reduce "+", (sum, op, n) -> sum + n
-    rv = expr.exec("2+3+4")
+    rv = expr.parse("2+3+4")
     rv.ok.should.eql(true)
     rv.state.pos.should.equal(5)
     rv.match.should.equal(9)

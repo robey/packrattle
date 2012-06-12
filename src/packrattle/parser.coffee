@@ -4,6 +4,7 @@ newState = (text) -> new ParserState(text, 0, text.length, 0, 0)
 # parser state
 class ParserState
   constructor: (@text, @pos, @end, @lineno, @xpos) ->
+    @cache = {}
 
   advance: (n) ->
     pos = @pos
@@ -15,7 +16,9 @@ class ParserState
         xpos = 0
       else
         xpos++
-    new ParserState(@text, pos, @end, lineno, xpos)
+    state = new ParserState(@text, pos, @end, lineno, xpos)
+    state.cache = @cache
+    state
 
   # text of the current line around @pos
   line: ->
@@ -37,9 +40,21 @@ class NoMatch
   constructor: (@state, @message) ->
     @ok = false
 
+_parser_id = 0
 class Parser
   # (state) -> Match|NoMatch|exception
   constructor: (@message, @matcher) ->
+    @id = _parser_id++
+
+  parse: (state) ->
+    if typeof state == "string" then state = newState(state)
+    cache = state.cache[@id]
+    if not cache? then cache = state.cache[@id] = {}
+    rv = cache[state.pos]
+    if rv? then return rv
+    rv = @matcher(state)
+    cache[state.pos] = rv
+    rv
 
   fail: (state) ->
     new NoMatch(state, "Expected " + @message)
@@ -47,21 +62,21 @@ class Parser
   # transforms the error message of a parser
   onFail: (newMessage) ->
     new Parser newMessage, (state) =>
-      rv = @matcher(state)
+      rv = @parse(state)
       if rv.match? then return rv
       new NoMatch(rv.state, newMessage)
 
   # transforms the result of a parser if it succeeds
   onMatch: (f) ->
     new Parser @message, (state) =>
-      rv = @matcher(state)
+      rv = @parse(state)
       if not rv.ok then return rv
       new Match(rv.state, if (f instanceof Function) then f(rv.match) else f)
 
   # only succeed if f(match) returns true.
   matchIf: (f) ->
     new Parser @message, (state) =>
-      rv = @matcher(state)
+      rv = @parse(state)
       if not rv.ok then return rv
       if not f(rv.match) then return @fail(state)
       rv
@@ -69,7 +84,7 @@ class Parser
   # succeed (with an empty match) if the parser failed; otherwise fail.
   not: ->
     new Parser "not " + @message, (state) =>
-      rv = @matcher(state)
+      rv = @parse(state)
       if rv.ok then return @fail(state)
       new Match(state, "")
 
@@ -77,9 +92,9 @@ class Parser
     parsers = (implicit(p) for p in [ @ ].concat(others))
     message = (m.message for m in parsers).join(" or ")
     new Parser message, (state) =>
-      rv = @matcher(state)
+      rv = @parse(state)
       for p in parsers
-        rv = resolve(p).matcher(state)
+        rv = resolve(p).parse(state)
         if rv.ok then return rv
       new NoMatch(state, message)
 
@@ -88,9 +103,9 @@ class Parser
   skip: (p) ->
     p = implicit(p)
     new Parser @message, (state) =>
-      rv = resolve(p).matcher(state)
+      rv = resolve(p).parse(state)
       if rv.ok then state = rv.state
-      @matcher(state)
+      @parse(state)
 
   then: (p) -> seq(@, p)
 
@@ -105,7 +120,7 @@ class Parser
     @onMatch (m) -> null
 
   exec: (s) ->
-    @matcher(newState(s))
+    @parse(newState(s))
 
 # matches the end of the string
 end = new Parser "end", (state) ->
@@ -148,7 +163,7 @@ seq = (parsers...) ->
     parsers = (resolve(p) for p in parsers)
     results = []
     for p in parsers
-      rv = p.matcher(state)
+      rv = p.parse(state)
       if not rv.ok then return rv
       if rv.match? then results.push(rv.match)
       state = rv.state
@@ -159,7 +174,7 @@ optional = (p) ->
   p = implicit(p)
   new Parser p.message, (state) ->
     p = resolve(p)
-    rv = p.matcher(state)
+    rv = p.parse(state)
     if rv.ok then return rv
     new Match(state, "")
 
@@ -177,7 +192,7 @@ repeat = (p, atLeast = 1, sep = null) ->
     count = 0
     results = []
     loop
-      rv = p.matcher(state)
+      rv = p.parse(state)
       if not rv.ok
         if count < atLeast then return @fail(state)
         return new Match(state, results)
@@ -185,7 +200,7 @@ repeat = (p, atLeast = 1, sep = null) ->
       results.push(rv.match)
       state = rv.state
       if sep?
-        rv = sep.matcher(state)
+        rv = sep.parse(state)
         if not rv.ok      
           if count < atLeast then return @fail(state)
           return new Match(state, results)
@@ -215,7 +230,7 @@ foldLeft = (args) ->
     first = resolve(first)
     if sep? then sep = resolve(sep)
     tail = resolve(tail)
-    rv = first.matcher(state)
+    rv = first.parse(state)
     if not rv.ok then return @fail(state)
     results = accumulator(rv.match)
     state = rv.state
@@ -223,11 +238,11 @@ foldLeft = (args) ->
       initial_state = state
       sep_match = ""
       if sep?
-        rv = sep.matcher(state)
+        rv = sep.parse(state)
         if not rv.ok then return new Match(state, results)
         sep_match = rv.match
         state = rv.state
-      rv = tail.matcher(state)
+      rv = tail.parse(state)
       if not rv.ok then return new Match(initial_state, results)
       results = fold(results, sep_match, rv.match)
       state = rv.state
@@ -249,8 +264,8 @@ resolve = (p) ->
 drop = (p) ->
   implicit(p).drop()
 
-exec = (p, s) ->
-  implicit(p).exec(s)
+parse = (p, s) ->
+  implicit(p).parse(s)
 
 exports.newState = newState
 exports.ParserState = ParserState
@@ -268,6 +283,6 @@ exports.repeat = repeat
 exports.foldLeft = foldLeft
 exports.implicit = implicit
 exports.drop = drop
-exports.exec = exec
+exports.parse = parse
 
 # consume
