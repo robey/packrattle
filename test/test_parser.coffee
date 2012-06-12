@@ -302,3 +302,17 @@ describe "Parser example", ->
         }
       }
     )
+
+  it "could add", ->
+    number = parser.regex(/\d+/).onMatch (m) -> parseInt(m[0])
+    expr = parser.foldLeft(
+      tail: number
+      sep: parser.string("+")
+      accumulator: (n) -> n
+      fold: (sum, op, n) -> sum + n
+    )
+    rv = expr.exec("2+3+4")
+    rv.ok.should.eql(true)
+    rv.state.pos.should.equal(5)
+    rv.match.should.equal(9)
+    
