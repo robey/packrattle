@@ -21,7 +21,7 @@ an example, from the unit tests:
     term = atom.chain(parser.string("*").or("/").or("%").skip(ws), binary)
     expr = term.chain(parser.string("+").or("-").skip(ws), binary)
 
-    expr.exec("1 + 2 * 3 + 4 * (5 + 6)")
+    expr.parse("1 + 2 * 3 + 4 * (5 + 6)")
 
 there's a wiki page on parser-combinators here:
 http://en.wikipedia.org/wiki/Parser_combinator
@@ -163,5 +163,5 @@ parser at runtime, to simplify your code:
 - an array will be converted to `parser.seq(...)`
 
 - a function will be called, under the assumption that it returns a parser --
-  but only when the parser is `exec`'d, allowing for lazy evaluation
+  but only when the parser is `parse`d, allowing for lazy evaluation
 
