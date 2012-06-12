@@ -145,9 +145,10 @@ regex = (r) ->
 seq = (parsers...) ->
   parsers = (implicit(p) for p in parsers)
   new Parser parsers[0].message, (state) ->
+    parsers = (resolve(p) for p in parsers)
     results = []
     for p in parsers
-      rv = resolve(p).matcher(state)
+      rv = p.matcher(state)
       if not rv.ok then return rv
       if rv.match? then results.push(rv.match)
       state = rv.state
@@ -157,7 +158,8 @@ seq = (parsers...) ->
 optional = (p) ->
   p = implicit(p)
   new Parser p.message, (state) ->
-    rv = resolve(p).matcher(state)
+    p = resolve(p)
+    rv = p.matcher(state)
     if rv.ok then return rv
     new Match(state, "")
 
@@ -170,10 +172,12 @@ repeat = (p, atLeast = 1, sep = null) ->
     sep = implicit(sep)
     message += " separated by #{sep.message}"
   new Parser message, (state) ->
+    p = resolve(p)
+    if sep? then sep = resolve(sep)
     count = 0
     results = []
     loop
-      rv = resolve(p).matcher(state)
+      rv = p.matcher(state)
       if not rv.ok
         if count < atLeast then return @fail(state)
         return new Match(state, results)
@@ -181,7 +185,7 @@ repeat = (p, atLeast = 1, sep = null) ->
       results.push(rv.match)
       state = rv.state
       if sep?
-        rv = resolve(sep).matcher(state)
+        rv = sep.matcher(state)
         if not rv.ok      
           if count < atLeast then return @fail(state)
           return new Match(state, results)
@@ -208,7 +212,10 @@ foldLeft = (args) ->
     sep = implicit(sep)
     message += " separated by (#{sep.message})"
   new Parser message, (state) ->
-    rv = resolve(first).matcher(state)
+    first = resolve(first)
+    if sep? then sep = resolve(sep)
+    tail = resolve(tail)
+    rv = first.matcher(state)
     if not rv.ok then return @fail(state)
     results = accumulator(rv.match)
     state = rv.state
@@ -216,11 +223,11 @@ foldLeft = (args) ->
       initial_state = state
       sep_match = ""
       if sep?
-        rv = resolve(sep).matcher(state)
+        rv = sep.matcher(state)
         if not rv.ok then return new Match(state, results)
         sep_match = rv.match
         state = rv.state
-      rv = resolve(tail).matcher(state)
+      rv = tail.matcher(state)
       if not rv.ok then return new Match(initial_state, results)
       results = fold(results, sep_match, rv.match)
       state = rv.state

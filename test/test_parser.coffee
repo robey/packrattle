@@ -218,6 +218,27 @@ describe "Parser", ->
     rv.state.pos.should.equal(8)
     rv.match.should.eql([ "hi", "hi", "hi" ])
 
+  it "resolves a lazy parser", ->
+    p = parser.seq ":", -> /\w+/
+    rv = p.exec(":hello")
+    rv.state.pos.should.equal(6)
+    rv.match[0].should.eql(":")
+    rv.match[1][0].should.eql("hello")
+
+  it "resolves a lazy parser only once", ->
+    count = 0
+    p = parser.seq ":", ->
+      count++
+      parser.regex(/\w+/).onMatch (m) -> m[0].toUpperCase()
+    rv = p.exec(":hello")
+    rv.state.pos.should.equal(6)
+    rv.match.should.eql([ ":", "HELLO" ])
+    count.should.equal(1)
+    rv = p.exec(":goodbye")
+    rv.state.pos.should.equal(8)
+    rv.match.should.eql([ ":", "GOODBYE" ])
+    count.should.equal(1)
+
 describe "Parser#foldLeft", ->
   it "matches one", ->
     p = parser.foldLeft(tail: parser.regex(/\d+/).onMatch((x) -> x[0]), sep: /\s*,\s*/)

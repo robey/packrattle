@@ -15,7 +15,7 @@ an example, from the unit tests:
       parser.string("(").skip(ws).drop(),
       (-> expr),
       parser.string(")").skip(ws).drop()
-    ].onMatch (e) -> e[0]
+    ).onMatch (e) -> e[0]
     atom = number.or(parens)
     term = atom.chain(parser.string("*").or("/").or("%").skip(ws), binary)
     expr = term.chain(parser.string("+").or("-").skip(ws), binary)
@@ -116,8 +116,8 @@ are parsed. it takes a hash of key/value parameters:
 - `first` - the parser to match the first occurance (defaults to `tail` if
   not supplied)
 - `tail` - the parser to match all successive occurances
-- `sep` - the parser to match the things separating the items (comma, for
-  example), or null for no separator
+- `sep` - optional parser to match the things separating the items (comma,
+  for example); if missing or null, no separators are parsed
 - `accumulator` - a function to transform the first match result into a
   running accumulator of the parser (defaults to an array containing only
   the first match result)
