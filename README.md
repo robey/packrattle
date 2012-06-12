@@ -48,7 +48,7 @@ a few basic parsers just process a chunk of text:
 
 - `parser.string(...)` - match exactly this string, and return it
 
-- `parser.reegx(...)` - match this regex, and return the "match" object
+- `parser.regex(...)` - match this regex, and return the "match" object
   (which can be used to extract any groups)
 
 - `parser.end` - matches only the end of the string
