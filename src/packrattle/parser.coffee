@@ -98,7 +98,7 @@ class Parser
 
   repeat: (atLeast = 1, sep = null) -> repeat(@, atLeast, sep)
 
-  chain: (sep, f) -> foldLeft(tail: @, accumulator: ((x) -> x), fold: f, sep: sep)
+  reduce: (sep, f) -> foldLeft(tail: @, accumulator: ((x) -> x), fold: f, sep: sep)
 
   # throw away the match
   drop: ->

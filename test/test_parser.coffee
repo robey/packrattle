@@ -265,8 +265,8 @@ describe "Parser example", ->
   number = $(/\d+/).skip(ws).onMatch (m) -> parseInt(m[0])
   parens = [ $("(").skip(ws).drop(), (-> expr), $(")").skip(ws).drop() ]
   atom = number.or($(parens).onMatch((e) -> e[0]))
-  term = atom.chain($("*").or("/").or("%").skip(ws), binary)
-  expr = term.chain($("+").or("-").skip(ws), binary)
+  term = atom.reduce($("*").or("/").or("%").skip(ws), binary)
+  expr = term.reduce($("+").or("-").skip(ws), binary)
 
   it "recognizes a number", ->
     rv = expr.exec("900")
@@ -303,7 +303,7 @@ describe "Parser example", ->
       }
     )
 
-  it "could add", ->
+  it "can add with foldLeft", ->
     number = parser.regex(/\d+/).onMatch (m) -> parseInt(m[0])
     expr = parser.foldLeft(
       tail: number
@@ -315,4 +315,11 @@ describe "Parser example", ->
     rv.ok.should.eql(true)
     rv.state.pos.should.equal(5)
     rv.match.should.equal(9)
-    
+
+  it "can add with reduce", ->
+    number = parser.regex(/\d+/).onMatch (m) -> parseInt(m[0])
+    expr = number.reduce "+", (sum, op, n) -> sum + n
+    rv = expr.exec("2+3+4")
+    rv.ok.should.eql(true)
+    rv.state.pos.should.equal(5)
+    rv.match.should.equal(9)
