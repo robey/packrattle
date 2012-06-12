@@ -56,7 +56,22 @@ class Parser
     new Parser @message, (state) =>
       rv = @matcher(state)
       if not rv.ok then return rv
-      new Match(rv.state, f(rv.match))
+      new Match(rv.state, if (f instanceof Function) then f(rv.match) else f)
+
+  # only succeed if f(match) returns true.
+  matchIf: (f) ->
+    new Parser @message, (state) =>
+      rv = @matcher(state)
+      if not rv.ok then return rv
+      if not f(rv.match) then return @fail(state)
+      rv
+
+  # succeed (with an empty match) if the parser failed; otherwise fail.
+  not: ->
+    new Parser "not " + @message, (state) =>
+      rv = @matcher(state)
+      if rv.ok then return @fail(state)
+      new Match(state, "")
 
   or: (others...) ->
     parsers = (implicit(p) for p in [ @ ].concat(others))
@@ -68,11 +83,22 @@ class Parser
         if rv.ok then return rv
       new NoMatch(state, message)
 
+  # if this parser is prefixed by p, parse it and drop it first
+  # (for example, whitespace: `p.skim(/\s+/)`)
+  skip: (p) ->
+    p = implicit(p)
+    new Parser @message, (state) =>
+      rv = p.matcher(state)
+      if rv.ok then state = rv.state
+      @matcher(state)
+
   then: (p) -> seq(@, p)
 
   optional: -> optional(@)
 
-  repeat: (atLeast = 1) -> repeat(@, atLeast)
+  repeat: (atLeast = 1, sep = null) -> repeat(@, atLeast, sep)
+
+  chain: (sep, f) -> foldLeft(tail: @, accumulator: ((x) -> x), fold: f, sep: sep)
 
   # throw away the match
   drop: ->
@@ -86,6 +112,10 @@ end = new Parser "end", (state) ->
     new Match(state, null)
   else
     @fail(state)
+
+# never matches anything
+reject = new Parser "failure", (state) ->
+  @fail(state)
 
 # matches a literal string
 string = (s) ->
@@ -115,6 +145,7 @@ seq = (parsers...) ->
   parsers = (implicit(p) for p in parsers)
   new Parser parsers[0].message, (state) ->
     results = []
+    console.log require("util").inspect(parsers)
     for p in parsers
       rv = p.matcher(state)
       if not rv.ok then return rv
@@ -131,9 +162,13 @@ optional = (p) ->
     new Match(state, "")
 
 # one or more repetitions of a parser, returned as an array
-repeat = (p, atLeast = 1) ->
+# optionally separated by a separation parser
+repeat = (p, atLeast = 1, sep = null) ->
   p = implicit(p)
   message = "at least #{atLeast} of #{p.message}"
+  if sep?
+    sep = implicit(sep)
+    message += " separated by #{sep.message}"
   new Parser message, (state) ->
     count = 0
     results = []
@@ -145,10 +180,57 @@ repeat = (p, atLeast = 1) ->
       count++
       results.push(rv.match)
       state = rv.state
+      if sep?
+        rv = sep.matcher(state)
+        if not rv.ok      
+          if count < atLeast then return @fail(state)
+          return new Match(state, results)
+        state = rv.state
+
+# match against the 'first' parser, then any number of occurances of 'sep'
+# followed by 'tail', as in: `first (sep tail)*`.
+#
+# for each match on 'tail', the function 'fold' will be called with
+# `fold(accumulator_value, sep_match, tail_match)` and the return value will
+# be the new accumulator value. the initial accumulator value is calculated
+# on each parse by calling `accumulator(first_match)`.
+#
+# if a 'sep' is not followed by a 'tail', the 'sep' is not consumed, but the
+# parser will match up to that point.
+foldLeft = (args) ->
+  tail = implicit(if args.tail? then args.tail else reject)
+  first = implicit(if args.first? then args.first else args.tail)
+  fold = if args.fold? then args.fold else ((a, s, t) -> a.push(t); a)
+  accumulator = if args.accumulator? then args.accumulator else ((x) -> [ x ])
+  sep = args.sep
+  message = "#{first.message} followed by (#{tail.message})*"
+  if sep?
+    sep = implicit(sep)
+    message += " separated by #{sep.message}"
+  new Parser message, (state) ->
+    rv = first.matcher(state)
+    if not rv.ok then return @fail(state)
+    results = accumulator(rv.match)
+    state = rv.state
+    loop
+      initial_state = state
+      sep_match = ""
+      if sep?
+        rv = sep.matcher(state)
+        if not rv.ok then return new Match(state, results)
+        sep_match = rv.match
+        state = rv.state
+      rv = tail.matcher(state)
+      if not rv.ok then return new Match(initial_state, results)
+      results = fold(results, sep_match, rv.match)
+      state = rv.state
 
 # turn strings & regexen into parsers implicitly
 implicit = (p) ->
   # wow, javascript's type system completely falls apart here.
+  if p instanceof Function
+    console.log "turning #{p} into #{p()}"
+    return implicit(p())
   if typeof p == "string" then return string(p)
   if p instanceof RegExp then return regex(p)
   if p instanceof Array then return seq(p...)
@@ -168,10 +250,15 @@ exports.NoMatch = NoMatch
 exports.Parser = Parser
 
 exports.end = end
+exports.reject = reject
 exports.string = string
 exports.regex = regex
 exports.seq = seq
 exports.optional = optional
 exports.repeat = repeat
+exports.foldLeft = foldLeft
+exports.implicit = implicit
 exports.drop = drop
 exports.exec = exec
+
+# consume
