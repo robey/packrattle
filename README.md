@@ -101,6 +101,8 @@ each parser has methods on it, also, to allow for combining:
 
 - `repeat(atLeast, sep)` - just like `parser.repeat`
 
+- `reduce(sep, function)` - a simpler variant of `foldLeft` (see below)
+
 - `drop()` - if this parser matches, return null as the match result, which
   will cause it to be omitted from the result of `parser.seq`
 
@@ -124,6 +126,16 @@ are parsed. it takes a hash of key/value parameters:
   (defaults to calling `accumulator.push(item)`)
 
 for example, to match a sequence of numbers separated by "+" and add them:
+
+    number = parser.regex(/\d+/).onMatch (m) -> parseInt(m[0])
+    expr = parser.foldLeft(
+      tail: number
+      sep: parser.string("+")
+      accumulator: (n) -> n
+      fold: (sum, op, n) -> sum + n
+    )
+
+this is aliased to "reduce" on Parser, with a simplified interface:
 
     number = parser.regex(/\d+/).onMatch (m) -> parseInt(m[0])
     expr = parser.foldLeft(
