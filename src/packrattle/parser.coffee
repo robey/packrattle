@@ -56,6 +56,14 @@ class Parser
     cache[state.pos] = rv
     rv
 
+  # must match the entire string, to the end
+  consume: (state) ->
+    rv = @parse(state)
+    if not rv.ok then return rv
+    rv2 = end.parse(rv.state)
+    if not rv2.ok then return rv2
+    rv
+
   fail: (state) ->
     new NoMatch(state, "Expected " + @message)
 
@@ -284,5 +292,3 @@ exports.foldLeft = foldLeft
 exports.implicit = implicit
 exports.drop = drop
 exports.parse = parse
-
-# consume

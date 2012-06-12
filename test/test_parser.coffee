@@ -255,6 +255,15 @@ describe "Parser", ->
     rv.match[2].should.eql("there")
     count.should.equal(1)
 
+  it "consumes the whole string", ->
+    p = parser.string("hello")
+    rv = p.consume("hello")
+    rv.ok.should.equal(true)
+    rv.match.should.eql("hello")
+    rv = p.consume("hello!")
+    rv.ok.should.equal(false)
+    rv.message.should.match(/end/)
+
 describe "Parser#foldLeft", ->
   it "matches one", ->
     p = parser.foldLeft(tail: parser.regex(/\d+/).onMatch((x) -> x[0]), sep: /\s*,\s*/)

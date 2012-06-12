@@ -2,7 +2,8 @@
 packrattle
 ==========
 
-this is a simple parser-combinator library for javascript/coffeescript.
+this is a simple packrat parser-combinator library for coffeescript /
+javascript.
 
 an example, from the unit tests:
 
@@ -40,6 +41,10 @@ on failure.
 you can start with a few basic parsers which match a string or regex, and
 build more complex parsers out of functions that combine them: "a or b",
 "a then b", "repeat(a)", and so on.
+
+a "packrat" parser just keeps a cache (for the duration of parsing a single
+string) of the results for each parser at each position, so that if there's a
+lot of backtracking, it doesn't do the same work over and over again.
 
 basic methods
 -------------
@@ -117,7 +122,7 @@ are parsed. it takes a hash of key/value parameters:
   not supplied)
 - `tail` - the parser to match all successive occurances
 - `sep` - optional parser to match the things separating the items (comma,
-  for example); if missing or null, no separators are parsed
+  for example); if missing or null, items don't have separators
 - `accumulator` - a function to transform the first match result into a
   running accumulator of the parser (defaults to an array containing only
   the first match result)
@@ -159,5 +164,4 @@ parser at runtime, to simplify your code:
 
 - a function will be called, under the assumption that it returns a parser --
   but only when the parser is `exec`'d, allowing for lazy evaluation
-
 
