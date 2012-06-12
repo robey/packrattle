@@ -262,8 +262,9 @@ describe "Parser example", ->
   $ = parser.implicit
   binary = (left, op, right) -> { op: op, left: left, right: right }
   ws = /\s*/
-  number = $(/\d+/).onMatch (m) -> parseInt(m[0])
-  atom = number.or([ "(", ws, (-> expr), ws, ")" ]).skip(ws)
+  number = $(/\d+/).skip(ws).onMatch (m) -> parseInt(m[0])
+  parens = [ $("(").skip(ws).drop(), (-> expr), $(")").skip(ws).drop() ]
+  atom = number.or($(parens).onMatch((e) -> e[0]))
   term = atom.chain($("*").or("/").or("%").skip(ws), binary)
   expr = term.chain($("+").or("-").skip(ws), binary)
 

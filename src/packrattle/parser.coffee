@@ -79,7 +79,7 @@ class Parser
     new Parser message, (state) =>
       rv = @matcher(state)
       for p in parsers
-        rv = p.matcher(state)
+        rv = resolve(p).matcher(state)
         if rv.ok then return rv
       new NoMatch(state, message)
 
@@ -88,7 +88,7 @@ class Parser
   skip: (p) ->
     p = implicit(p)
     new Parser @message, (state) =>
-      rv = p.matcher(state)
+      rv = resolve(p).matcher(state)
       if rv.ok then state = rv.state
       @matcher(state)
 
@@ -104,7 +104,8 @@ class Parser
   drop: ->
     @onMatch (m) -> null
 
-  exec: (s) -> @matcher(newState(s))
+  exec: (s) ->
+    @matcher(newState(s))
 
 # matches the end of the string
 end = new Parser "end", (state) ->
@@ -145,9 +146,8 @@ seq = (parsers...) ->
   parsers = (implicit(p) for p in parsers)
   new Parser parsers[0].message, (state) ->
     results = []
-    console.log require("util").inspect(parsers)
     for p in parsers
-      rv = p.matcher(state)
+      rv = resolve(p).matcher(state)
       if not rv.ok then return rv
       if rv.match? then results.push(rv.match)
       state = rv.state
@@ -157,7 +157,7 @@ seq = (parsers...) ->
 optional = (p) ->
   p = implicit(p)
   new Parser p.message, (state) ->
-    rv = p.matcher(state)
+    rv = resolve(p).matcher(state)
     if rv.ok then return rv
     new Match(state, "")
 
@@ -173,7 +173,7 @@ repeat = (p, atLeast = 1, sep = null) ->
     count = 0
     results = []
     loop
-      rv = p.matcher(state)
+      rv = resolve(p).matcher(state)
       if not rv.ok
         if count < atLeast then return @fail(state)
         return new Match(state, results)
@@ -181,7 +181,7 @@ repeat = (p, atLeast = 1, sep = null) ->
       results.push(rv.match)
       state = rv.state
       if sep?
-        rv = sep.matcher(state)
+        rv = resolve(sep).matcher(state)
         if not rv.ok      
           if count < atLeast then return @fail(state)
           return new Match(state, results)
@@ -203,12 +203,12 @@ foldLeft = (args) ->
   fold = if args.fold? then args.fold else ((a, s, t) -> a.push(t); a)
   accumulator = if args.accumulator? then args.accumulator else ((x) -> [ x ])
   sep = args.sep
-  message = "#{first.message} followed by (#{tail.message})*"
+  message = "(#{first.message}) followed by (#{tail.message})*"
   if sep?
     sep = implicit(sep)
-    message += " separated by #{sep.message}"
+    message += " separated by (#{sep.message})"
   new Parser message, (state) ->
-    rv = first.matcher(state)
+    rv = resolve(first).matcher(state)
     if not rv.ok then return @fail(state)
     results = accumulator(rv.match)
     state = rv.state
@@ -216,25 +216,27 @@ foldLeft = (args) ->
       initial_state = state
       sep_match = ""
       if sep?
-        rv = sep.matcher(state)
+        rv = resolve(sep).matcher(state)
         if not rv.ok then return new Match(state, results)
         sep_match = rv.match
         state = rv.state
-      rv = tail.matcher(state)
+      rv = resolve(tail).matcher(state)
       if not rv.ok then return new Match(initial_state, results)
       results = fold(results, sep_match, rv.match)
       state = rv.state
 
-# turn strings & regexen into parsers implicitly
+# turn strings, regexen, and arrays into parsers implicitly.
 implicit = (p) ->
   # wow, javascript's type system completely falls apart here.
-  if p instanceof Function
-    console.log "turning #{p} into #{p()}"
-    return implicit(p())
   if typeof p == "string" then return string(p)
   if p instanceof RegExp then return regex(p)
   if p instanceof Array then return seq(p...)
   p
+
+# allow functions to be passed in, and resolved only at parse-time.
+resolve = (p) ->
+  if not (p instanceof Function) then return p
+  implicit(p())
 
 # helper for drop
 drop = (p) ->
