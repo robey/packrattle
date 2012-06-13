@@ -9,19 +9,13 @@ an example, from the unit tests:
 
     parser = require("packrattle")
 
-    binary = (left, op, right) -> { op: op, left: left, right: right }
-    ws = /\s*/
-    number = parser.regex(/\d+/).skip(ws).onMatch (m) -> parseInt(m[0])
-    parens = parser.seq(
-      parser.string("(").skip(ws).drop(),
-      (-> expr),
-      parser.string(")").skip(ws).drop()
-    ).onMatch (e) -> e[0]
-    atom = number.or(parens)
-    term = atom.chain(parser.string("*").or("/").or("%").skip(ws), binary)
-    expr = term.chain(parser.string("+").or("-").skip(ws), binary)
+    csv = parser.repeat(
+      parser.regex(/([^,]*)/).onMatch (m) -> m[0]
+      /,/
+    )
 
-    expr.parse("1 + 2 * 3 + 4 * (5 + 6)")
+    csv.parse("this,is,csv")
+    => { ok: true, match: [ "this", "is", "csv" ] }
 
 there's a wiki page on parser-combinators here:
 http://en.wikipedia.org/wiki/Parser_combinator
