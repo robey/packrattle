@@ -192,7 +192,7 @@ describe "Parser", ->
     p = parser.repeat("hi")
     rv = p.parse("h")
     rv.state.pos.should.equal(0)
-    rv.message.should.match(/at least 1 of 'hi'/)
+    rv.message.should.match(/'hi'/)
     rv = p.parse("hi")
     rv.state.pos.should.equal(2)
     rv.match.should.eql([ "hi" ])
@@ -203,17 +203,8 @@ describe "Parser", ->
     rv.state.pos.should.equal(6)
     rv.match.should.eql([ "hi", "hi", "hi" ])
 
-  it "repeats with minimum count", ->
-    p = parser.string("hi").repeat(3)
-    rv = p.parse("hihi!")
-    rv.state.pos.should.equal(4)
-    rv.message.should.match(/at least 3 of 'hi'/)
-    rv = p.parse("hihihi!")
-    rv.state.pos.should.equal(6)
-    rv.match.should.eql([ "hi", "hi", "hi" ])
-
   it "repeats with separators", ->
-    p = parser.repeat("hi", 2, ",")
+    p = parser.repeat("hi", ",")
     rv = p.parse("hi,hi,hi")
     rv.state.pos.should.equal(8)
     rv.match.should.eql([ "hi", "hi", "hi" ])
@@ -369,3 +360,14 @@ describe "Parser example", ->
     rv.ok.should.eql(true)
     rv.state.pos.should.equal(5)
     rv.match.should.equal(9)
+
+  it "csv", ->
+    csv = parser.repeat(
+      parser.regex(/([^,]*)/).onMatch (m) -> m[0]
+      /,/
+    )
+    rv = csv.parse("this,is,csv")
+    rv.ok.should.eql(true)
+    rv.match.should.eql([ "this", "is", "csv" ])
+
+

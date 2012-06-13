@@ -119,7 +119,7 @@ class Parser
 
   optional: -> optional(@)
 
-  repeat: (atLeast = 1, sep = null) -> repeat(@, atLeast, sep)
+  repeat: (sep = null) -> repeat(@, sep)
 
   reduce: (sep, f) -> foldLeft(tail: @, accumulator: ((x) -> x), fold: f, sep: sep)
 
@@ -188,31 +188,7 @@ optional = (p) ->
 
 # one or more repetitions of a parser, returned as an array
 # optionally separated by a separation parser
-repeat = (p, atLeast = 1, sep = null) ->
-  p = implicit(p)
-  message = "at least #{atLeast} of #{p.message}"
-  if sep?
-    sep = implicit(sep)
-    message += " separated by #{sep.message}"
-  new Parser message, (state) ->
-    p = resolve(p)
-    if sep? then sep = resolve(sep)
-    count = 0
-    results = []
-    loop
-      rv = p.parse(state)
-      if not rv.ok
-        if count < atLeast then return @fail(state)
-        return new Match(state, results)
-      count++
-      results.push(rv.match)
-      state = rv.state
-      if sep?
-        rv = sep.parse(state)
-        if not rv.ok      
-          if count < atLeast then return @fail(state)
-          return new Match(state, results)
-        state = rv.state
+repeat = (p, sep = null) -> foldLeft(tail: p, sep: sep)
 
 # match against the 'first' parser, then any number of occurances of 'sep'
 # followed by 'tail', as in: `first (sep tail)*`.
@@ -230,7 +206,10 @@ foldLeft = (args) ->
   fold = if args.fold? then args.fold else ((a, s, t) -> a.push(t); a)
   accumulator = if args.accumulator? then args.accumulator else ((x) -> [ x ])
   sep = args.sep
-  message = "(#{first.message}) followed by (#{tail.message})*"
+  message = if args.first?
+    "(#{first.message}) followed by (#{tail.message})*"
+  else
+    "(#{tail.message})*"
   if sep?
     sep = implicit(sep)
     message += " separated by (#{sep.message})"
