@@ -66,10 +66,15 @@ the real power is in combining the parsers:
 - `parser.optional(p)` - match p or return the empty string, succeeding
   either way
 
-- `parser.repeat(p, atLeast, sep)` - match p multiple times (often written
-  as "`p*`"), optionally separated by `sep` (for example, a comma); the match
-  result will be an array of all the non-null match results, not including
-  the separators
+- `parser.check(p)` - verify that p matches, but don't advance the parser's
+  position
+
+- `parser.repeat(p, sep)` - match p multiple times (often written as "`p*`"),
+  optionally separated by `sep` (for example, a comma); the match result will
+  be an array of all the non-null match results, not including the separators
+
+- `parser.times(count, p)` - match p exactly count times; the match result
+  will be an array of all the non-null match results
 
 - `parser.foldLeft(args)` - see below
 
@@ -98,7 +103,9 @@ each parser has methods on it, also, to allow for combining:
 
 - `optional()` - make this parser optional, like `parser.optional`
 
-- `repeat(atLeast, sep)` - just like `parser.repeat`
+- `repeat(sep)` - just like `parser.repeat`
+
+- `times(count)` - just like `parser.times`
 
 - `reduce(sep, function)` - a simpler variant of `foldLeft` (see below)
 
@@ -158,4 +165,28 @@ parser at runtime, to simplify your code:
 
 - a function will be called, under the assumption that it returns a parser --
   but only when the parser is `parse`d, allowing for lazy evaluation
+
+executing
+---------
+
+to execute a parser, call either:
+
+- `parse(string)` - matches as much of the string as it can
+- `consume(string)` - matches the entire string, or fails
+
+each function returns an object with state:
+
+- `ok` - true if the parser succeeded, false if not
+- `state` - a `ParserState` object with the current position (see below)
+- `match` - the match result (if `ok` is true)
+- `message` - a string error message (if `ok` is false)
+
+the `ParserState` object contains:
+
+- `text` - the original string
+- `pos` - the index within the string that the parser stopped
+- `lineno` - the current line number of `pos`, assuming `\n` divides lines,
+  counting from 0
+- `xpos` - the position of `pos` within the current line, counting from 0
+- `line()` - returns the content of the line around `pos` (the `lineno` line)
 

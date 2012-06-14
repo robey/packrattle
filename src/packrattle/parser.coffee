@@ -121,14 +121,19 @@ class Parser
 
   repeat: (sep = null) -> repeat(@, sep)
 
+  times: (count) -> times(count, @)
+
   reduce: (sep, f) -> foldLeft(tail: @, accumulator: ((x) -> x), fold: f, sep: sep)
 
   # throw away the match
-  drop: ->
-    @onMatch (m) -> null
+  drop: -> @onMatch (m) -> null
 
-  exec: (s) ->
-    @parse(newState(s))
+  # verify that this parser matches, but don't advance the position
+  check: ->
+    new Parser @message, (state) =>
+      rv = @parse(state)
+      if not rv.ok then return rv
+      new Match(state, rv.match)
 
 # matches the end of the string
 end = new Parser "end", (state) ->
@@ -190,6 +195,19 @@ optional = (p) ->
 # optionally separated by a separation parser
 repeat = (p, sep = null) -> foldLeft(tail: p, sep: sep)
 
+# exactly N repetitions of a parser
+times = (count, p) ->
+  p = implicit(p)
+  new Parser "#{count} of (#{p.message})", (state) ->
+    p = resolve(p)
+    results = []
+    for i in [0...count]
+      rv = p.parse(state)
+      if not rv.ok then return @fail(rv.state)
+      if rv.match? then results.push(rv.match)
+      state = rv.state
+    new Match(state, results)
+
 # match against the 'first' parser, then any number of occurances of 'sep'
 # followed by 'tail', as in: `first (sep tail)*`.
 #
@@ -203,8 +221,16 @@ repeat = (p, sep = null) -> foldLeft(tail: p, sep: sep)
 foldLeft = (args) ->
   tail = implicit(if args.tail? then args.tail else reject)
   first = implicit(if args.first? then args.first else args.tail)
-  fold = if args.fold? then args.fold else ((a, s, t) -> a.push(t); a)
-  accumulator = if args.accumulator? then args.accumulator else ((x) -> [ x ])
+  fold = if args.fold?
+    args.fold
+  else
+    (acc, s, item) ->
+      if item? then acc.push(item)
+      acc
+  accumulator = if args.accumulator?
+    args.accumulator
+  else
+    (x) -> if x? then [ x ] else []
   sep = args.sep
   message = if args.first?
     "(#{first.message}) followed by (#{tail.message})*"
@@ -248,11 +274,11 @@ resolve = (p) ->
   implicit(p())
 
 # helper for drop
-drop = (p) ->
-  implicit(p).drop()
+drop = (p) -> implicit(p).drop()
 
-parse = (p, s) ->
-  implicit(p).parse(s)
+parse = (p, s) -> implicit(p).parse(s)
+
+check = (p) -> implicit(p).check()
 
 exports.newState = newState
 exports.ParserState = ParserState
@@ -267,7 +293,12 @@ exports.regex = regex
 exports.seq = seq
 exports.optional = optional
 exports.repeat = repeat
+exports.times = times
 exports.foldLeft = foldLeft
 exports.implicit = implicit
 exports.drop = drop
 exports.parse = parse
+exports.check = check
+
+# to-do: guard (match p but don't move the pointer)
+# times (exactly n times)

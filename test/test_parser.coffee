@@ -255,6 +255,35 @@ describe "Parser", ->
     rv.ok.should.equal(false)
     rv.message.should.match(/end/)
 
+  it "can perform a non-advancing check", ->
+    p = parser.seq("hello", parser.check("there"), "th")
+    rv = p.parse("hellothere")
+    rv.ok.should.equal(true)
+    rv.match.should.eql([ "hello", "there", "th" ])
+    rv = p.parse("helloth")
+    rv.ok.should.equal(false)
+    rv.message.should.match(/there/)
+
+  it "can match exactly N times", ->
+    p = parser.string("hi").times(4)
+    rv = p.parse("hihihihihi")
+    rv.ok.should.equal(true)
+    rv.match.should.eql([ "hi", "hi", "hi", "hi" ])
+    rv.state.pos.should.equal(8)
+    rv = p.parse("hihihi")
+    rv.ok.should.equal(false)
+    rv.message.should.match(/4 of \('hi'\)/)
+
+  it "drops inside repeat/times", ->
+    p = parser.string("123").drop().repeat()
+    rv = p.parse("123123")
+    rv.ok.should.equal(true)
+    rv.match.should.eql([])
+    p = parser.string("123").drop().times(2)
+    rv = p.parse("123123")
+    rv.ok.should.equal(true)
+    rv.match.should.eql([])
+
 describe "Parser#foldLeft", ->
   it "matches one", ->
     p = parser.foldLeft(tail: parser.regex(/\d+/).onMatch((x) -> x[0]), sep: /\s*,\s*/)
