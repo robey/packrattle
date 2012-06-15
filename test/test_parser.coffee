@@ -78,6 +78,12 @@ describe "Parser", ->
     rv.state.pos.should.equal(5)
     rv.match.should.eql("yes")
 
+  it "transforms a match into a failure on exception", ->
+    p = parser.string("hello").onMatch((s) -> throw "utter failure")
+    rv = p.parse("hello")
+    rv.ok.should.equal(false)
+    rv.message.should.match(/utter failure/)
+
   it "transforms the error message", ->
     p = parser.string("hello").onFail("Try a greeting.")
     rv = p.parse("cat")
@@ -253,6 +259,7 @@ describe "Parser", ->
     rv.match.should.eql("hello")
     rv = p.consume("hello!")
     rv.ok.should.equal(false)
+    rv.state.pos.should.equal(5)
     rv.message.should.match(/end/)
 
   it "can perform a non-advancing check", ->

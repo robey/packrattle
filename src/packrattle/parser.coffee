@@ -79,7 +79,13 @@ class Parser
     new Parser @message, (state) =>
       rv = @parse(state)
       if not rv.ok then return rv
-      new Match(rv.state, if (f instanceof Function) then f(rv.match) else f)
+      if f instanceof Function
+        try
+          new Match(rv.state, f(rv.match))
+        catch e
+          new NoMatch(state, e.toString())
+      else
+        new Match(rv.state, f)
 
   # only succeed if f(match) returns true.
   matchIf: (f) ->
@@ -99,12 +105,13 @@ class Parser
   or: (others...) ->
     parsers = (implicit(p) for p in [ @ ].concat(others))
     message = (m.message for m in parsers).join(" or ")
-    new Parser message, (state) =>
-      rv = @parse(state)
+    outer = @
+    new Parser message, (state) ->
+      rv = outer.parse(state)
       for p in parsers
         rv = resolve(p).parse(state)
         if rv.ok then return rv
-      new NoMatch(state, message)
+      @fail(state)
 
   # if this parser is prefixed by p, parse it and drop it first
   # (for example, whitespace: `p.skim(/\s+/)`)
@@ -117,7 +124,7 @@ class Parser
 
   then: (p) -> seq(@, p)
 
-  optional: -> optional(@)
+  optional: (defaultValue="") -> optional(@, defaultValue)
 
   repeat: (sep = null) -> repeat(@, sep)
 
@@ -183,13 +190,13 @@ seq = (parsers...) ->
     new Match(state, results)
 
 # a parser that can fail to match, and just returns the empty string
-optional = (p) ->
+optional = (p, defaultValue="") ->
   p = implicit(p)
   new Parser p.message, (state) ->
     p = resolve(p)
     rv = p.parse(state)
     if rv.ok then return rv
-    new Match(state, "")
+    new Match(state, defaultValue)
 
 # one or more repetitions of a parser, returned as an array
 # optionally separated by a separation parser
@@ -300,5 +307,5 @@ exports.drop = drop
 exports.parse = parse
 exports.check = check
 
-# to-do: guard (match p but don't move the pointer)
-# times (exactly n times)
+# to-do:
+# p.trim() ==> p.skip(whitespace)

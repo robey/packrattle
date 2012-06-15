@@ -63,8 +63,8 @@ the real power is in combining the parsers:
   result will be an array of all of the non-null match results of p1 and
   friends
 
-- `parser.optional(p)` - match p or return the empty string, succeeding
-  either way
+- `parser.optional(p, defaultValue)` - match p or return the default value
+  (usually the empty string), succeeding either way
 
 - `parser.check(p)` - verify that p matches, but don't advance the parser's
   position
