@@ -1,6 +1,10 @@
 
 newState = (text) -> new ParserState(text, 0, text.length, 0, 0)
 
+# if parsers should ignore whitespace between items (in seq() or then()),
+# set this to the whitespace parser:
+whitespace = null
+
 # parser state
 class ParserState
   constructor: (@text, @pos, @end, @lineno, @xpos) ->
@@ -179,8 +183,10 @@ regex = (r) ->
 # chain together a sequence of parsers
 seq = (parsers...) ->
   parsers = (implicit(p) for p in parsers)
+  ws = exports.whitespace
   new Parser parsers[0].message, (state) ->
     parsers = (resolve(p) for p in parsers)
+    if ws? then parsers = (p.skip(ws) for p in parsers)
     results = []
     for p in parsers
       rv = p.parse(state)
@@ -205,8 +211,10 @@ repeat = (p, sep = null) -> foldLeft(tail: p, sep: sep)
 # exactly N repetitions of a parser
 times = (count, p) ->
   p = implicit(p)
+  ws = exports.whitespace
   new Parser "#{count} of (#{p.message})", (state) ->
     p = resolve(p)
+    if ws? then p = p.skip(ws)
     results = []
     for i in [0...count]
       rv = p.parse(state)
@@ -246,10 +254,15 @@ foldLeft = (args) ->
   if sep?
     sep = implicit(sep)
     message += " separated by (#{sep.message})"
+  ws = exports.whitespace
   new Parser message, (state) ->
     first = resolve(first)
-    if sep? then sep = resolve(sep)
+    if ws? then first = first.skip(ws)
+    if sep?
+      sep = resolve(sep)
+      if ws? then sep = sep.skip(ws)
     tail = resolve(tail)
+    if ws? then tail = tail.skip(ws)
     rv = first.parse(state)
     if not rv.ok then return @fail(state)
     results = accumulator(rv.match)
@@ -288,6 +301,8 @@ parse = (p, s) -> implicit(p).parse(s)
 check = (p) -> implicit(p).check()
 
 exports.newState = newState
+exports.whitespace = whitespace
+
 exports.ParserState = ParserState
 exports.Match = Match
 exports.NoMatch = NoMatch

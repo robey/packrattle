@@ -63,26 +63,27 @@ describe "Parser", ->
     rv.state.pos.should.equal(9)
     rv.match.should.eql("hello")
 
-  it "transforms a match", ->
-    p = parser.string("hello").onMatch((s) -> s.toUpperCase())
-    rv = p.parse("cat")
-    rv.state.pos.should.equal(0)
-    rv.message.should.match(/hello/)
-    rv = p.parse("hellon")
-    rv.state.pos.should.equal(5)
-    rv.match.should.equal("HELLO")
+  describe "onMatch", ->
+    it "transforms a match", ->
+      p = parser.string("hello").onMatch((s) -> s.toUpperCase())
+      rv = p.parse("cat")
+      rv.state.pos.should.equal(0)
+      rv.message.should.match(/hello/)
+      rv = p.parse("hellon")
+      rv.state.pos.should.equal(5)
+      rv.match.should.equal("HELLO")
 
-  it "transforms a match into a constant", ->
-    p = parser.string("hello").onMatch("yes")
-    rv = p.parse("hello")
-    rv.state.pos.should.equal(5)
-    rv.match.should.eql("yes")
+    it "transforms a match into a constant", ->
+      p = parser.string("hello").onMatch("yes")
+      rv = p.parse("hello")
+      rv.state.pos.should.equal(5)
+      rv.match.should.eql("yes")
 
-  it "transforms a match into a failure on exception", ->
-    p = parser.string("hello").onMatch((s) -> throw "utter failure")
-    rv = p.parse("hello")
-    rv.ok.should.equal(false)
-    rv.message.should.match(/utter failure/)
+    it "transforms a match into a failure on exception", ->
+      p = parser.string("hello").onMatch((s) -> throw "utter failure")
+      rv = p.parse("hello")
+      rv.ok.should.equal(false)
+      rv.message.should.match(/utter failure/)
 
   it "transforms the error message", ->
     p = parser.string("hello").onFail("Try a greeting.")
@@ -123,27 +124,39 @@ describe "Parser", ->
     rv.state.pos.should.equal(7)
     rv.match.should.equal("goodbye")
 
-  it "can do a sequence", ->
-    p = parser.string("abc").then(parser.string("123"))
-    rv = p.parse("abc123")
-    rv.state.pos.should.equal(6)
-    rv.match.should.eql([ "abc", "123" ])
-    rv = p.parse("abcd")
-    rv.state.pos.should.equal(3)
-    rv.message.should.match(/123/)
-    rv = p.parse("123")
-    rv.state.pos.should.equal(0)
-    rv.message.should.match(/abc/)
+  describe "then/seq", ->
+    it "can do a sequence", ->
+      p = parser.string("abc").then(parser.string("123"))
+      rv = p.parse("abc123")
+      rv.state.pos.should.equal(6)
+      rv.match.should.eql([ "abc", "123" ])
+      rv = p.parse("abcd")
+      rv.state.pos.should.equal(3)
+      rv.message.should.match(/123/)
+      rv = p.parse("123")
+      rv.state.pos.should.equal(0)
+      rv.message.should.match(/abc/)
 
-  it "strings together a chained sequence", ->
-    p = parser.seq(
-      parser.string("abc"),
-      parser.string("123").drop(),
-      parser.string("xyz")
-    )
-    rv = p.parse("abc123xyz")
-    rv.state.pos.should.equal(9)
-    rv.match.should.eql([ "abc", "xyz" ])
+    it "strings together a chained sequence", ->
+      p = parser.seq(
+        parser.string("abc"),
+        parser.string("123").drop(),
+        parser.string("xyz")
+      )
+      rv = p.parse("abc123xyz")
+      rv.state.pos.should.equal(9)
+      rv.match.should.eql([ "abc", "xyz" ])
+
+    it "skips whitespace inside seq()", ->
+      parser.whitespace = /\s*/
+      p = parser.seq("abc", "xyz", "ghk")
+      parser.whitespace = null
+      rv = p.parse("abcxyzghk")
+      rv.ok.should.equal(true)
+      rv.match.should.eql([ "abc", "xyz", "ghk" ])
+      rv = p.parse("   abc xyz\tghk")
+      rv.ok.should.equal(true)
+      rv.match.should.eql([ "abc", "xyz", "ghk" ])
 
   it "implicitly turns strings into parsers", ->
     p = parser.seq("abc", "123").or("xyz")
@@ -194,26 +207,61 @@ describe "Parser", ->
     rv.match[1][0].should.eql("99")
     rv.match[2].should.eql("xyz")
 
-  it "repeats", ->
-    p = parser.repeat("hi")
-    rv = p.parse("h")
-    rv.state.pos.should.equal(0)
-    rv.message.should.match(/'hi'/)
-    rv = p.parse("hi")
-    rv.state.pos.should.equal(2)
-    rv.match.should.eql([ "hi" ])
-    rv = p.parse("hiho")
-    rv.state.pos.should.equal(2)
-    rv.match.should.eql([ "hi" ])
-    rv = p.parse("hihihi!")
-    rv.state.pos.should.equal(6)
-    rv.match.should.eql([ "hi", "hi", "hi" ])
+  describe "repeat/times", ->
+    it "repeats", ->
+      p = parser.repeat("hi")
+      rv = p.parse("h")
+      rv.state.pos.should.equal(0)
+      rv.message.should.match(/'hi'/)
+      rv = p.parse("hi")
+      rv.state.pos.should.equal(2)
+      rv.match.should.eql([ "hi" ])
+      rv = p.parse("hiho")
+      rv.state.pos.should.equal(2)
+      rv.match.should.eql([ "hi" ])
+      rv = p.parse("hihihi!")
+      rv.state.pos.should.equal(6)
+      rv.match.should.eql([ "hi", "hi", "hi" ])
 
-  it "repeats with separators", ->
-    p = parser.repeat("hi", ",")
-    rv = p.parse("hi,hi,hi")
-    rv.state.pos.should.equal(8)
-    rv.match.should.eql([ "hi", "hi", "hi" ])
+    it "repeats with separators", ->
+      p = parser.repeat("hi", ",")
+      rv = p.parse("hi,hi,hi")
+      rv.state.pos.should.equal(8)
+      rv.match.should.eql([ "hi", "hi", "hi" ])
+
+    it "skips whitespace in repeat", ->
+      parser.whitespace = /\s*/
+      p = parser.repeat("hi", ",")
+      rv = p.parse("hi, hi , hi")
+      rv.ok.should.equal(true)
+      rv.match.should.eql([ "hi", "hi", "hi" ])
+
+    it "skips whitespace in times", ->
+      parser.whitespace = /\s*/
+      p = parser.times(3, "hi")
+      rv = p.parse("hi hi  hi")
+      rv.ok.should.equal(true)
+      rv.match.should.eql([ "hi", "hi", "hi" ])
+
+    it "can match exactly N times", ->
+      p = parser.string("hi").times(4)
+      rv = p.parse("hihihihihi")
+      rv.ok.should.equal(true)
+      rv.match.should.eql([ "hi", "hi", "hi", "hi" ])
+      rv.state.pos.should.equal(8)
+      rv = p.parse("hihihi")
+      rv.ok.should.equal(false)
+      rv.message.should.match(/4 of \('hi'\)/)
+
+    it "drops inside repeat/times", ->
+      p = parser.string("123").drop().repeat()
+      rv = p.parse("123123")
+      rv.ok.should.equal(true)
+      rv.match.should.eql([])
+      p = parser.string("123").drop().times(2)
+      rv = p.parse("123123")
+      rv.ok.should.equal(true)
+      rv.match.should.eql([])
 
   it "resolves a lazy parser", ->
     p = parser.seq ":", -> /\w+/
@@ -236,7 +284,7 @@ describe "Parser", ->
     rv.match.should.eql([ ":", "GOODBYE" ])
     count.should.equal(1)
 
-  it "only parseutes a parser once per string/position", ->
+  it "only execeutes a parser once per string/position", ->
     count = 0
     p = parser.seq "hello", /\s*/, parser.string("there").onMatch (x) ->
       count++
@@ -270,26 +318,6 @@ describe "Parser", ->
     rv = p.parse("helloth")
     rv.ok.should.equal(false)
     rv.message.should.match(/there/)
-
-  it "can match exactly N times", ->
-    p = parser.string("hi").times(4)
-    rv = p.parse("hihihihihi")
-    rv.ok.should.equal(true)
-    rv.match.should.eql([ "hi", "hi", "hi", "hi" ])
-    rv.state.pos.should.equal(8)
-    rv = p.parse("hihihi")
-    rv.ok.should.equal(false)
-    rv.message.should.match(/4 of \('hi'\)/)
-
-  it "drops inside repeat/times", ->
-    p = parser.string("123").drop().repeat()
-    rv = p.parse("123123")
-    rv.ok.should.equal(true)
-    rv.match.should.eql([])
-    p = parser.string("123").drop().times(2)
-    rv = p.parse("123123")
-    rv.ok.should.equal(true)
-    rv.match.should.eql([])
 
 describe "Parser#foldLeft", ->
   it "matches one", ->
