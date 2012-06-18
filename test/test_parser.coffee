@@ -148,9 +148,9 @@ describe "Parser", ->
       rv.match.should.eql([ "abc", "xyz" ])
 
     it "skips whitespace inside seq()", ->
-      parser.whitespace = /\s*/
+      parser.setWhitespace /\s*/
       p = parser.seq("abc", "xyz", "ghk")
-      parser.whitespace = null
+      parser.setWhitespace null
       rv = p.parse("abcxyzghk")
       rv.ok.should.equal(true)
       rv.match.should.eql([ "abc", "xyz", "ghk" ])
@@ -230,14 +230,14 @@ describe "Parser", ->
       rv.match.should.eql([ "hi", "hi", "hi" ])
 
     it "skips whitespace in repeat", ->
-      parser.whitespace = /\s*/
+      parser.setWhitespace /\s*/
       p = parser.repeat("hi", ",")
       rv = p.parse("hi, hi , hi")
       rv.ok.should.equal(true)
       rv.match.should.eql([ "hi", "hi", "hi" ])
 
     it "skips whitespace in times", ->
-      parser.whitespace = /\s*/
+      parser.setWhitespace /\s*/
       p = parser.times(3, "hi")
       rv = p.parse("hi hi  hi")
       rv.ok.should.equal(true)

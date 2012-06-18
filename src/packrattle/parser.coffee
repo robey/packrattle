@@ -4,6 +4,7 @@ newState = (text) -> new ParserState(text, 0, text.length, 0, 0)
 # if parsers should ignore whitespace between items (in seq() or then()),
 # set this to the whitespace parser:
 whitespace = null
+setWhitespace = (ws) -> whitespace = ws
 
 # parser state
 class ParserState
@@ -111,9 +112,10 @@ class Parser
     message = (m.message for m in parsers).join(" or ")
     outer = @
     new Parser message, (state) ->
+      parsers = (resolve(p) for p in parsers)
       rv = outer.parse(state)
       for p in parsers
-        rv = resolve(p).parse(state)
+        rv = p.parse(state)
         if rv.ok then return rv
       @fail(state)
 
@@ -122,7 +124,8 @@ class Parser
   skip: (p) ->
     p = implicit(p)
     new Parser @message, (state) =>
-      rv = resolve(p).parse(state)
+      p = resolve(p)
+      rv = p.parse(state)
       if rv.ok then state = rv.state
       @parse(state)
 
@@ -183,10 +186,12 @@ regex = (r) ->
 # chain together a sequence of parsers
 seq = (parsers...) ->
   parsers = (implicit(p) for p in parsers)
-  ws = exports.whitespace
+  ws = whitespace
   new Parser parsers[0].message, (state) ->
     parsers = (resolve(p) for p in parsers)
-    if ws? then parsers = (p.skip(ws) for p in parsers)
+    if ws?
+      parsers = (p.skip(ws) for p in parsers)
+      ws = null
     results = []
     for p in parsers
       rv = p.parse(state)
@@ -211,10 +216,12 @@ repeat = (p, sep = null) -> foldLeft(tail: p, sep: sep)
 # exactly N repetitions of a parser
 times = (count, p) ->
   p = implicit(p)
-  ws = exports.whitespace
+  ws = whitespace
   new Parser "#{count} of (#{p.message})", (state) ->
     p = resolve(p)
-    if ws? then p = p.skip(ws)
+    if ws?
+      p = p.skip(ws)
+      ws = null
     results = []
     for i in [0...count]
       rv = p.parse(state)
@@ -254,7 +261,7 @@ foldLeft = (args) ->
   if sep?
     sep = implicit(sep)
     message += " separated by (#{sep.message})"
-  ws = exports.whitespace
+  ws = whitespace
   new Parser message, (state) ->
     first = resolve(first)
     if ws? then first = first.skip(ws)
@@ -263,6 +270,7 @@ foldLeft = (args) ->
       if ws? then sep = sep.skip(ws)
     tail = resolve(tail)
     if ws? then tail = tail.skip(ws)
+    ws = null
     rv = first.parse(state)
     if not rv.ok then return @fail(state)
     results = accumulator(rv.match)
@@ -301,7 +309,7 @@ parse = (p, s) -> implicit(p).parse(s)
 check = (p) -> implicit(p).check()
 
 exports.newState = newState
-exports.whitespace = whitespace
+exports.setWhitespace = setWhitespace
 
 exports.ParserState = ParserState
 exports.Match = Match
@@ -321,6 +329,3 @@ exports.implicit = implicit
 exports.drop = drop
 exports.parse = parse
 exports.check = check
-
-# to-do:
-# p.trim() ==> p.skip(whitespace)
