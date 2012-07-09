@@ -1,4 +1,3 @@
-
 packrattle
 ==========
 
@@ -144,12 +143,7 @@ for example, to match a sequence of numbers separated by "+" and add them:
 this is aliased to "reduce" on Parser, with a simplified interface:
 
     number = parser.regex(/\d+/).onMatch (m) -> parseInt(m[0])
-    expr = parser.foldLeft(
-      tail: number
-      sep: parser.string("+")
-      accumulator: (n) -> n
-      fold: (sum, op, n) -> sum + n
-    )
+    expr = number.reduce parser.string("+"), (sum, op, n) -> sum + n
 
 implicit conversion
 -------------------
