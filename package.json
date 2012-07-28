@@ -4,6 +4,18 @@
   "description": "packrat parser-combinator library",
   "keywords": [ "parser", "packrat", "coffee-script" ],
   "author": "Robey Pointer <robeypointer@gmail.com>",
+  "homepage": "https://github.com/robey/packrattle",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/robey/packrattle.git"
+  },
+  "licenses": [
+    {
+      "type": "Apache License 2.0",
+      "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+    }
+  ],
+
   "scripts": {
     "test": "cake test"
   },
