@@ -1,45 +1,6 @@
 should = require 'should'
 parser = require '../src/packrattle/parser'
-
-describe "ParserState", ->
-  it "finds the current line", ->
-    text = "line one\nline two\nline 3\n\nline 4"
-    state = parser.newState(text).advance(0)
-    state.line().should.eql("line one")
-    state.lineno.should.equal(0)
-    state.xpos.should.equal(0)
-    state = parser.newState(text).advance(5)
-    state.line().should.eql("line one")
-    state.lineno.should.equal(0)
-    state.xpos.should.equal(5)
-    state = parser.newState(text).advance(7)
-    state.line().should.eql("line one")
-    state.lineno.should.equal(0)
-    state.xpos.should.equal(7)
-    state = parser.newState(text).advance(8)
-    state.line().should.eql("line one")
-    state.lineno.should.equal(0)
-    state.xpos.should.equal(8)
-    state = parser.newState(text).advance(9)
-    state.line().should.eql("line two")
-    state.lineno.should.equal(1)
-    state.xpos.should.equal(0)
-    state = parser.newState(text).advance(20)
-    state.line().should.eql("line 3")
-    state.lineno.should.equal(2)
-    state.xpos.should.equal(2)
-    state = parser.newState(text).advance(25)
-    state.line().should.eql("")
-    state.lineno.should.equal(3)
-    state.xpos.should.equal(0)
-    state = parser.newState(text).advance(26)
-    state.line().should.eql("line 4")
-    state.lineno.should.equal(4)
-    state.xpos.should.equal(0)
-    state = parser.newState(text).advance(31)
-    state.line().should.eql("line 4")
-    state.lineno.should.equal(4)
-    state.xpos.should.equal(5)
+inspect = require("util").inspect
 
 describe "Parser", ->
   it "intentionally fails", ->
@@ -284,7 +245,7 @@ describe "Parser", ->
     rv.match.should.eql([ ":", "GOODBYE" ])
     count.should.equal(1)
 
-  it "only execeutes a parser once per string/position", ->
+  it "only executes a parser once per string/position", ->
     count = 0
     p = parser.seq "hello", /\s*/, parser.string("there").onMatch (x) ->
       count++
@@ -319,119 +280,15 @@ describe "Parser", ->
     rv.ok.should.equal(false)
     rv.message.should.match(/there/)
 
-describe "Parser#foldLeft", ->
-  it "matches one", ->
-    p = parser.foldLeft(tail: parser.regex(/\d+/).onMatch((x) -> x[0]), sep: /\s*,\s*/)
-    rv = p.parse("98")
-    rv.state.pos.should.equal(2)
-    rv.match.should.eql([ "98" ])
-
-  it "matches several", ->
-    p = parser.foldLeft(tail: parser.regex(/\d+/).onMatch((x) -> x[0]), sep: /\s*,\s*/)
-    rv = p.parse("98, 99 ,100")
-    rv.state.pos.should.equal(11)
-    rv.match.should.eql([ "98", "99", "100" ])
-
-  it "can use a custom accumulator", ->
-    p = parser.foldLeft(
-      tail: parser.regex(/\d+/).onMatch((x) -> x[0])
-      sep: /\s*,\s*/
-      accumulator: (item) -> [ parseInt(item) ]
-      fold: (sum, sep, item) -> sum.unshift(parseInt(item)); sum
-    )
-    rv = p.parse("98, 99 ,100")
-    rv.state.pos.should.equal(11)
-    rv.match.should.eql([ 100, 99, 98 ])
-
-  it "ignores trailing separators", ->
-    p = parser.foldLeft(tail: parser.regex(/\d+/).onMatch((x) -> x[0]), sep: /\s*,\s*/)
-    rv = p.parse("98, wut")
-    rv.state.pos.should.equal(2)
-    rv.match.should.eql([ "98" ])
-
-  it "can use a different first parser", ->
-    p = parser.foldLeft(
-      first: parser.regex(/[a-f\d]+/).onMatch((x) -> parseInt(x[0], 16))
-      tail: parser.regex(/\d+/).onMatch((x) -> parseInt(x[0]))
-      sep: /\s*,\s*/
-    )
-    rv = p.parse("10,11")
-    rv.state.pos.should.equal(5)
-    rv.match.should.eql([ 16, 11 ])
-
-describe "Parser example", ->
-  $ = parser.implicit
-  binary = (left, op, right) -> { op: op, left: left, right: right }
-  ws = /\s*/
-  number = $(/\d+/).skip(ws).onMatch (m) -> parseInt(m[0])
-  parens = [ $("(").skip(ws).drop(), (-> expr), $(")").skip(ws).drop() ]
-  atom = number.or($(parens).onMatch((e) -> e[0]))
-  term = atom.reduce($("*").or("/").or("%").skip(ws), binary)
-  expr = term.reduce($("+").or("-").skip(ws), binary)
-
-  it "recognizes a number", ->
-    rv = expr.parse("900")
-    rv.ok.should.eql(true)
-    rv.match.should.eql(900)
-
-  it "recognizes addition", ->
-    rv = expr.parse("2 + 3")
-    rv.ok.should.eql(true)
-    rv.match.should.eql(op: "+", left: 2, right: 3)
-
-  it "recognizes a complex expression", ->
-    rv = expr.parse("1 + 2 * 3 + 4 * (5 + 6)")
-    rv.ok.should.eql(true)
-    rv.match.should.eql(
-      op: "+"
-      left: {
-        op: "+"
-        left: 1
-        right: {
-          op: "*"
-          left: 2
-          right: 3
-        }
-      }
-      right: {
-        op: "*"
-        left: 4
-        right: {
-          op: "+"
-          left: 5
-          right: 6
-        }
-      }
-    )
-
-  it "can add with foldLeft", ->
-    number = parser.regex(/\d+/).onMatch (m) -> parseInt(m[0])
-    expr = parser.foldLeft(
-      tail: number
-      sep: parser.string("+")
-      accumulator: (n) -> n
-      fold: (sum, op, n) -> sum + n
-    )
-    rv = expr.parse("2+3+4")
-    rv.ok.should.eql(true)
-    rv.state.pos.should.equal(5)
-    rv.match.should.equal(9)
-
-  it "can add with reduce", ->
-    number = parser.regex(/\d+/).onMatch (m) -> parseInt(m[0])
-    expr = number.reduce "+", (sum, op, n) -> sum + n
-    rv = expr.parse("2+3+4")
-    rv.ok.should.eql(true)
-    rv.state.pos.should.equal(5)
-    rv.match.should.equal(9)
-
-  it "csv", ->
-    csv = parser.repeat(
-      parser.regex(/([^,]*)/).onMatch (m) -> m[0]
-      /,/
-    )
-    rv = csv.parse("this,is,csv")
-    rv.ok.should.eql(true)
-    rv.match.should.eql([ "this", "is", "csv" ])
-
-
+  it "can commit to an alternative", ->
+    p = parser.seq(parser.string("!").commit(), /\d+/).onFail("! must be a number").or([ "@", /\d+/ ]).onMatch (a) ->
+      [ a[0], a[1][0] ]
+    rv = p.parse("!3")
+    rv.ok.should.equal(true)
+    rv.match.should.eql([ "!", "3" ])
+    rv = p.parse("@55")
+    rv.ok.should.equal(true)
+    rv.match.should.eql([ "@", "55" ])
+    rv = p.parse("!ok")
+    rv.ok.should.equal(false)
+    rv.message.should.eql("! must be a number")

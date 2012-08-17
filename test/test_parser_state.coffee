@@ -1,0 +1,43 @@
+should = require 'should'
+parser = require '../src/packrattle/parser'
+
+describe "ParserState", ->
+  it "finds the current line", ->
+    text = "line one\nline two\nline 3\n\nline 4"
+    state = parser.newState(text).advance(0)
+    state.line().should.eql("line one")
+    state.lineno.should.equal(0)
+    state.xpos.should.equal(0)
+    state = parser.newState(text).advance(5)
+    state.line().should.eql("line one")
+    state.lineno.should.equal(0)
+    state.xpos.should.equal(5)
+    state = parser.newState(text).advance(7)
+    state.line().should.eql("line one")
+    state.lineno.should.equal(0)
+    state.xpos.should.equal(7)
+    state = parser.newState(text).advance(8)
+    state.line().should.eql("line one")
+    state.lineno.should.equal(0)
+    state.xpos.should.equal(8)
+    state = parser.newState(text).advance(9)
+    state.line().should.eql("line two")
+    state.lineno.should.equal(1)
+    state.xpos.should.equal(0)
+    state = parser.newState(text).advance(20)
+    state.line().should.eql("line 3")
+    state.lineno.should.equal(2)
+    state.xpos.should.equal(2)
+    state = parser.newState(text).advance(25)
+    state.line().should.eql("")
+    state.lineno.should.equal(3)
+    state.xpos.should.equal(0)
+    state = parser.newState(text).advance(26)
+    state.line().should.eql("line 4")
+    state.lineno.should.equal(4)
+    state.xpos.should.equal(0)
+    state = parser.newState(text).advance(31)
+    state.line().should.eql("line 4")
+    state.lineno.should.equal(4)
+    state.xpos.should.equal(5)
+    
