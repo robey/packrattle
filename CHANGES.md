@@ -1,4 +1,8 @@
 
+## 1.0.3
+
+- added commit()
+
 ## 1.0.2  (28 july 2012)
 
 - fixed example in the README [michael hart]

@@ -111,6 +111,11 @@ each parser has methods on it, also, to allow for combining:
 - `drop()` - if this parser matches, return null as the match result, which
   will cause it to be omitted from the result of `parser.seq`
 
+- `commit()` - if this parser is part of a sequence, and it matches, then
+  backtracking will stop here (no "or" clauses higher up in the parse tree
+  will take effect) -- this can be used to give more meaningful error
+  messages, since the error message text will not backtrack either
+
 foldLeft
 --------
 
@@ -184,3 +189,17 @@ the `ParserState` object contains:
 - `xpos` - the position of `pos` within the current line, counting from 0
 - `line()` - returns the content of the line around `pos` (the `lineno` line)
 
+automatic whitespace skipping
+-----------------------------
+
+if a global whitespace parser is set:
+
+    parser.setWhitespace /\s+/
+
+then text matching that parser will be automatically skipped between items in
+a `seq`, `times`, or `foldLeft`. it has the same effect as calling `skip` on
+each of the tiems.
+
+this global setting is used at the time the parser is constructed, not when
+it's used, so you can change its value before and after constructing parsers,
+if they have varying whitespace requirements.

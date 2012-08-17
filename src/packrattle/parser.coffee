@@ -42,7 +42,7 @@ class Match
     @ok = true
 
 class NoMatch
-  constructor: (@state, @message) ->
+  constructor: (@state, @message, @abort = false) ->
     @ok = false
 
 _parser_id = 0
@@ -77,7 +77,7 @@ class Parser
     new Parser newMessage, (state) =>
       rv = @parse(state)
       if rv.match? then return rv
-      new NoMatch(rv.state, newMessage)
+      new NoMatch(rv.state, newMessage, rv.abort)
 
   # transforms the result of a parser if it succeeds
   onMatch: (f) ->
@@ -116,11 +116,11 @@ class Parser
       rv = outer.parse(state)
       for p in parsers
         rv = p.parse(state)
-        if rv.ok then return rv
+        if rv.ok or rv.abort then return rv
       @fail(state)
 
   # if this parser is prefixed by p, parse it and drop it first
-  # (for example, whitespace: `p.skim(/\s+/)`)
+  # (for example, whitespace: `p.skip(/\s+/)`)
   skip: (p) ->
     p = implicit(p)
     new Parser @message, (state) =>
@@ -148,6 +148,14 @@ class Parser
       rv = @parse(state)
       if not rv.ok then return rv
       new Match(state, rv.match)
+
+  commit: ->
+    new Parser @message, (state) =>
+      rv = @parse(state)
+      if not rv.ok then return rv
+      rv.commit = true
+      rv
+
 
 # matches the end of the string
 end = new Parser "end", (state) ->
@@ -193,10 +201,14 @@ seq = (parsers...) ->
       parsers = (p.skip(ws) for p in parsers)
       ws = null
     results = []
+    commit = false
     for p in parsers
       rv = p.parse(state)
-      if not rv.ok then return rv
+      if not rv.ok
+        if commit then rv.abort = true
+        return rv
       if rv.match? then results.push(rv.match)
+      commit = rv.commit
       state = rv.state
     new Match(state, results)
 
