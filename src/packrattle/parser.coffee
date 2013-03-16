@@ -1,5 +1,5 @@
 
-newState = (text) -> new ParserState(text, 0, text.length, 0, 0)
+newState = (text) -> new ParserState(text, 0, text.length)
 
 # if parsers should ignore whitespace between items (in seq() or then()),
 # set this to the whitespace parser:
@@ -8,9 +8,11 @@ setWhitespace = (ws) -> whitespace = ws
 
 # parser state
 class ParserState
-  constructor: (@text, @pos, @end, @lineno, @xpos) ->
+  constructor: (@text, @pos, @end, @lineno=0, @xpos=0) ->
     @cache = {}
 
+  # return a new ParserState with the position advanced 'n' places.
+  # the new @lineno and @xpos are adjusted by watching for linefeeds.
   advance: (n) ->
     pos = @pos
     lineno = @lineno
@@ -25,7 +27,7 @@ class ParserState
     state.cache = @cache
     state
 
-  # text of the current line around @pos
+  # return the text of the current line around @pos.
   line: ->
     text = @text
     end = @end
@@ -47,10 +49,10 @@ class NoMatch
 
 _parser_id = 0
 class Parser
-  # (state) -> Match|NoMatch|exception
   constructor: (@message, @matcher) ->
     @id = _parser_id++
 
+  # returns Match or NoMatch, or throws an exception.
   parse: (state) ->
     if typeof state == "string" then state = newState(state)
     cache = state.cache[@id]
