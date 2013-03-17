@@ -1,10 +1,12 @@
 
+inspect = require("util").inspect
+
 newState = (text) -> new ParserState(text, 0, text.length)
 
 # if parsers should ignore whitespace between items (in seq() or then()),
 # set this to the whitespace parser:
-whitespace = null
-setWhitespace = (ws) -> whitespace = ws
+# whitespace = null
+# setWhitespace = (ws) -> whitespace = ws
 
 # parser state
 class ParserState
@@ -39,79 +41,109 @@ class ParserState
     while lend < end and text[lend] != '\n' then lend++
     text.slice(lstart, lend)
 
+  toString: ->
+    truncated = if @text.length > 10 then "'#{@text[...10]}...'" else "'#{@text}'"
+    "ParserState(text=#{truncated}, pos=#{@pos}, end=#{@end}, lineno=#{@lineno}, xpos=#{@xpos})"
+
+
 class Match
   constructor: (@state, @match) ->
     @ok = true
+    @commit = false
+
+  toString: -> "Match(state=#{@state}, match=#{@match}, commit=#{@commit})"
+
 
 class NoMatch
   constructor: (@state, @message, @abort = false) ->
     @ok = false
 
+  toString: -> "NoMatch(state=#{@state}, message='#{@message}', abort=#{@abort})"
+
+
 _parser_id = 0
 class Parser
-  constructor: (@message, @matcher) ->
+  constructor: (@_message, @matcher) ->
     @id = _parser_id++
 
-  # returns Match or NoMatch, or throws an exception.
-  parse: (state) ->
+  message: ->
+    if (typeof @_message == "function") then @_message() else @_message
+
+  toString: -> "Parser(#{@message()})"
+
+  # helper for internal use: immediately fail.
+  fail: (state, cont) ->
+    cont(new NoMatch(state, "Expected " + @message()))
+
+  # executes @matcher, passing the result (Match or NoMatch) to 'cont'.
+  parse: (state, cont) ->
     if typeof state == "string" then state = newState(state)
-    cache = state.cache[@id]
-    if not cache? then cache = state.cache[@id] = {}
-    rv = cache[state.pos]
-    if rv? then return rv
-    rv = @matcher(state)
-    cache[state.pos] = rv
+    @matcher(state, cont)
+
+  # must match the entire string, to the end.
+  consume: (state, cont) ->
+    p = chain @, end, (a, b) -> a
+    p.parse(state, cont)
+
+  # like 'parse', but returns the parser result instead of calling a
+  # continuation.
+  parseSync: (state) ->
+    rv = null
+    @parse state, (_rv) -> rv = _rv
     rv
 
-  # must match the entire string, to the end
-  consume: (state) ->
-    rv = @parse(state)
-    if not rv.ok then return rv
-    rv2 = end.parse(rv.state)
-    if not rv2.ok then return rv2
+  # like 'consume', but returns the parser result instead of calling a
+  # continuation.
+  consumeSync: (state) ->
+    rv = null
+    @consume state, (_rv) -> rv = _rv
     rv
 
-  fail: (state) ->
-    new NoMatch(state, "Expected " + @message)
+  # ----- transformations and combinations:
 
   # transforms the error message of a parser
   onFail: (newMessage) ->
-    new Parser newMessage, (state) =>
-      rv = @parse(state)
-      if rv.match? then return rv
-      new NoMatch(rv.state, newMessage, rv.abort)
+    new Parser newMessage, (state, cont) =>
+      @parse state, (rv) ->
+        if rv.match? then return cont(rv)
+        cont(new NoMatch(rv.state, newMessage, rv.abort))
 
   # transforms the result of a parser if it succeeds.
   onMatch: (f) ->
-    new Parser @message, (state) =>
-      rv = @parse(state)
-      if not rv.ok then return rv
-      if f instanceof Function
-        try
-          new Match(rv.state, f(rv.match))
-        catch e
-          new NoMatch(state, e.toString())
-      else
-        new Match(rv.state, f)
-
+    new Parser @_message, (state, cont) =>
+      @parse state, (rv) ->
+        if not rv.ok then return cont(rv)
+        rv = if f instanceof Function
+          try
+            new Match(rv.state, f(rv.match))
+          catch e
+            new NoMatch(state, e.toString())
+        else
+          new Match(rv.state, f)
+        cont(rv)
+  
   # only succeed if f(match) returns true.
   matchIf: (f) ->
-    new Parser @message, (state) =>
-      rv = @parse(state)
-      if not rv.ok then return rv
-      if not f(rv.match) then return @fail(state)
-      rv
+    new Parser @_message, (state, cont) =>
+      @parse state, (rv) =>
+        if not rv.ok then return cont(rv)
+        if not f(rv.match) then return @fail(state, cont)
+        cont(rv)
 
   # succeed (with an empty match) if the parser failed; otherwise fail.
   not: ->
-    new Parser "not " + @message, (state) =>
-      rv = @parse(state)
-      if rv.ok then return @fail(state)
-      new Match(state, "")
+    new Parser (-> "not " + @message()), (state, cont) =>
+      @parse state, (rv) =>
+        if rv.ok then @fail(state, cont) else cont(new Match(state, ""))
+
+  then: (p) -> chain @, p, (a, b) -> [ a, b ]
+
+
+
+
+
 
   or: (others...) -> alt(@, others...)
-
-  then: (p) -> seq(@, p)
 
   optional: (defaultValue="") -> optional(@, defaultValue)
 
@@ -150,26 +182,22 @@ class Parser
       rv
 
 
-# matches the end of the string
-end = new Parser "end", (state) ->
-  if state.pos == state.end
-    new Match(state, null)
-  else
-    @fail(state)
+# matches the end of the string.
+end = new Parser "end", (state, cont) ->
+  if state.pos == state.end then cont(new Match(state, null)) else @fail(state, cont)
 
-# never matches anything
-reject = new Parser "failure", (state) ->
-  @fail(state)
+# never matches anything.
+reject = new Parser "failure", (state, cont) -> @fail(state, cont)
 
-# matches a literal string
+# matches a literal string.
 string = (s) ->
   len = s.length
-  new Parser "'#{s}'", (state) ->
+  new Parser "'#{s}'", (state, cont) ->
     candidate = state.text.slice(state.pos, state.pos + len)
     if candidate == s
-      new Match(state.advance(len), candidate)
+      cont(new Match(state.advance(len), candidate))
     else
-      @fail(state)
+      @fail(state, cont)
 
 # matches a regex
 regex = (r) ->
@@ -177,12 +205,70 @@ regex = (r) ->
   m = if r.multiline then "m" else ""
   source = if r.source[0] == "^" then r.source else ("^" + r.source)
   r2 = new RegExp(source, i + m)
-  new Parser r.toString(), (state) ->
+  new Parser r.toString(), (state, cont) ->
     m = r2.exec(state.text.slice(state.pos))
-    if m?
-      new Match(state.advance(m[0].length), m)
-    else
-      @fail(state)
+    if m? then cont(new Match(state.advance(m[0].length), m)) else @fail(state, cont)
+
+# a parser that can fail to match, and returns a default response if not
+# present (usually the empty string).
+optional = (p, defaultValue="") ->
+  p = implicit(p)
+  new Parser (-> "optional #{resolve(p).message()}"), (state, cont) ->
+    p = resolve(p)
+    p.parse state, (rv) ->
+      if rv.ok then return cont(rv)
+      cont(new Match(state, defaultValue))
+
+# chain together p1 & p2 such that if p1 matches, p2 is executed. if both
+# match, 'combiner' is called with the two matched objects, to create a
+# single match result.
+chain = (p1, p2, combiner) ->
+  new Parser (-> "#{resolve(p1).message()} then #{resolve(p2).message()}"), (state, cont) ->
+    p1 = resolve(p1)
+    p1.parse state, (rv1) ->
+      if not rv1.ok then return cont(rv1)
+      p2 = resolve(p2)
+      p2.parse rv1.state, (rv2) ->
+        if not rv2.ok
+          # no backtracking if the left match was commit()'d.
+          if rv1.commit then rv2.abort = true
+          return cont(rv2)
+        cont(new Match(rv2.state, combiner(rv1.match, rv2.match)))
+
+# chain together a sequence of parsers. if they all match, the match result
+# will contain an array of all the results that weren't null.
+seq = (parsers...) ->
+  parsers = (implicit(p) for p in parsers)
+  message = -> (resolve(p).message() for p in parsers).join(" then ")
+  combiner = (sum, x) ->
+    if x? then sum.push x
+    sum
+  rv = new Parser "''", (state, cont) -> cont(new Match(state, []))
+  for p in parsers then rv = chain(rv, p, combiner)
+  new Parser message, (state, cont) ->
+    rv.parse state, cont
+
+# chain together a sequence of parsers. before each parser is checked, the
+# 'ignore' parser is optionally matched and thrown away. this is typicially
+# used for discarding whitespace in lexical parsing.
+seqIgnore = (ignore, parsers...) ->
+  parsers = (implicit(p) for p in parsers)
+  message = -> (resolve(p).message() for p in parsers).join(" then ")
+  newseq = []
+  for p in parsers
+    newseq.push optional(ignore).drop()
+    newseq.push p
+  rv = seq(newseq...)
+  new Parser message, (state, cont) ->
+    rv.parse state, cont
+
+
+
+
+
+
+
+
 
 # try each of these parsers, in order (starting from the same position),
 # looking for the first match.
@@ -195,36 +281,6 @@ alt = (parsers...) ->
       rv = p.parse(state)
       if rv.ok or rv.abort then return rv
     @fail(state)
-
-# chain together a sequence of parsers
-seq = (parsers...) ->
-  parsers = (implicit(p) for p in parsers)
-  ws = whitespace
-  new Parser parsers[0].message, (state) ->
-    parsers = (resolve(p) for p in parsers)
-    if ws?
-      parsers = (p.skip(ws) for p in parsers)
-      ws = null
-    results = []
-    commit = false
-    for p in parsers
-      rv = p.parse(state)
-      if not rv.ok
-        if commit then rv.abort = true
-        return rv
-      if rv.match? then results.push(rv.match)
-      commit = rv.commit
-      state = rv.state
-    new Match(state, results)
-
-# a parser that can fail to match, and just returns the empty string
-optional = (p, defaultValue="") ->
-  p = implicit(p)
-  new Parser p.message, (state) ->
-    p = resolve(p)
-    rv = p.parse(state)
-    if rv.ok then return rv
-    new Match(state, defaultValue)
 
 # one or more repetitions of a parser, returned as an array
 # optionally separated by a separation parser
@@ -323,10 +379,11 @@ drop = (p) -> implicit(p).drop()
 
 parse = (p, s) -> implicit(p).parse(s)
 
+parseSync = (p, s) -> implicit(p).parseSync(s)
+
 check = (p) -> implicit(p).check()
 
 exports.newState = newState
-exports.setWhitespace = setWhitespace
 
 exports.ParserState = ParserState
 exports.Match = Match
@@ -337,13 +394,17 @@ exports.end = end
 exports.reject = reject
 exports.string = string
 exports.regex = regex
-exports.alt = alt
 exports.seq = seq
+exports.seqIgnore = seqIgnore
+
+exports.alt = alt
 exports.optional = optional
 exports.repeat = repeat
 exports.times = times
 exports.foldLeft = foldLeft
+
 exports.implicit = implicit
 exports.drop = drop
 exports.parse = parse
+exports.parseSync = parseSync
 exports.check = check
