@@ -73,6 +73,18 @@ describe "Parser", ->
     rv.state.pos.should.equal(0)
     rv.message.should.match(/hello/)
 
+  it "can perform an 'alt'", ->
+    p = parser.alt("hello", "goodbye")
+    rv = p.parse("cat")
+    rv.state.pos.should.equal(0)
+    rv.message.should.match(/'hello' or 'goodbye'/)
+    rv = p.parse("hello")
+    rv.state.pos.should.equal(5)
+    rv.match.should.equal("hello")
+    rv = p.parse("goodbye")
+    rv.state.pos.should.equal(7)
+    rv.match.should.equal("goodbye")
+
   it "can perform an 'or'", ->
     p = parser.string("hello").or(parser.string("goodbye"))
     rv = p.parse("cat")

@@ -81,7 +81,7 @@ class Parser
       if rv.match? then return rv
       new NoMatch(rv.state, newMessage, rv.abort)
 
-  # transforms the result of a parser if it succeeds
+  # transforms the result of a parser if it succeeds.
   onMatch: (f) ->
     new Parser @message, (state) =>
       rv = @parse(state)
@@ -109,27 +109,7 @@ class Parser
       if rv.ok then return @fail(state)
       new Match(state, "")
 
-  or: (others...) ->
-    parsers = (implicit(p) for p in [ @ ].concat(others))
-    message = (m.message for m in parsers).join(" or ")
-    outer = @
-    new Parser message, (state) ->
-      parsers = (resolve(p) for p in parsers)
-      rv = outer.parse(state)
-      for p in parsers
-        rv = p.parse(state)
-        if rv.ok or rv.abort then return rv
-      @fail(state)
-
-  # if this parser is prefixed by p, parse it and drop it first
-  # (for example, whitespace: `p.skip(/\s+/)`)
-  skip: (p) ->
-    p = implicit(p)
-    new Parser @message, (state) =>
-      p = resolve(p)
-      rv = p.parse(state)
-      if rv.ok then state = rv.state
-      @parse(state)
+  or: (others...) -> alt(@, others...)
 
   then: (p) -> seq(@, p)
 
@@ -143,6 +123,17 @@ class Parser
 
   # throw away the match
   drop: -> @onMatch (m) -> null
+
+  # if this parser is prefixed by p, parse it and drop it first
+  # (for example, whitespace: `p.skip(/\s+/)`)
+  # FIXME: this is an awkward syntax. remove this.
+  skip: (p) ->
+    p = implicit(p)
+    new Parser @message, (state) =>
+      p = resolve(p)
+      rv = p.parse(state)
+      if rv.ok then state = rv.state
+      @parse(state)
 
   # verify that this parser matches, but don't advance the position
   check: ->
@@ -192,6 +183,18 @@ regex = (r) ->
       new Match(state.advance(m[0].length), m)
     else
       @fail(state)
+
+# try each of these parsers, in order (starting from the same position),
+# looking for the first match.
+alt = (parsers...) ->
+  parsers = (implicit(p) for p in parsers)
+  message = (m.message for m in parsers).join(" or ")
+  new Parser message, (state) ->
+    parsers = (resolve(p) for p in parsers)
+    for p in parsers
+      rv = p.parse(state)
+      if rv.ok or rv.abort then return rv
+    @fail(state)
 
 # chain together a sequence of parsers
 seq = (parsers...) ->
@@ -334,6 +337,7 @@ exports.end = end
 exports.reject = reject
 exports.string = string
 exports.regex = regex
+exports.alt = alt
 exports.seq = seq
 exports.optional = optional
 exports.repeat = repeat
