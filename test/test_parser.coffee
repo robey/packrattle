@@ -3,248 +3,268 @@ parser = require '../src/packrattle/parser'
 inspect = require("util").inspect
 
 describe "Parser", ->
+  $ = parser
+
   it "intentionally fails", ->
-    p = parser.reject
-    p.parse "", (rv) ->
-      rv.state.pos.should.equal(0)
-      rv.message.should.match(/failure/)
+    p = $.reject
+    rv = $.parse p, ""
+    rv.state.pos.should.equal(0)
+    rv.message.should.match(/failure/)
 
   it "matches a literal", ->
-    p = parser.string("hello")
-    p.parse "cat", (rv) ->
-      rv.state.pos.should.equal(0)
-      rv.message.should.match(/hello/)
-    p.parse "hellon", (rv) ->
-      rv.state.pos.should.equal(5)
-      rv.match.should.equal("hello")
-
-  it "consumes the whole string", ->
-    p = parser.string("hello")
-    p.consume "hello", (rv) ->
-      rv.ok.should.equal(true)
-      rv.match.should.eql("hello")
-    p.consume "hello!", (rv) ->
-      rv.ok.should.equal(false)
-      rv.state.pos.should.equal(5)
-      rv.message.should.match(/end/)
-
-  it "works sync-ly too", ->
-    p = parser.string("hello")
-    rv = p.parseSync "cat"
+    p = $.string("hello")
+    rv = $.parse p, "cat"
     rv.state.pos.should.equal(0)
     rv.message.should.match(/hello/)
-    rv = p.parseSync "hellon"
+    rv = $.parse p, "hellon"
     rv.state.pos.should.equal(5)
     rv.match.should.equal("hello")
-    rv = p.consumeSync "hello"
+
+  it "consumes the whole string", ->
+    p = $.string("hello")
+    rv = $.consume p, "hello"
     rv.ok.should.equal(true)
     rv.match.should.eql("hello")
-    rv = p.consumeSync "hello!"
+    rv.state.pos.should.equal(5)
+    rv = $.consume p, "hello!"
     rv.ok.should.equal(false)
     rv.state.pos.should.equal(5)
     rv.message.should.match(/end/)
 
+  it "checks without consuming", ->
+    p = $.check($.string("hello"))
+    rv = $.parse p, "hello"
+    rv.ok.should.equal(true)
+    rv.match.should.eql("hello")
+    rv.state.pos.should.equal(0)
+
+  it "can perform a non-advancing check", ->
+    p = $.seq("hello", $.check("there"), "th")
+    rv = $.parse(p, "hellothere")
+    rv.ok.should.equal(true)
+    rv.match.should.eql([ "hello", "there", "th" ])
+    rv = $.parse(p, "helloth")
+    rv.ok.should.equal(false)
+    rv.message.should.match(/there/)
+
   it "handles regexen", ->
-    p = parser.regex(/h(i)?/)
-    p.parse "no", (rv) ->
-      rv.state.pos.should.equal(0)
-      rv.message.should.match(/h\(i\)\?/)
-    p.parse "hit", (rv) ->
-      rv.state.pos.should.equal(2)
-      rv.match[0].should.eql("hi")
-      rv.match[1].should.eql("i")
+    p = $.regex(/h(i)?/)
+    rv = $.parse p, "no"
+    rv.state.pos.should.equal(0)
+    rv.message.should.match(/h\(i\)\?/)
+    rv = $.parse p, "hit"
+    rv.state.pos.should.equal(2)
+    rv.match[0].should.eql("hi")
+    rv.match[1].should.eql("i")
 
   it "transforms the error message", ->
-    p = parser.string("hello").onFail("Try a greeting.")
-    p.parse "cat", (rv) ->
-      rv.state.pos.should.equal(0)
-      rv.message.should.eql("Try a greeting.")
-    p.parse "hellon", (rv) ->
-      rv.state.pos.should.equal(5)
-      rv.match.should.equal("hello")
+    p = $.string("hello").onFail("Try a greeting.")
+    rv = $.parse p, "cat"
+    rv.state.pos.should.equal(0)
+    rv.message.should.eql("Try a greeting.")
+    rv = $.parse p, "hellon"
+    rv.state.pos.should.equal(5)
+    rv.match.should.equal("hello")
 
   describe "onMatch", ->
     it "transforms a match", ->
       p = parser.string("hello").onMatch((s) -> s.toUpperCase())
-      p.parse "cat", (rv) ->
-        rv.state.pos.should.equal(0)
-        rv.message.should.match(/hello/)
-      p.parse "hellon", (rv) ->
-        rv.state.pos.should.equal(5)
-        rv.match.should.equal("HELLO")
+      rv = $.parse p, "cat"
+      rv.state.pos.should.equal(0)
+      rv.message.should.match(/hello/)
+      rv = $.parse p, "hellon"
+      rv.state.pos.should.equal(5)
+      rv.match.should.equal("HELLO")
 
     it "transforms a match into a constant", ->
       p = parser.string("hello").onMatch("yes")
-      p.parse "hello", (rv) ->
-        rv.state.pos.should.equal(5)
-        rv.match.should.eql("yes")
+      rv = $.parse p, "hello"
+      rv.state.pos.should.equal(5)
+      rv.match.should.eql("yes")
 
     it "transforms a match into a failure on exception", ->
       p = parser.string("hello").onMatch((s) -> throw "utter failure")
-      p.parse "hello", (rv) ->
-        rv.ok.should.equal(false)
-        rv.message.should.match(/utter failure/)
+      rv = $.parse p, "hello"
+      rv.ok.should.equal(false)
+      rv.message.should.match(/utter failure/)
 
   it "matches with a condition", ->
-    p = parser.regex(/\d+/).matchIf((s) -> parseInt(s[0]) % 2 == 0).onFail("Expected an even number")
-    p.parse "103", (rv) ->
-      rv.state.pos.should.equal(0)
-      rv.message.should.match(/even number/)
-    p.parse "104", (rv) ->
-      rv.state.pos.should.equal(3)
-      rv.match[0].should.eql("104")
+    p = $.regex(/\d+/).matchIf((s) -> parseInt(s[0]) % 2 == 0).onFail("Expected an even number")
+    rv = $.parse p, "103"
+    rv.state.pos.should.equal(0)
+    rv.message.should.match(/even number/)
+    rv = $.parse p, "104"
+    rv.state.pos.should.equal(3)
+    rv.match[0].should.eql("104")
 
   it "can negate", ->
-    p = parser.string("hello").not()
-    rv = p.parseSync("cat")
+    p = $.string("hello").not_()
+    rv = $.parse(p, "cat")
     rv.state.pos.should.equal(0)
     rv.match.should.eql("")
-    rv = p.parseSync("hello")
+    rv = $.parse(p, "hello")
     rv.state.pos.should.equal(0)
     rv.message.should.match(/hello/)
 
   it "parses optionals", ->
-    p = parser.optional(/\d+/, "?")
-    rv = p.parseSync("34.")
+    p = $.optional(/\d+/, "?")
+    rv = $.parse(p, "34.")
     rv.state.pos.should.equal(2)
     rv.match[0].should.eql("34")
-    rv = p.parseSync("no")
+    rv = $.parse(p, "no")
     rv.state.pos.should.equal(0)
     rv.match.should.eql("?")
 
   describe "then/seq", ->
     it "can do a sequence", ->
-      p = parser.string("abc").then(parser.string("123"))
-      rv = p.parseSync("abc123")
+      p = $.string("abc").then(parser.string("123"))
+      rv = $.parse(p, "abc123")
       rv.state.pos.should.equal(6)
       rv.match.should.eql([ "abc", "123" ])
-      rv = p.parseSync("abcd")
+      rv = $.parse(p, "abcd")
       rv.state.pos.should.equal(3)
       rv.message.should.match(/123/)
-      rv = p.parseSync("123")
+      rv = $.parse(p, "123")
       rv.state.pos.should.equal(0)
       rv.message.should.match(/abc/)
 
     it "strings together a chained sequence", ->
-      p = parser.seq(
-        parser.string("abc"),
-        parser.string("123").drop(),
-        parser.string("xyz")
+      p = $.seq(
+        $.string("abc"),
+        $.string("123").drop(),
+        $.string("xyz")
       )
-      rv = p.parseSync("abc123xyz")
+      rv = $.parse(p, "abc123xyz")
       rv.state.pos.should.equal(9)
       rv.match.should.eql([ "abc", "xyz" ])
 
     it "can lazily chain a sequence", ->
       hits = 0
-      p = parser.seq(
-        -> (hits += 1; parser.string("abc")),
-        -> (hits += 1; parser.string("123").drop()),
-        -> (hits += 1; parser.string("xyz"))
+      p = $.seq(
+        -> (hits += 1; $.string("abc")),
+        -> (hits += 1; $.string("123").drop()),
+        -> (hits += 1; $.string("xyz"))
       )
       hits.should.equal(0)
-      rv = p.parseSync("abc123xyz")
+      rv = $.parse(p, "abc123xyz")
       hits.should.equal(3)
       rv.state.pos.should.equal(9)
       rv.match.should.eql([ "abc", "xyz" ])
 
     it "can sequence optional elements", ->
-      p = [ "abc", parser.optional(/\d+/), "xyz" ]
-      rv = parser.parseSync(p, "abcxyz")
+      p = [ "abc", $.optional(/\d+/), "xyz" ]
+      rv = $.parse(p, "abcxyz")
       rv.state.pos.should.equal(6)
       rv.match.should.eql([ "abc", "", "xyz" ])
-      rv = parser.parseSync(p, "abc99xyz")
+      rv = $.parse(p, "abc99xyz")
       rv.state.pos.should.equal(8)
       rv.match[0].should.eql("abc")
       rv.match[1][0].should.eql("99")
       rv.match[2].should.eql("xyz")
 
     it "skips whitespace inside seqIgnore()", ->
-      p = parser.seqIgnore(/\s+/, "abc", "xyz", "ghk")
-      rv = p.parseSync("abcxyzghk")
+      p = $.seqIgnore(/\s+/, "abc", "xyz", "ghk")
+      rv = $.parse(p, "abcxyzghk")
       rv.ok.should.equal(true)
       rv.match.should.eql([ "abc", "xyz", "ghk" ])
-      rv = p.parseSync("   abc xyz\tghk")
+      rv = $.parse(p, "   abc xyz\tghk")
       rv.ok.should.equal(true)
       rv.match.should.eql([ "abc", "xyz", "ghk" ])
 
     it "skips whitespace lazily", ->
       hits = 0
-      p = parser.seqIgnore(
+      p = $.seqIgnore(
         -> (hits += 1; /\s+/),
-        -> (hits += 1; parser.string("abc")),
-        -> (hits += 1; parser.string("xyz")),
-        -> (hits += 1; parser.string("ghk"))
+        -> (hits += 1; $.string("abc")),
+        -> (hits += 1; $.string("xyz")),
+        -> (hits += 1; $.string("ghk"))
       )
       hits.should.equal(0)
-      rv = p.parseSync("   abc xyz\tghk")
+      rv = $.parse(p, "   abc xyz\tghk")
       hits.should.equal(6)
       rv.ok.should.equal(true)
       rv.match.should.eql([ "abc", "xyz", "ghk" ])
 
     it "handles regexen in a sequence", ->
-      p = parser.seq(/\s*/, "if")
-      p.parse "   if", (rv) ->
-        rv.state.pos.should.equal(5)
-        rv.match[0][0].should.eql("   ")
-        rv.match[1].should.eql("if")
-      p.parse "if", (rv) ->
-        rv.state.pos.should.equal(2)
-        rv.match[0][0].should.eql("")
-        rv.match[1].should.eql("if")
-      p.parse ";  if", (rv) ->
-        rv.state.pos.should.equal(0)
-        rv.message.should.match(/if/)
+      p = $.seq(/\s*/, "if")
+      rv = $.parse p, "   if"
+      rv.state.pos.should.equal(5)
+      rv.match[0][0].should.eql("   ")
+      rv.match[1].should.eql("if")
+      rv = $.parse p, "if"
+      rv.state.pos.should.equal(2)
+      rv.match[0][0].should.eql("")
+      rv.match[1].should.eql("if")
+      rv = $.parse p, ";  if"
+      rv.state.pos.should.equal(0)
+      rv.message.should.match(/if/)
+
+  it "can perform an 'alt'", ->
+    p = $.alt("hello", "goodbye")
+    rv = $.parse(p, "cat")
+    rv.state.pos.should.equal(0)
+    rv.message.should.match(/'hello' or 'goodbye'/)
+    rv = $.parse(p, "hello")
+    rv.state.pos.should.equal(5)
+    rv.match.should.equal("hello")
+    rv = $.parse(p, "goodbye")
+    rv.state.pos.should.equal(7)
+    rv.match.should.equal("goodbye")
+
+  it "can perform an 'or'", ->
+    p = $.string("hello").or($.string("goodbye"))
+    rv = $.parse(p, "cat")
+    rv.state.pos.should.equal(0)
+    rv.message.should.match(/'hello' or 'goodbye'/)
+    rv = $.parse(p, "hello")
+    rv.state.pos.should.equal(5)
+    rv.match.should.equal("hello")
+    rv = $.parse(p, "goodbye")
+    rv.state.pos.should.equal(7)
+    rv.match.should.equal("goodbye")
+
+  describe "implicitly", ->
+    it "turns strings into parsers", ->
+      p = $.seq("abc", "123").or("xyz")
+      rv = $.parse(p, "abc123")
+      rv.state.pos.should.equal(6)
+      rv.match.should.eql([ "abc", "123" ])
+      rv = $.parse(p, "xyz")
+      rv.state.pos.should.equal(3)
+      rv.match.should.eql("xyz")
+
+    it "strings together a chained sequence", ->
+      p = [ "abc", parser.drop(/\d+/), "xyz" ]
+      rv = $.parse(p, "abc11xyz")
+      rv.state.pos.should.equal(8)
+      rv.match.should.eql([ "abc", "xyz" ])
+
+  describe "lazily resolves", ->
+    it "a nested parser", ->
+      p = $.seq ":", -> /\w+/
+      rv = $.parse(p, ":hello")
+      rv.state.pos.should.equal(6)
+      rv.match[0].should.eql(":")
+      rv.match[1][0].should.eql("hello")
+
+    it "only once", ->
+      count = 0
+      p = $.seq ":", ->
+        count++
+        $.regex(/\w+/).onMatch (m) -> m[0].toUpperCase()
+      rv = $.parse(p, ":hello")
+      rv.state.pos.should.equal(6)
+      rv.match.should.eql([ ":", "HELLO" ])
+      count.should.equal(1)
+      rv = $.parse(p, ":goodbye")
+      rv.state.pos.should.equal(8)
+      rv.match.should.eql([ ":", "GOODBYE" ])
+      count.should.equal(1)
 
 
-  # it "skips whitespace", ->
-  #   p = parser.string("hello").skip(/\s+/)
-  #   rv = p.parse("    hello")
-  #   rv.state.pos.should.equal(9)
-  #   rv.match.should.eql("hello")
 
 
 
-
-  # it "can perform an 'alt'", ->
-  #   p = parser.alt("hello", "goodbye")
-  #   rv = p.parse("cat")
-  #   rv.state.pos.should.equal(0)
-  #   rv.message.should.match(/'hello' or 'goodbye'/)
-  #   rv = p.parse("hello")
-  #   rv.state.pos.should.equal(5)
-  #   rv.match.should.equal("hello")
-  #   rv = p.parse("goodbye")
-  #   rv.state.pos.should.equal(7)
-  #   rv.match.should.equal("goodbye")
-
-  # it "can perform an 'or'", ->
-  #   p = parser.string("hello").or(parser.string("goodbye"))
-  #   rv = p.parse("cat")
-  #   rv.state.pos.should.equal(0)
-  #   rv.message.should.match(/'hello' or 'goodbye'/)
-  #   rv = p.parse("hello")
-  #   rv.state.pos.should.equal(5)
-  #   rv.match.should.equal("hello")
-  #   rv = p.parse("goodbye")
-  #   rv.state.pos.should.equal(7)
-  #   rv.match.should.equal("goodbye")
-
-
-  # it "implicitly turns strings into parsers", ->
-  #   p = parser.seq("abc", "123").or("xyz")
-  #   rv = p.parse("abc123")
-  #   rv.state.pos.should.equal(6)
-  #   rv.match.should.eql([ "abc", "123" ])
-  #   rv = p.parse("xyz")
-  #   rv.state.pos.should.equal(3)
-  #   rv.match.should.eql("xyz")
-
-  # it "strings together a chained sequence implicitly", ->
-  #   p = [ "abc", parser.drop(/\d+/), "xyz" ]
-  #   rv = parser.parse(p, "abc11xyz")
-  #   rv.state.pos.should.equal(8)
-  #   rv.match.should.eql([ "abc", "xyz" ])
 
 
   # describe "repeat/times", ->
@@ -303,26 +323,6 @@ describe "Parser", ->
   #     rv.ok.should.equal(true)
   #     rv.match.should.eql([])
 
-  # it "resolves a lazy parser", ->
-  #   p = parser.seq ":", -> /\w+/
-  #   rv = p.parse(":hello")
-  #   rv.state.pos.should.equal(6)
-  #   rv.match[0].should.eql(":")
-  #   rv.match[1][0].should.eql("hello")
-
-  # it "resolves a lazy parser only once", ->
-  #   count = 0
-  #   p = parser.seq ":", ->
-  #     count++
-  #     parser.regex(/\w+/).onMatch (m) -> m[0].toUpperCase()
-  #   rv = p.parse(":hello")
-  #   rv.state.pos.should.equal(6)
-  #   rv.match.should.eql([ ":", "HELLO" ])
-  #   count.should.equal(1)
-  #   rv = p.parse(":goodbye")
-  #   rv.state.pos.should.equal(8)
-  #   rv.match.should.eql([ ":", "GOODBYE" ])
-  #   count.should.equal(1)
 
   # it "only executes a parser once per string/position", ->
   #   count = 0
@@ -340,24 +340,15 @@ describe "Parser", ->
   #   rv.match[2].should.eql("there")
   #   count.should.equal(1)
 
-  # it "can perform a non-advancing check", ->
-  #   p = parser.seq("hello", parser.check("there"), "th")
-  #   rv = p.parse("hellothere")
-  #   rv.ok.should.equal(true)
-  #   rv.match.should.eql([ "hello", "there", "th" ])
-  #   rv = p.parse("helloth")
-  #   rv.ok.should.equal(false)
-  #   rv.message.should.match(/there/)
-
-  # it "can commit to an alternative", ->
-  #   p = parser.seq(parser.string("!").commit(), /\d+/).onFail("! must be a number").or([ "@", /\d+/ ]).onMatch (a) ->
-  #     [ a[0], a[1][0] ]
-  #   rv = p.parse("!3")
-  #   rv.ok.should.equal(true)
-  #   rv.match.should.eql([ "!", "3" ])
-  #   rv = p.parse("@55")
-  #   rv.ok.should.equal(true)
-  #   rv.match.should.eql([ "@", "55" ])
-  #   rv = p.parse("!ok")
-  #   rv.ok.should.equal(false)
-  #   rv.message.should.eql("! must be a number")
+  it "can commit to an alternative", ->
+    p = $.seq($.string("!").commit(), /\d+/).onFail("! must be a number").or([ "@", /\d+/ ]).onMatch (a) ->
+      [ a[0], a[1][0] ]
+    rv = $.parse(p, "!3")
+    rv.ok.should.equal(true)
+    rv.match.should.eql([ "!", "3" ])
+    rv = $.parse(p, "@55")
+    rv.ok.should.equal(true)
+    rv.match.should.eql([ "@", "55" ])
+    rv = $.parse(p, "!ok")
+    rv.ok.should.equal(false)
+    rv.message.should.eql("! must be a number")

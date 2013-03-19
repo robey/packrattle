@@ -1,17 +1,19 @@
 
+# str -> entry
+# entry = { continuations[], results[] }
+
+
 inspect = require("util").inspect
 
-newState = (text) -> new ParserState(text, 0, text.length)
-
-# if parsers should ignore whitespace between items (in seq() or then()),
-# set this to the whitespace parser:
-# whitespace = null
-# setWhitespace = (ws) -> whitespace = ws
-
-# parser state
+# parser state, used internally.
 class ParserState
-  constructor: (@text, @pos, @end, @lineno=0, @xpos=0) ->
-    @cache = {}
+  constructor: (@text, @pos=0, @end, @lineno=0, @xpos=0) ->
+    if not @end? then @end = @text.length
+    @trampoline = []
+
+  toString: ->
+    truncated = if @text.length > 10 then "'#{@text[...10]}...'" else "'#{@text}'"
+    "ParserState(text=#{truncated}, pos=#{@pos}, end=#{@end}, lineno=#{@lineno}, xpos=#{@xpos})"
 
   # return a new ParserState with the position advanced 'n' places.
   # the new @lineno and @xpos are adjusted by watching for linefeeds.
@@ -41,21 +43,28 @@ class ParserState
     while lend < end and text[lend] != '\n' then lend++
     text.slice(lstart, lend)
 
-  toString: ->
-    truncated = if @text.length > 10 then "'#{@text[...10]}...'" else "'#{@text}'"
-    "ParserState(text=#{truncated}, pos=#{@pos}, end=#{@end}, lineno=#{@lineno}, xpos=#{@xpos})"
+  # helper for internal use: immediately fail.
+  fail: (cont, message) ->
+    cont(new NoMatch(@, "Expected " + message))
+
+  # execute the next branch of parsing on the trampoline.
+  next: ->
+    f = @trampoline.shift()
+    if f? then f()
+
+  run: ->
+    while @trampoline.length > 0 then @next()
 
 
 class Match
-  constructor: (@state, @match) ->
+  constructor: (@state, @match, @commit=false) ->
     @ok = true
-    @commit = false
 
   toString: -> "Match(state=#{@state}, match=#{@match}, commit=#{@commit})"
 
 
 class NoMatch
-  constructor: (@state, @message, @abort = false) ->
+  constructor: (@state, @message, @abort=false) ->
     @ok = false
 
   toString: -> "NoMatch(state=#{@state}, message='#{@message}', abort=#{@abort})"
@@ -77,27 +86,7 @@ class Parser
 
   # executes @matcher, passing the result (Match or NoMatch) to 'cont'.
   parse: (state, cont) ->
-    if typeof state == "string" then state = newState(state)
     @matcher(state, cont)
-
-  # must match the entire string, to the end.
-  consume: (state, cont) ->
-    p = chain @, end, (a, b) -> a
-    p.parse(state, cont)
-
-  # like 'parse', but returns the parser result instead of calling a
-  # continuation.
-  parseSync: (state) ->
-    rv = null
-    @parse state, (_rv) -> rv = _rv
-    rv
-
-  # like 'consume', but returns the parser result instead of calling a
-  # continuation.
-  consumeSync: (state) ->
-    rv = null
-    @consume state, (_rv) -> rv = _rv
-    rv
 
   # ----- transformations and combinations:
 
@@ -105,7 +94,7 @@ class Parser
   onFail: (newMessage) ->
     new Parser newMessage, (state, cont) =>
       @parse state, (rv) ->
-        if rv.match? then return cont(rv)
+        if rv.ok then return cont(rv)
         cont(new NoMatch(rv.state, newMessage, rv.abort))
 
   # transforms the result of a parser if it succeeds.
@@ -115,11 +104,11 @@ class Parser
         if not rv.ok then return cont(rv)
         rv = if f instanceof Function
           try
-            new Match(rv.state, f(rv.match))
+            new Match(rv.state, f(rv.match), rv.commit)
           catch e
             new NoMatch(state, e.toString())
         else
-          new Match(rv.state, f)
+          new Match(rv.state, f, rv.commit)
         cont(rv)
   
   # only succeed if f(match) returns true.
@@ -130,22 +119,22 @@ class Parser
         if not f(rv.match) then return @fail(state, cont)
         cont(rv)
 
-  # succeed (with an empty match) if the parser failed; otherwise fail.
-  not: ->
-    new Parser (-> "not " + @message()), (state, cont) =>
-      @parse state, (rv) =>
-        if rv.ok then @fail(state, cont) else cont(new Match(state, ""))
+  # ----- convenience methods for accessing the combinators
 
   then: (p) -> chain @, p, (a, b) -> [ a, b ]
-
-
-
-
-
 
   or: (others...) -> alt(@, others...)
 
   optional: (defaultValue="") -> optional(@, defaultValue)
+
+  check: -> check(@)
+
+  commit: -> commit(@)
+
+  not_: -> not_(@)
+
+
+
 
   repeat: (sep = null) -> repeat(@, sep)
 
@@ -155,31 +144,6 @@ class Parser
 
   # throw away the match
   drop: -> @onMatch (m) -> null
-
-  # if this parser is prefixed by p, parse it and drop it first
-  # (for example, whitespace: `p.skip(/\s+/)`)
-  # FIXME: this is an awkward syntax. remove this.
-  skip: (p) ->
-    p = implicit(p)
-    new Parser @message, (state) =>
-      p = resolve(p)
-      rv = p.parse(state)
-      if rv.ok then state = rv.state
-      @parse(state)
-
-  # verify that this parser matches, but don't advance the position
-  check: ->
-    new Parser @message, (state) =>
-      rv = @parse(state)
-      if not rv.ok then return rv
-      new Match(state, rv.match)
-
-  commit: ->
-    new Parser @message, (state) =>
-      rv = @parse(state)
-      if not rv.ok then return rv
-      rv.commit = true
-      rv
 
 
 # matches the end of the string.
@@ -209,6 +173,8 @@ regex = (r) ->
     m = r2.exec(state.text.slice(state.pos))
     if m? then cont(new Match(state.advance(m[0].length), m)) else @fail(state, cont)
 
+# ----- combinators:
+
 # a parser that can fail to match, and returns a default response if not
 # present (usually the empty string).
 optional = (p, defaultValue="") ->
@@ -218,6 +184,36 @@ optional = (p, defaultValue="") ->
     p.parse state, (rv) ->
       if rv.ok then return cont(rv)
       cont(new Match(state, defaultValue))
+
+# check that this parser matches, but don't advance the string. (perl calls
+# this a zero-width lookahead.)
+check = (p) ->
+  p = implicit(p)
+  new Parser (-> resolve(p).message()), (state, cont) ->
+    p = resolve(p)
+    p.parse state, (rv) ->
+      if not rv.ok then return cont(rv)
+      cont(new Match(state, rv.match, rv.commit))      
+
+# if the parser matches up to here, refuse to backtrack to previous
+# alternatives.
+commit = (p) ->
+  p = implicit(p)
+  new Parser (-> resolve(p).message()), (state, cont) ->
+    p = resolve(p)
+    p.parse state, (rv) ->
+      if not rv.ok then return cont(rv)
+      rv.commit = true
+      cont(rv)
+
+# succeed (with an empty match) if the parser failed; otherwise fail.
+not_ = (p) ->
+  p = implicit(p)
+  message = -> "not" + resolve(p).message()
+  new Parser message, (state, cont) ->
+    p = resolve(p)
+    p.parse state, (rv) ->
+      if rv.ok then state.fail(cont, message()) else cont(new Match(state, ""))
 
 # chain together p1 & p2 such that if p1 matches, p2 is executed. if both
 # match, 'combiner' is called with the two matched objects, to create a
@@ -233,7 +229,7 @@ chain = (p1, p2, combiner) ->
           # no backtracking if the left match was commit()'d.
           if rv1.commit then rv2.abort = true
           return cont(rv2)
-        cont(new Match(rv2.state, combiner(rv1.match, rv2.match)))
+        cont(new Match(rv2.state, combiner(rv1.match, rv2.match), rv2.commit))
 
 # chain together a sequence of parsers. if they all match, the match result
 # will contain an array of all the results that weren't null.
@@ -262,25 +258,33 @@ seqIgnore = (ignore, parsers...) ->
   new Parser message, (state, cont) ->
     rv.parse state, cont
 
-
-
-
-
-
-
-
-
 # try each of these parsers, in order (starting from the same position),
 # looking for the first match.
 alt = (parsers...) ->
   parsers = (implicit(p) for p in parsers)
-  message = (m.message for m in parsers).join(" or ")
-  new Parser message, (state) ->
+  message = -> (resolve(p).message() for p in parsers).join(" or ")
+  new Parser message, (state, cont) ->
     parsers = (resolve(p) for p in parsers)
-    for p in parsers
-      rv = p.parse(state)
-      if rv.ok or rv.abort then return rv
-    @fail(state)
+    count = 0
+    finished = false
+    for p in parsers then do (p) ->
+      state.trampoline.push ->
+        p.parse state, (rv) ->
+          count += 1
+          if (rv.ok or rv.abort) and not finished
+            finished = true
+            return cont(rv)
+          if not finished and count == parsers.length
+            cont(new NoMatch(state, "Expected " + message()))
+
+
+
+
+
+
+
+
+
 
 # one or more repetitions of a parser, returned as an array
 # optionally separated by a separation parser
@@ -361,6 +365,14 @@ foldLeft = (args) ->
       results = fold(results, sep_match, rv.match)
       state = rv.state
 
+
+
+
+
+
+
+
+
 # turn strings, regexen, and arrays into parsers implicitly.
 implicit = (p) ->
   # wow, javascript's type system completely falls apart here.
@@ -371,19 +383,27 @@ implicit = (p) ->
 
 # allow functions to be passed in, and resolved only at parse-time.
 resolve = (p) ->
-  if not (p instanceof Function) then return p
+  if not (p instanceof Function) then return implicit(p)
   implicit(p())
 
 # helper for drop
 drop = (p) -> implicit(p).drop()
 
-parse = (p, s) -> implicit(p).parse(s)
+# execute a parser over a string.
+parse = (p, str) ->
+  state = new ParserState(str)
+  p = resolve(p)
+  rv = null
+  state.trampoline.push ->
+    p.parse state, (_rv) -> rv = _rv
+  state.run()
+  rv
 
-parseSync = (p, s) -> implicit(p).parseSync(s)
+# must match the entire string, to the end.
+consume = (p, str) ->
+  p = chain implicit(p), end, (a, b) -> a
+  parse(p, str)
 
-check = (p) -> implicit(p).check()
-
-exports.newState = newState
 
 exports.ParserState = ParserState
 exports.Match = Match
@@ -394,11 +414,14 @@ exports.end = end
 exports.reject = reject
 exports.string = string
 exports.regex = regex
+exports.optional = optional
+exports.check = check
+exports.commit = commit
+exports.not_ = not_
 exports.seq = seq
 exports.seqIgnore = seqIgnore
-
 exports.alt = alt
-exports.optional = optional
+
 exports.repeat = repeat
 exports.times = times
 exports.foldLeft = foldLeft
@@ -406,5 +429,4 @@ exports.foldLeft = foldLeft
 exports.implicit = implicit
 exports.drop = drop
 exports.parse = parse
-exports.parseSync = parseSync
-exports.check = check
+exports.consume = consume
