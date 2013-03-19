@@ -332,8 +332,10 @@ repeat = (p, minCount=0, maxCount=null) ->
       count += 1
       if rv.match? then list.push rv.match
       if count < maxCount
+        # if a parser matches nothing, we could go on forever...
+        if rv.state.pos == state.pos then throw new Error("Repeating parser isn't making progress: #{p}")
         state = rv.state
-        p.parse state, nextCont
+        state.trampoline.push -> p.parse state, nextCont
       else
         cont(new Match(rv.state, list, rv.commit))
     p.parse state, nextCont

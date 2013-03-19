@@ -283,8 +283,8 @@ describe "Parser", ->
 
     it "but throws an error if there's no progress", ->
       p = $.repeat($.string(""))
-      rv = $.parse(p, "?")
-      
+      (-> $.parse(p, "?")).should.throw(/isn't making progress/)
+
   describe "implicitly", ->
     it "turns strings into parsers", ->
       p = $.seq("abc", "123").or("xyz")
