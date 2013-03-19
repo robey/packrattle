@@ -5,15 +5,37 @@
 
 inspect = require("util").inspect
 
+# set this to get debugging
+debug = null
+setDebug = (f) -> debug = f
+
+class Trampoline
+  constructor: ->
+    @work = []
+
+  push: (job) ->
+    @work.push job
+
+  size: -> @work.length
+
+  # execute the next branch of parsing on the trampoline.
+  next: ->
+    f = @work.shift()
+    if f? then f()
+
+  run: ->
+    while @work.length > 0 then @next()
+
+
 # parser state, used internally.
 class ParserState
-  constructor: (@text, @pos=0, @end, @lineno=0, @xpos=0) ->
+  constructor: (@text, @pos=0, @end, @lineno=0, @xpos=0, @trampoline=null) ->
     if not @end? then @end = @text.length
-    @trampoline = []
+    if not @trampoline? then @trampoline = new Trampoline()
 
   toString: ->
     truncated = if @text.length > 10 then "'#{@text[...10]}...'" else "'#{@text}'"
-    "ParserState(text=#{truncated}, pos=#{@pos}, end=#{@end}, lineno=#{@lineno}, xpos=#{@xpos})"
+    "ParserState(text=#{truncated}, pos=#{@pos}, end=#{@end}, lineno=#{@lineno}, xpos=#{@xpos} work=#{@trampoline.size()})"
 
   # return a new ParserState with the position advanced 'n' places.
   # the new @lineno and @xpos are adjusted by watching for linefeeds.
@@ -27,7 +49,7 @@ class ParserState
         xpos = 0
       else
         xpos++
-    state = new ParserState(@text, pos, @end, lineno, xpos)
+    state = new ParserState(@text, pos, @end, lineno, xpos, @trampoline)
     state.cache = @cache
     state
 
@@ -47,20 +69,12 @@ class ParserState
   fail: (cont, message) ->
     cont(new NoMatch(@, "Expected " + message))
 
-  # execute the next branch of parsing on the trampoline.
-  next: ->
-    f = @trampoline.shift()
-    if f? then f()
-
-  run: ->
-    while @trampoline.length > 0 then @next()
-
 
 class Match
   constructor: (@state, @match, @commit=false) ->
     @ok = true
 
-  toString: -> "Match(state=#{@state}, match=#{@match}, commit=#{@commit})"
+  toString: -> "Match(state=#{@state}, match=#{inspect(@match)}, commit=#{@commit})"
 
 
 class NoMatch
@@ -76,7 +90,11 @@ class Parser
     @id = _parser_id++
 
   message: ->
-    if (typeof @_message == "function") then @_message() else @_message
+    if @recursing then return "..."
+    @recursing = true
+    rv = if (typeof @_message == "function") then @_message() else @_message
+    @recursing = false
+    rv
 
   toString: -> "Parser(#{@message()})"
 
@@ -86,7 +104,12 @@ class Parser
 
   # executes @matcher, passing the result (Match or NoMatch) to 'cont'.
   parse: (state, cont) ->
-    @matcher(state, cont)
+    if debug?
+      debug("-> state=#{state}")
+      debug("   parse: #{@}")
+    @matcher state, (rv) ->
+      if debug? then debug("<- #{rv}")
+      cont(rv)
 
   # ----- transformations and combinations:
 
@@ -138,14 +161,6 @@ class Parser
   repeat: (minCount, maxCount) -> repeat(@, minCount, maxCount)
 
   times: (count) -> repeat(@, count, count)
-
-
-
-
-
-
-  reduce: (sep, f) -> foldLeft(tail: @, accumulator: ((x) -> x), fold: f, sep: sep)
-
 
 
 # matches the end of the string.
@@ -211,7 +226,7 @@ commit = (p) ->
 # succeed (with an empty match) if the parser failed; otherwise fail.
 not_ = (p) ->
   p = implicit(p)
-  message = -> "not" + resolve(p).message()
+  message = -> "not " + resolve(p).message()
   new Parser message, (state, cont) ->
     p = resolve(p)
     p.parse state, (rv) ->
@@ -220,11 +235,15 @@ not_ = (p) ->
 # throw away the match.
 drop = (p) -> implicit(p).onMatch (x) -> null
 
+dropPrefix = (prefix, p) ->
+  seq(optional(prefix), p).onMatch (x) ->
+    x[1]
+
 # chain together p1 & p2 such that if p1 matches, p2 is executed. if both
 # match, 'combiner' is called with the two matched objects, to create a
 # single match result.
 chain = (p1, p2, combiner) ->
-  new Parser (-> "#{resolve(p1).message()} then #{resolve(p2).message()}"), (state, cont) ->
+  new Parser (-> "(#{resolve(p1).message()}) then (#{resolve(p2).message()})"), (state, cont) ->
     p1 = resolve(p1)
     p1.parse state, (rv1) ->
       if not rv1.ok then return cont(rv1)
@@ -240,7 +259,7 @@ chain = (p1, p2, combiner) ->
 # will contain an array of all the results that weren't null.
 seq = (parsers...) ->
   parsers = (implicit(p) for p in parsers)
-  message = -> (resolve(p).message() for p in parsers).join(" then ")
+  message = -> ("(" + resolve(p).message() + ")" for p in parsers).join(" then ")
   combiner = (sum, x) ->
     if x? then sum.push x
     sum
@@ -254,7 +273,7 @@ seq = (parsers...) ->
 # used for discarding whitespace in lexical parsing.
 seqIgnore = (ignore, parsers...) ->
   parsers = (implicit(p) for p in parsers)
-  message = -> (resolve(p).message() for p in parsers).join(" then ")
+  message = -> ("(" + resolve(p).message() + ")" for p in parsers).join(" then ")
   newseq = []
   for p in parsers
     newseq.push optional(ignore).drop()
@@ -267,19 +286,27 @@ seqIgnore = (ignore, parsers...) ->
 # looking for the first match.
 alt = (parsers...) ->
   parsers = (implicit(p) for p in parsers)
-  message = -> (resolve(p).message() for p in parsers).join(" or ")
+  message = -> ("(" + resolve(p).message() + ")" for p in parsers).join(" or ")
   new Parser message, (state, cont) ->
     parsers = (resolve(p) for p in parsers)
     count = 0
     finished = false
+    if debug?
+      debug("<alt> start:")
+      for p in parsers then debug("<alt> -- #{p}")
+      debug("<alt> --.")
     for p in parsers then do (p) ->
       state.trampoline.push ->
+        if debug? then debug("<alt> next try: #{p}")
         p.parse state, (rv) ->
+          if debug? then debug("<alt> result: #{rv}")
           count += 1
           if (rv.ok or rv.abort) and not finished
             finished = true
+            if debug? then debug("<alt> finished (stop)")
             return cont(rv)
           if not finished and count == parsers.length
+            if debug? then debug("<alt> finished (exhausted)")
             cont(new NoMatch(state, "Expected " + message()))
 
 # from 'min' to 'max' (inclusive) repetitions of a parser, returned as an
@@ -299,7 +326,8 @@ repeat = (p, minCount=0, maxCount=null) ->
     list = []
     nextCont = (rv) ->
       if not rv.ok
-        if count >= minCount then return cont(new Match(state, list, rv.commit))
+        if count >= minCount
+          return cont(new Match(state, list, rv.commit))
         return origState.fail(cont, message())
       count += 1
       if rv.match? then list.push rv.match
@@ -317,80 +345,22 @@ repeatIgnore = (ignore, p, minCount=0, maxCount=null) ->
   p2 = seq(optional(ignore).drop(), p).onMatch (x) -> x[0]
   repeat(p2, minCount, maxCount)
 
-# like 'repeat', but the repeated elements may be optionally separated by
-# 'separator', which will be thrown away.
-repeatSeparated = (p, separator="", minCount=0, maxCount=null) ->
-  seq(p, repeatIgnore(separator, p, minCount, maxCount)).onMatch (x) ->
+# like 'repeat', but the repeated elements are separated by 'separator',
+# which is ignored.
+repeatSeparated = (p, separator="", minCount=1, maxCount=null) ->
+  p2 = seq(drop(separator), p).onMatch (x) -> x[0]
+  seq(p, repeat(p2, minCount - 1, if maxCount? then maxCount - 1 else maxCount)).onMatch (x) ->
     [ x[0] ].concat(x[1])
 
-# match against the 'first' parser, then any number of occurances of 'sep'
-# followed by 'tail', as in: `first (sep tail)*`.
-#
-# for each match on 'tail', the function 'fold' will be called with
-# `fold(accumulator_value, sep_match, tail_match)` and the return value will
-# be the new accumulator value. the initial accumulator value is calculated
-# on each parse by calling `accumulator(first_match)`.
-#
-# if a 'sep' is not followed by a 'tail', the 'sep' is not consumed, but the
-# parser will match up to that point.
-fold = (args) ->
-  tail = implicit(if args.tail? then args.tail else reject)
-  first = implicit(if args.first? then args.first else args.tail)
-  fold = if args.fold?
-    args.fold
-  else
-    (acc, s, item) ->
-      if item? then acc.push(item)
-      acc
-  accumulator = if args.accumulator?
-    args.accumulator
-  else
-    (x) -> if x? then [ x ] else []
-  sep = args.sep
-  if sep?
-    sep = implicit(sep)
-    sepMessage = -> " separated by (#{resolve(sep).message()})"
-  else
-    sep = string("")
-    sepMessage = -> ""
-  message = if args.first?
-    -> "(#{resolve(first).message()}) followed by (#{resolve(tail).message()})*" + sepMessage()
-  else
-    -> "(#{resolve(tail).message()})*" + sepMessage()
-
-  new Parser message, (state, cont) ->
-    first = resolve(first)
-    sep = resolve(sep)
-    tail = resolve(tail)
-
-    first.parse state, (rv) ->
-      if not rv.ok then return state.fail(cont, message())
-      results = accumulator(rv.match)
-
-    rv = first.parse(state)
-    if not rv.ok then return @fail(state)
-    results = accumulator(rv.match)
-    state = rv.state
-    loop
-      initial_state = state
-      sep_match = ""
-      if sep?
-        rv = sep.parse(state)
-        if not rv.ok then return new Match(state, results)
-        sep_match = rv.match
-        state = rv.state
-      rv = tail.parse(state)
-      if not rv.ok then return new Match(initial_state, results)
-      results = fold(results, sep_match, rv.match)
-      state = rv.state
-
-
-
-
-
-
-
-
+# convenience method for reducing the result of 'repeatSeparated', optionally
+# keeping the separator results. if 'accumulator' exists, it will transform
+# the initial result into an accumulator. if 'reducer' exists, it will be
+# used to progressively attach separators and new results.
+reduce = (p, separator="", accumulator=null, reducer=null, minCount=1, maxCount=null) ->
+  if not accumulator? then accumulator = (x) -> [ x ]
+  if not reducer? then reducer = (sum, sep, x) -> sum.push(x)
+  seq(p, repeat(seq(separator, p), minCount - 1, if maxCount? then maxCount - 1 else maxCount)).onMatch (x) ->
+    [ accumulator(x[0]) ].concat(x[1]).reduce (sum, item) -> reducer(sum, item[0], item[1])
 
 # turn strings, regexen, and arrays into parsers implicitly.
 implicit = (p) ->
@@ -403,7 +373,9 @@ implicit = (p) ->
 # allow functions to be passed in, and resolved only at parse-time.
 resolve = (p) ->
   if not (p instanceof Function) then return implicit(p)
-  implicit(p())
+  p = implicit(p())
+  if not p? then throw new Error("Can't resolve parser")
+  p
 
 # execute a parser over a string.
 parse = (p, str) ->
@@ -412,7 +384,7 @@ parse = (p, str) ->
   rv = null
   state.trampoline.push ->
     p.parse state, (_rv) -> rv = _rv
-  state.run()
+  state.trampoline.run()
   rv
 
 # must match the entire string, to the end.
@@ -420,6 +392,8 @@ consume = (p, str) ->
   p = chain implicit(p), end, (a, b) -> a
   parse(p, str)
 
+
+exports.setDebug = setDebug
 
 exports.ParserState = ParserState
 exports.Match = Match
@@ -435,12 +409,14 @@ exports.check = check
 exports.commit = commit
 exports.not_ = not_
 exports.drop = drop
+exports.dropPrefix = dropPrefix
 exports.seq = seq
 exports.seqIgnore = seqIgnore
 exports.alt = alt
 exports.repeat = repeat
 exports.repeatIgnore = repeatIgnore
 exports.repeatSeparated = repeatSeparated
+exports.reduce = reduce
 
 exports.implicit = implicit
 exports.parse = parse

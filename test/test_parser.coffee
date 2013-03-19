@@ -203,7 +203,7 @@ describe "Parser", ->
     p = $.alt("hello", "goodbye")
     rv = $.parse(p, "cat")
     rv.state.pos.should.equal(0)
-    rv.message.should.match(/'hello' or 'goodbye'/)
+    rv.message.should.match(/\('hello'\) or \('goodbye'\)/)
     rv = $.parse(p, "hello")
     rv.state.pos.should.equal(5)
     rv.match.should.equal("hello")
@@ -215,7 +215,7 @@ describe "Parser", ->
     p = $.string("hello").or($.string("goodbye"))
     rv = $.parse(p, "cat")
     rv.state.pos.should.equal(0)
-    rv.message.should.match(/'hello' or 'goodbye'/)
+    rv.message.should.match(/\('hello'\) or \('goodbye'\)/)
     rv = $.parse(p, "hello")
     rv.state.pos.should.equal(5)
     rv.match.should.equal("hello")
@@ -271,12 +271,6 @@ describe "Parser", ->
       rv.state.pos.should.equal(8)
       rv.match.should.eql([ "hi", "hi", "hi" ])
 
-    it "repeats with separators", ->
-      p = $.repeatSeparated("hi", ",")
-      rv = $.parse(p, "hi,hi,hi")
-      rv.state.pos.should.equal(8)
-      rv.match.should.eql([ "hi", "hi", "hi" ])
-
     it "and honors nested drops", ->
       p = $.string("123").drop().repeat()
       rv = $.parse(p, "123123")
@@ -287,6 +281,10 @@ describe "Parser", ->
       rv.ok.should.equal(true)
       rv.match.should.eql([])
 
+    it "but throws an error if there's no progress", ->
+      p = $.repeat($.string(""))
+      rv = $.parse(p, "?")
+      
   describe "implicitly", ->
     it "turns strings into parsers", ->
       p = $.seq("abc", "123").or("xyz")
