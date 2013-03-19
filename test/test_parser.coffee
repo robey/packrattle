@@ -223,6 +223,70 @@ describe "Parser", ->
     rv.state.pos.should.equal(7)
     rv.match.should.equal("goodbye")
 
+  describe "repeats", ->
+    it "0 or more", ->
+      p = $.repeat("hi")
+      rv = $.parse(p, "h")
+      rv.state.pos.should.equal(0)
+      rv.match.should.eql([])
+      rv = $.parse(p, "hi")
+      rv.state.pos.should.equal(2)
+      rv.match.should.eql([ "hi" ])
+      rv = $.parse(p, "hiho")
+      rv.state.pos.should.equal(2)
+      rv.match.should.eql([ "hi" ])
+      rv = $.parse(p, "hihihi")
+      rv.state.pos.should.equal(6)
+      rv.match.should.eql([ "hi", "hi", "hi" ])
+
+    it "2 or 3", ->
+      p = $.repeat("hi", 2, 3)
+      rv = $.parse(p, "hi")
+      rv.ok.should.equal(false)
+      rv.state.pos.should.equal(0)
+      rv.message.should.match(/\('hi'\)\{2, 3}/)
+      rv = $.parse(p, "hihi")
+      rv.state.pos.should.equal(4)
+      rv.match.should.eql([ "hi", "hi" ])
+      rv = $.parse(p, "hihihi")
+      rv.state.pos.should.equal(6)
+      rv.match.should.eql([ "hi", "hi", "hi" ])
+      rv = $.parse(p, "hihihihi")
+      rv.state.pos.should.equal(6)
+      rv.match.should.eql([ "hi", "hi", "hi" ])
+
+    it "nested", ->
+      p = $.repeat([ "hi", $.repeat("!") ])
+      rv = $.parse(p, "hi!hi!!!hi?")
+      rv.state.pos.should.equal(10)
+      rv.match.should.eql([
+        [ "hi", [ "!" ] ]
+        [ "hi", [ "!", "!", "!" ] ]
+        [ "hi", [] ]
+      ])
+
+    it "with whitespace ignoring", ->
+      p = $.repeatIgnore(/\s+/, "hi")
+      rv = $.parse(p, "hi  hihi ")
+      rv.state.pos.should.equal(8)
+      rv.match.should.eql([ "hi", "hi", "hi" ])
+
+    it "repeats with separators", ->
+      p = $.repeatSeparated("hi", ",")
+      rv = $.parse(p, "hi,hi,hi")
+      rv.state.pos.should.equal(8)
+      rv.match.should.eql([ "hi", "hi", "hi" ])
+
+    it "and honors nested drops", ->
+      p = $.string("123").drop().repeat()
+      rv = $.parse(p, "123123")
+      rv.ok.should.equal(true)
+      rv.match.should.eql([])
+      p = $.string("123").drop().times(2)
+      rv = $.parse(p, "123123")
+      rv.ok.should.equal(true)
+      rv.match.should.eql([])
+
   describe "implicitly", ->
     it "turns strings into parsers", ->
       p = $.seq("abc", "123").or("xyz")
@@ -261,84 +325,21 @@ describe "Parser", ->
       rv.match.should.eql([ ":", "GOODBYE" ])
       count.should.equal(1)
 
-
-
-
-
-
-
-  # describe "repeat/times", ->
-  #   it "repeats", ->
-  #     p = parser.repeat("hi")
-  #     rv = p.parse("h")
-  #     rv.state.pos.should.equal(0)
-  #     rv.message.should.match(/'hi'/)
-  #     rv = p.parse("hi")
-  #     rv.state.pos.should.equal(2)
-  #     rv.match.should.eql([ "hi" ])
-  #     rv = p.parse("hiho")
-  #     rv.state.pos.should.equal(2)
-  #     rv.match.should.eql([ "hi" ])
-  #     rv = p.parse("hihihi!")
-  #     rv.state.pos.should.equal(6)
-  #     rv.match.should.eql([ "hi", "hi", "hi" ])
-
-  #   it "repeats with separators", ->
-  #     p = parser.repeat("hi", ",")
-  #     rv = p.parse("hi,hi,hi")
-  #     rv.state.pos.should.equal(8)
-  #     rv.match.should.eql([ "hi", "hi", "hi" ])
-
-  #   it "skips whitespace in repeat", ->
-  #     parser.setWhitespace /\s*/
-  #     p = parser.repeat("hi", ",")
-  #     rv = p.parse("hi, hi , hi")
-  #     rv.ok.should.equal(true)
-  #     rv.match.should.eql([ "hi", "hi", "hi" ])
-
-  #   it "skips whitespace in times", ->
-  #     parser.setWhitespace /\s*/
-  #     p = parser.times(3, "hi")
-  #     rv = p.parse("hi hi  hi")
-  #     rv.ok.should.equal(true)
-  #     rv.match.should.eql([ "hi", "hi", "hi" ])
-
-  #   it "can match exactly N times", ->
-  #     p = parser.string("hi").times(4)
-  #     rv = p.parse("hihihihihi")
-  #     rv.ok.should.equal(true)
-  #     rv.match.should.eql([ "hi", "hi", "hi", "hi" ])
-  #     rv.state.pos.should.equal(8)
-  #     rv = p.parse("hihihi")
-  #     rv.ok.should.equal(false)
-  #     rv.message.should.match(/4 of \('hi'\)/)
-
-  #   it "drops inside repeat/times", ->
-  #     p = parser.string("123").drop().repeat()
-  #     rv = p.parse("123123")
-  #     rv.ok.should.equal(true)
-  #     rv.match.should.eql([])
-  #     p = parser.string("123").drop().times(2)
-  #     rv = p.parse("123123")
-  #     rv.ok.should.equal(true)
-  #     rv.match.should.eql([])
-
-
-  # it "only executes a parser once per string/position", ->
-  #   count = 0
-  #   p = parser.seq "hello", /\s*/, parser.string("there").onMatch (x) ->
-  #     count++
-  #     x
-  #   s = parser.newState("hello  there!")
-  #   count.should.equal(0)
-  #   rv = p.parse(s)
-  #   rv.ok.should.equal(true)
-  #   rv.match[2].should.eql("there")
-  #   count.should.equal(1)
-  #   rv = p.parse(s)
-  #   rv.ok.should.equal(true)
-  #   rv.match[2].should.eql("there")
-  #   count.should.equal(1)
+  it "only executes a parser once per string/position", ->
+    count = 0
+    p = $.seq "hello", /\s*/, $.string("there").onMatch (x) ->
+      count++
+      x
+    s = new parser.ParserState("hello  there!")
+    count.should.equal(0)
+    rv = $.parse(p, s)
+    rv.ok.should.equal(true)
+    rv.match[2].should.eql("there")
+    count.should.equal(1)
+    rv = $.parse(p, s)
+    rv.ok.should.equal(true)
+    rv.match[2].should.eql("there")
+    count.should.equal(1)
 
   it "can commit to an alternative", ->
     p = $.seq($.string("!").commit(), /\d+/).onFail("! must be a number").or([ "@", /\d+/ ]).onMatch (a) ->

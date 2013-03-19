@@ -133,17 +133,19 @@ class Parser
 
   not_: -> not_(@)
 
+  drop: -> drop(@)
+
+  repeat: (minCount, maxCount) -> repeat(@, minCount, maxCount)
+
+  times: (count) -> repeat(@, count, count)
 
 
 
-  repeat: (sep = null) -> repeat(@, sep)
 
-  times: (count) -> times(count, @)
+
 
   reduce: (sep, f) -> foldLeft(tail: @, accumulator: ((x) -> x), fold: f, sep: sep)
 
-  # throw away the match
-  drop: -> @onMatch (m) -> null
 
 
 # matches the end of the string.
@@ -215,6 +217,9 @@ not_ = (p) ->
     p.parse state, (rv) ->
       if rv.ok then state.fail(cont, message()) else cont(new Match(state, ""))
 
+# throw away the match.
+drop = (p) -> implicit(p).onMatch (x) -> null
+
 # chain together p1 & p2 such that if p1 matches, p2 is executed. if both
 # match, 'combiner' is called with the two matched objects, to create a
 # single match result.
@@ -277,35 +282,46 @@ alt = (parsers...) ->
           if not finished and count == parsers.length
             cont(new NoMatch(state, "Expected " + message()))
 
-
-
-
-
-
-
-
-
-
-# one or more repetitions of a parser, returned as an array
-# optionally separated by a separation parser
-repeat = (p, sep = null) -> foldLeft(tail: p, sep: sep)
-
-# exactly N repetitions of a parser
-times = (count, p) ->
+# from 'min' to 'max' (inclusive) repetitions of a parser, returned as an
+# array. 'max' may be omitted to mean infinity.
+repeat = (p, minCount=0, maxCount=null) ->
   p = implicit(p)
-  ws = whitespace
-  new Parser "#{count} of (#{p.message})", (state) ->
+  if maxCount?
+    countMessage = "{#{minCount}, #{maxCount}}"
+  else
+    countMessage = "{#{minCount}+}"
+    maxCount = Math.pow(2, 31)
+  message = -> "(" + resolve(p).message() + ")#{countMessage}"
+  new Parser message, (state, cont) ->
     p = resolve(p)
-    if ws?
-      p = p.skip(ws)
-      ws = null
-    results = []
-    for i in [0...count]
-      rv = p.parse(state)
-      if not rv.ok then return @fail(rv.state)
-      if rv.match? then results.push(rv.match)
-      state = rv.state
-    new Match(state, results)
+    origState = state
+    count = 0
+    list = []
+    nextCont = (rv) ->
+      if not rv.ok
+        if count >= minCount then return cont(new Match(state, list, rv.commit))
+        return origState.fail(cont, message())
+      count += 1
+      if rv.match? then list.push rv.match
+      if count < maxCount
+        state = rv.state
+        p.parse state, nextCont
+      else
+        cont(new Match(rv.state, list, rv.commit))
+    p.parse state, nextCont
+
+# like 'repeat', but each element may be optionally preceded by 'ignore',
+# which will be thrown away. this is usually used to remove leading
+# whitespace.
+repeatIgnore = (ignore, p, minCount=0, maxCount=null) ->
+  p2 = seq(optional(ignore).drop(), p).onMatch (x) -> x[0]
+  repeat(p2, minCount, maxCount)
+
+# like 'repeat', but the repeated elements may be optionally separated by
+# 'separator', which will be thrown away.
+repeatSeparated = (p, separator="", minCount=0, maxCount=null) ->
+  seq(p, repeatIgnore(separator, p, minCount, maxCount)).onMatch (x) ->
+    [ x[0] ].concat(x[1])
 
 # match against the 'first' parser, then any number of occurances of 'sep'
 # followed by 'tail', as in: `first (sep tail)*`.
@@ -317,7 +333,7 @@ times = (count, p) ->
 #
 # if a 'sep' is not followed by a 'tail', the 'sep' is not consumed, but the
 # parser will match up to that point.
-foldLeft = (args) ->
+fold = (args) ->
   tail = implicit(if args.tail? then args.tail else reject)
   first = implicit(if args.first? then args.first else args.tail)
   fold = if args.fold?
@@ -331,23 +347,26 @@ foldLeft = (args) ->
   else
     (x) -> if x? then [ x ] else []
   sep = args.sep
-  message = if args.first?
-    "(#{first.message}) followed by (#{tail.message})*"
-  else
-    "(#{tail.message})*"
   if sep?
     sep = implicit(sep)
-    message += " separated by (#{sep.message})"
-  ws = whitespace
-  new Parser message, (state) ->
+    sepMessage = -> " separated by (#{resolve(sep).message()})"
+  else
+    sep = string("")
+    sepMessage = -> ""
+  message = if args.first?
+    -> "(#{resolve(first).message()}) followed by (#{resolve(tail).message()})*" + sepMessage()
+  else
+    -> "(#{resolve(tail).message()})*" + sepMessage()
+
+  new Parser message, (state, cont) ->
     first = resolve(first)
-    if ws? then first = first.skip(ws)
-    if sep?
-      sep = resolve(sep)
-      if ws? then sep = sep.skip(ws)
+    sep = resolve(sep)
     tail = resolve(tail)
-    if ws? then tail = tail.skip(ws)
-    ws = null
+
+    first.parse state, (rv) ->
+      if not rv.ok then return state.fail(cont, message())
+      results = accumulator(rv.match)
+
     rv = first.parse(state)
     if not rv.ok then return @fail(state)
     results = accumulator(rv.match)
@@ -386,12 +405,9 @@ resolve = (p) ->
   if not (p instanceof Function) then return implicit(p)
   implicit(p())
 
-# helper for drop
-drop = (p) -> implicit(p).drop()
-
 # execute a parser over a string.
 parse = (p, str) ->
-  state = new ParserState(str)
+  state = if str instanceof ParserState then str else new ParserState(str)
   p = resolve(p)
   rv = null
   state.trampoline.push ->
@@ -418,15 +434,14 @@ exports.optional = optional
 exports.check = check
 exports.commit = commit
 exports.not_ = not_
+exports.drop = drop
 exports.seq = seq
 exports.seqIgnore = seqIgnore
 exports.alt = alt
-
 exports.repeat = repeat
-exports.times = times
-exports.foldLeft = foldLeft
+exports.repeatIgnore = repeatIgnore
+exports.repeatSeparated = repeatSeparated
 
 exports.implicit = implicit
-exports.drop = drop
 exports.parse = parse
 exports.consume = consume
