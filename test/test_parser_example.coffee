@@ -17,12 +17,12 @@ describe "Parser example", ->
     rv.match.should.eql(900)
 
   it "recognizes addition", ->
-    rv = $.parse(expr, "2 + 3")
+    rv = $.consume(expr, "2 + 3")
     rv.ok.should.eql(true)
     rv.match.should.eql(op: "+", left: 2, right: 3)
 
   it "recognizes a complex expression", ->
-    rv = $.parse(expr, "1 + 2 * 3 + 4 * (5 + 6)")
+    rv = $.consume(expr, "1 + 2 * 3 + 4 * (5 + 6)")
     rv.ok.should.eql(true)
     rv.match.should.eql(
       op: "+"

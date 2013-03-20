@@ -203,7 +203,7 @@ describe "Parser", ->
     p = $.alt("hello", "goodbye")
     rv = $.parse(p, "cat")
     rv.state.pos.should.equal(0)
-    rv.message.should.match(/\('hello'\) or \('goodbye'\)/)
+    rv.message.should.match(/'hello'/)
     rv = $.parse(p, "hello")
     rv.state.pos.should.equal(5)
     rv.match.should.equal("hello")
@@ -215,7 +215,7 @@ describe "Parser", ->
     p = $.string("hello").or($.string("goodbye"))
     rv = $.parse(p, "cat")
     rv.state.pos.should.equal(0)
-    rv.message.should.match(/\('hello'\) or \('goodbye'\)/)
+    rv.message.should.match(/'hello'/)
     rv = $.parse(p, "hello")
     rv.state.pos.should.equal(5)
     rv.match.should.equal("hello")
@@ -340,7 +340,10 @@ describe "Parser", ->
     count.should.equal(1)
 
   it "can commit to an alternative", ->
-    p = $.seq($.string("!").commit(), /\d+/).onFail("! must be a number").or([ "@", /\d+/ ]).onMatch (a) ->
+    p = $.seq(
+      $.string("!").commit()
+      /\d+/
+    ).onFail("! must be a number").or([ "@", /\d+/ ]).onMatch (a) ->
       [ a[0], a[1][0] ]
     rv = $.parse(p, "!3")
     rv.ok.should.equal(true)

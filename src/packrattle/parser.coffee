@@ -16,18 +16,16 @@ class Trampoline
     # map of (parser -> position -> [ continuations, results ])
     @cache = {}
 
-  push: (job) ->
-    @work.push job
+  push: (job) -> @work.push job
 
   size: -> @work.length
 
   # execute the next branch of parsing on the trampoline.
   next: ->
-    f = @work.shift()
+    f = @work.pop()
     if f? then f()
 
-  run: ->
-    while @work.length > 0 then @next()
+  ready: -> (@work.length > 0)
 
   getCache: (parser, state) ->
     x = @cache[parser.id]
@@ -47,7 +45,7 @@ class ParserState
 
   toString: ->
     truncated = if @text.length > 10 then "'#{@text[...10]}...'" else "'#{@text}'"
-    "ParserState(text=#{truncated}, pos=#{@pos}, end=#{@end}, lineno=#{@lineno}, xpos=#{@xpos} work=#{@trampoline.size()})"
+    "ParserState(text=#{truncated}, pos=#{@pos}, end=#{@end}, lineno=#{@lineno}, xpos=#{@xpos}, work=#{@trampoline.size()})"
 
   # return a new ParserState with the position advanced 'n' places.
   # the new @lineno and @xpos are adjusted by watching for linefeeds.
@@ -62,7 +60,6 @@ class ParserState
       else
         xpos++
     state = new ParserState(@text, pos, @end, lineno, xpos, @trampoline)
-    state.cache = @cache
     state
 
   # return the text of the current line around @pos.
@@ -134,15 +131,19 @@ class Parser
       # first to try it!
       entry.continuations.push newCont
       state.trampoline.push =>
-        @matcher state, (rv) ->
+        @matcher state, (rv) =>
           # push our (new?) result
           found = false
           for r in entry.results
             if r.equals(rv) then found = true
           if not found
+            if debug?
+              debug "<- coming back from #{@}"
+              debug "   cache++ (#{@id},#{state.pos}) = #{rv}"
             entry.results.push rv
             for c in entry.continuations then c(rv)
     else
+      if debug? then debug("<- answer from cache (#{@id},#{state.pos}): #{inspect(entry.results)}")
       entry.continuations.push newCont
       for r in entry.results then newCont(r)
 
@@ -213,7 +214,7 @@ string = (s) ->
     if candidate == s
       cont(new Match(state.advance(len), candidate))
     else
-      @fail(state, cont)
+      state.fail(cont, @message())
 
 # matches a regex
 regex = (r) ->
@@ -296,6 +297,7 @@ seq = (parsers...) ->
   parsers = (implicit(p) for p in parsers)
   message = -> ("(" + resolve(p).message() + ")" for p in parsers).join(" then ")
   combiner = (sum, x) ->
+    sum = sum[...]
     if x? then sum.push x
     sum
   rv = new Parser "''", (state, cont) -> cont(new Match(state, []))
@@ -324,25 +326,18 @@ alt = (parsers...) ->
   message = -> ("(" + resolve(p).message() + ")" for p in parsers).join(" or ")
   new Parser message, (state, cont) ->
     parsers = (resolve(p) for p in parsers)
-    count = 0
-    finished = false
     if debug?
       debug("<alt> start:")
       for p in parsers then debug("<alt> -- #{p}")
       debug("<alt> --.")
-    for p in parsers then do (p) ->
+    aborting = false
+    for p in parsers.reverse() then do (p) ->
       state.trampoline.push ->
         if debug? then debug("<alt> next try: #{p}")
+        if aborting then return
         p.parse state, (rv) ->
-          if debug? then debug("<alt> result: #{rv}")
-          count += 1
-          if (rv.ok or rv.abort) and not finished
-            finished = true
-            if debug? then debug("<alt> finished (stop)")
-            return cont(rv)
-          if not finished and count == parsers.length
-            if debug? then debug("<alt> finished (exhausted)")
-            cont(new NoMatch(state, "Expected " + message()))
+          if rv.abort then aborting = true
+          return cont(rv)
 
 # from 'min' to 'max' (inclusive) repetitions of a parser, returned as an
 # array. 'max' may be omitted to mean infinity.
@@ -358,22 +353,22 @@ repeat = (p, minCount=0, maxCount=null) ->
     p = resolve(p)
     origState = state
     count = 0
-    list = []
-    nextCont = (rv) ->
+    nextCont = (rv, list=[], lastState=origState) ->
       if not rv.ok
         if count >= minCount
-          return cont(new Match(state, list, rv.commit))
+          # intentionally use the "last good state" from our repeating parser.ª
+          return cont(new Match(lastState, list, rv.commit))
         return origState.fail(cont, message())
       count += 1
       if rv.match? then list.push rv.match
       if count < maxCount
         # if a parser matches nothing, we could go on forever...
-        if rv.state.pos == state.pos then throw new Error("Repeating parser isn't making progress: #{p}")
-        state = rv.state
-        state.trampoline.push -> p.parse state, nextCont
+        if rv.state.pos == origState.pos then throw new Error("Repeating parser isn't making progress: #{p}")
+        rv.state.trampoline.push ->
+          p.parse rv.state, (x) -> nextCont(x, list[...], rv.state)
       else
         cont(new Match(rv.state, list, rv.commit))
-    p.parse state, nextCont
+    p.parse origState, nextCont
 
 # like 'repeat', but each element may be optionally preceded by 'ignore',
 # which will be thrown away. this is usually used to remove leading
@@ -418,11 +413,27 @@ resolve = (p) ->
 parse = (p, str) ->
   state = if str instanceof ParserState then str else new ParserState(str)
   p = resolve(p)
-  rv = null
+  successes = []
+  failures = []
   state.trampoline.push ->
-    p.parse state, (_rv) -> rv = _rv
-  state.trampoline.run()
-  rv
+    p.parse state, (rv) ->
+      if rv.ok
+        if debug? then debug "--- registering success: #{rv}"
+        successes.push rv
+      else
+        if debug? then debug "--- registering failure: #{rv}"
+        failures.push rv
+  while state.trampoline.ready() and successes.length == 0
+    state.trampoline.next()
+  if debug?
+    debug "--- final tally:"
+    for x in successes then debug "+++ #{x}"
+    for x in failures then debug "--- #{x}"
+    debug "--- GOOD DAY SIR"
+  if successes.length > 0
+    successes[0]
+  else
+    failures[0]
 
 # must match the entire string, to the end.
 consume = (p, str) ->
