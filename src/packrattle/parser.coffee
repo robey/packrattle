@@ -9,9 +9,12 @@ inspect = require("util").inspect
 debug = null
 setDebug = (f) -> debug = f
 
+
 class Trampoline
   constructor: ->
     @work = []
+    # map of (parser -> position -> [ continuations, results ])
+    @cache = {}
 
   push: (job) ->
     @work.push job
@@ -25,6 +28,15 @@ class Trampoline
 
   run: ->
     while @work.length > 0 then @next()
+
+  getCache: (parser, state) ->
+    x = @cache[parser.id]
+    if not x?
+      @cache[parser.id] = x = {}
+    entry = x[state.pos]
+    if not entry?
+      x[state.pos] = entry = { continuations: [], results: [] }
+    entry
 
 
 # parser state, used internally.
@@ -69,6 +81,8 @@ class ParserState
   fail: (cont, message) ->
     cont(new NoMatch(@, "Expected " + message))
 
+  getCache: (parser) -> @trampoline.getCache(parser, @)
+
 
 class Match
   constructor: (@state, @match, @commit=false) ->
@@ -76,12 +90,16 @@ class Match
 
   toString: -> "Match(state=#{@state}, match=#{inspect(@match)}, commit=#{@commit})"
 
+  equals: (other) -> other.ok and @match == other.match and @state.pos == other.state.pos
+
 
 class NoMatch
   constructor: (@state, @message, @abort=false) ->
     @ok = false
 
   toString: -> "NoMatch(state=#{@state}, message='#{@message}', abort=#{@abort})"
+
+  equals: (other) -> (not other.ok) and @state.pos == other.state.pos
 
 
 _parser_id = 0
@@ -107,9 +125,26 @@ class Parser
     if debug?
       debug("-> state=#{state}")
       debug("   parse: #{@}")
-    @matcher state, (rv) ->
+    newCont = (rv) ->
       if debug? then debug("<- #{rv}")
       cont(rv)
+
+    entry = state.getCache(@)
+    if entry.continuations.length == 0
+      # first to try it!
+      entry.continuations.push newCont
+      state.trampoline.push =>
+        @matcher state, (rv) ->
+          # push our (new?) result
+          found = false
+          for r in entry.results
+            if r.equals(rv) then found = true
+          if not found
+            entry.results.push rv
+            for c in entry.continuations then c(rv)
+    else
+      entry.continuations.push newCont
+      for r in entry.results then newCont(r)
 
   # ----- transformations and combinations:
 
