@@ -1,4 +1,9 @@
 
+## 2.0.0  (22 march 2013)
+
+- added GLL support, rewriting all of the internals
+- made API more orthogonal
+
 ## 1.0.3  (16 august 2012)
 
 - added commit()

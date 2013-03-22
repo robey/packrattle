@@ -1,8 +1,8 @@
 {
   "name": "packrattle",
-  "version": "1.0.2",
-  "description": "packrat parser-combinator library",
-  "keywords": [ "parser", "packrat", "coffee-script" ],
+  "version": "2.0.0",
+  "description": "GLL parser-combinator library",
+  "keywords": [ "parser", "packrat", "gll", "coffee-script" ],
   "author": "Robey Pointer <robeypointer@gmail.com>",
   "homepage": "https://github.com/robey/packrattle",
   "repository": {
