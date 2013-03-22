@@ -1,29 +1,38 @@
 packrattle
 ==========
 
-this is a simple packrat parser-combinator library for coffeescript /
-javascript.
+this is a simple GLL-based parser-combinator library for coffeescript / javascript. it lets you write parsing code without the use of an external tool like lex or antlr: the parser is in js/cs with the rest of your code!
 
 an example, from the unit tests:
 
-    parser = require("packrattle")
+```coffeescript
+$ = require("packrattle")
 
-    csv = parser.repeat(
-      parser.regex(/([^,]*)/).onMatch (m) -> m[0]
-      /,/
-    )
+csv = $.repeatSeparated(
+  $.regex(/([^,]*)/).onMatch (m) -> m[0]
+  /,/
+)
 
-    csv.parse("this,is,csv")
-    => { ok: true, match: [ "this", "is", "csv" ] }
+$.consume(csv, "this,is,csv")
+=> { ok: true, match: [ "this", "is", "csv" ] }
+```
 
-there's a wiki page on parser-combinators here:
-http://en.wikipedia.org/wiki/Parser_combinator
+or, in javascript:
+```javascript
+var $ = require("packrattle");
 
-but the basic idea is that a "parser" is a function that takes a string and
-position, processes some chunk of the string, and returns a new position,
-along with the digested part of the string. in other words, a parser does:
+var csv = $.repeatSeparated(
+  $.regex(/([^,]*)/).onMatch(function (m) { return m[0]; }),
+  /,/
+);
 
-    (position) -> (position, result)
+$.consume(csv, "this,is,csv");
+=> { ok: true, match: [ "this", "is", "csv" ] }
+```
+
+parser-combinators start from a simple idea: a "parser" is a function that takes a string and position, processes some chunk of the string, and returns a new position, along with the digested part of the string. in other words, a parser does:
+
+    (position) -> (new position, result)
 
 on success, or
 
@@ -31,139 +40,154 @@ on success, or
 
 on failure.
 
-you can start with a few basic parsers which match a string or regex, and
-build more complex parsers out of functions that combine them: "a or b",
-"a then b", "repeat(a)", and so on.
+you can start with a few basic parsers which match a string or regex, and build more complex parsers out of functions that combine them: "a or b", "a then b", "repeat(a)", and so on.
 
-a "packrat" parser just keeps a cache (for the duration of parsing a single
-string) of the results for each parser at each position, so that if there's a
-lot of backtracking, it doesn't do the same work over and over again.
+being "GLL-based" means that a trampoline is used to avoid recursion and to memoize (cache) intermediate results. this lets you parse almost any grammar, even if it's left recursive or ambiguous. for example, the grammar
 
-basic methods
+    expr ::= (expr "+" expr) | /\d+/
+
+would need to be refactored a lot to work in most parser libraries. it can be expressed in packrattle as
+
+```coffeescript
+expr = $.alt(
+  $.seq((-> expr), "+", (-> expr)),
+  $.regex(/\d+/)
+)
+```
+
+or in javascript as
+
+```javascript
+var expr = $.alt(
+  $.seq(function() { return expr; }, "+", function() { return expr; }),
+  $.regex(/\d+/)
+);
+```
+
+the nested anonymous functions on line 2 allow js/cs to handle recursive definitions by delaying evaluation. the functions will only be called once (when first invoked) and then cached.
+
+
+further reading
+---------------
+
+- there's a wiki page on parser-combinators here: http://en.wikipedia.org/wiki/Parser_combinator
+
+- vegard øye has an excellent (highly-recommended) tutorial on how GLL parsers work, with an implementation in a lisp-like language: https://github.com/epsil/gll
+
+- daniel spiewak wrote a paper on GLL and his work upgrading scala's parser-combinator library to use it: http://www.cs.uwm.edu/~dspiewak/papers/generalized-parser-combinators.pdf
+
+
+basic parsers
 -------------
 
-a few basic parsers just process a chunk of text:
+the basic parsers attempt to match a chunk of text:
 
-- `parser.string(...)` - match exactly this string, and return it
+- `string("...")` - match exactly this string, and return it
 
-- `parser.regex(...)` - match this regex, and return the "match" object
-  (which can be used to extract any groups)
+- `regex(/.../)` - match this regex, and return the regex "match" object (which can be used to extract any groups)
 
-- `parser.end` - matches only the end of the string
+- `end` - matches only the end of the string
 
-- `parser.reject` - always fails to match
+- `reject` - always fails to match
+
+
+transforms
+----------
+
+parsers have a few methods on them that will allow you to transform the match results. this is how you turn the parser output into an AST, or cause the parser to evaluate expressions as it parses.
+
+for example, this parser matches strings of digits and transforms them into a number:
+
+```javascript
+var number = $.regex(/\d+/).onMatch(function (x) { return parseInt(x); });
+```
+
+- `onMatch(f)` - if the parser is successful, call 'f' on the match result, using the return value of 'f' as the new match result
+
+- `onFail(newMessage)` - replace the error message for this parser when it fails to match
+
+- `matchIf(f)` - if the parser is successful, call 'f' on the match result: if it returns true, continue as normal, but if it returns false, return a failure to match
+
 
 combinators
 -----------
 
 the real power is in combining the parsers:
 
-- `parser.seq(p1, p2, ...)` - match all of p1, p2, ... in sequence; the match
-  result will be an array of all of the non-null match results of p1 and
-  friends
+- `seq(p1, p2, ...)` - match all of the parsers in sequence; the match result will be an array of all of the non-null match results
 
-- `parser.optional(p, defaultValue)` - match p or return the default value
-  (usually the empty string), succeeding either way
+- `alt(p1, p2, ...)` - if 'p1' matches, return that as the result; otherwise, try 'p2', and so on until finding a match, or failing if none of the parsers match
 
-- `parser.check(p)` - verify that p matches, but don't advance the parser's
-  position
+- `optional(p, defaultValue)` - match 'p' or return the default value (usually the empty string), succeeding either way
 
-- `parser.repeat(p, sep)` - match p multiple times (often written as "`p*`"),
-  optionally separated by `sep` (for example, a comma); the match result will
-  be an array of all the non-null match results, not including the separators
+- `repeat(p, minCount=0, maxCount=infinity)` - match 'p' multiple times (often written as "`p*`"); the match result will be an array of all the non-null 'p' results (note that it's trivial to match zero times, so often you want to set 'minCount' to 1)
 
-- `parser.times(count, p)` - match p exactly count times; the match result
-  will be an array of all the non-null match results
+- `check(p)` - verify that 'p' matches, but don't advance the parser's position; perl calls this a "zero-width lookahead"
 
-- `parser.foldLeft(args)` - see below
+- `commit(p)` - if 'p' matches, packrattle will no longer backtrack through previous 'alt' alternatives: the parsing is "committed" to this branch (can be used with 'onFail' to give less ambiguous error messages)
 
-each parser has methods on it, also, to allow for combining:
+- `not_(p)` - turn a successful match of 'p' into a failure, or a failure into a success (with an empty string as the match result)
 
-- `onFail(newMessage)` - replace the error message for this parser when it
-  fails to match
+- `drop(p)` - if 'p' matches, return null as the match result, which will cause it to be omitted from the result of any sequence
 
-- `onMatch(function)` - transform the result of this parser: the function
-  takes the parser's match result and returns the new result
+all of the combinators are also defined as methods on the parsers, so you can chain them with method calls. the method versions all take one fewer argument, because the first 'p' is implied.
 
-- `matchIf(function)` - if the parser matches, the function gets the parser's
-  match result and returs true/false -- if false, the parser fails to match
-  after all
 
-- `not()` - if the parser matches, it fails; if it fails, it matches and
-  returns the empty string
+convenience methods
+-------------------
 
-- `or(p)` - if the parser matches, it returns normally, but if it fails, p is
-  tried instead
+these are trivially implemented using the transforms and combinators above, but are commonly used, so they just come with the library.
 
-- `skip(p)` - check if p matches before trying this parser, and throw p's
-  result away if it matches -- useful for skipping whitespace before a parser
+- `seqIgnore(ignore, p1, p2, ...)` - like seq, but make an attempt to match 'ignore' before each parser, throwing away the result if it matches and ignoring if it doesn't; typically used to discard whitespace
 
-- `then(p)` - if this parser matches, try matching p next (just like `seq`)
+- `repeatIgnore(ignore, p, minCount=0, maxCount=infinity)` - similar to 'seqIgnore', attempts to match 'ignore' before each iteration of 'p', throwing away the result
 
-- `optional()` - make this parser optional, like `parser.optional`
+- `repeatSeparated(p, separator="", minCount=1, maxCount=infinity)` - like 'repeatIgnore', but there must be at least one match of 'p', the separator is not optional, and the separator is only matched (and discarded) between items
 
-- `repeat(sep)` - just like `parser.repeat`
 
-- `times(count)` - just like `parser.times`
+reduce
+------
 
-- `reduce(sep, function)` - a simpler variant of `foldLeft` (see below)
+the reduce method is borrowed from scala's parser-combinator library, and is particularly useful for parsing expression trees.
 
-- `drop()` - if this parser matches, return null as the match result, which
-  will cause it to be omitted from the result of `parser.seq`
+- `reduce(p, separator="", accumulator=null, reducer=null, minCount=1, maxCount=infinity)`
 
-- `commit()` - if this parser is part of a sequence, and it matches, then
-  backtracking will stop here (no "or" clauses higher up in the parse tree
-  will take effect) -- this can be used to give more meaningful error
-  messages, since the error message text will not backtrack either
+like 'repeatSeparated', it attempts to match at least one 'p', separated by 'separator'. in standard syntax, it matches:
 
-foldLeft
---------
+    p (separator p)*
 
-`foldLeft` is a slightly more complex/powerful combinator, which matches a
-sequence of nested parsers with optional separators and combines them as they
-are parsed. it takes a hash of key/value parameters:
+with an optional limit on the minimum or maximum number of 'p' there can be. two functions are called to transform the match results:
 
-- `first` - the parser to match the first occurance (defaults to `tail` if
-  not supplied)
-- `tail` - the parser to match all successive occurances
-- `sep` - optional parser to match the things separating the items (comma,
-  for example); if missing or null, items don't have separators
-- `accumulator` - a function to transform the first match result into a
-  running accumulator of the parser (defaults to an array containing only
-  the first match result)
-- `fold` - a function to transform the current accumulator and the new item
-  (and its separator) into a new accumulator: `fold(accumulator, sep, item)`
-  (defaults to calling `accumulator.push(item)`)
+- `accumulator(first)` is called with the first result of 'p' and can be used to transform the result, just like 'onMatch'. the default accumulator creates a new array with the match result as its only element.
 
-for example, to match a sequence of numbers separated by "+" and add them:
+- `reducer(total, sep, next)` is called for each subsequent match of 'p' and a separator. the first parameter is the total result so for (or the result of the accumulator function). the second is the result of the separator, and the last is the result of the current 'p'. this function should return the new 'total' that will be passed in on future matches.
 
-    number = parser.regex(/\d+/).onMatch (m) -> parseInt(m[0])
-    expr = parser.foldLeft(
-      tail: number
-      sep: parser.string("+")
-      accumulator: (n) -> n
-      fold: (sum, op, n) -> sum + n
-    )
+for example, here is a parser that identifies strings like "3+50+2" and returns the match result 55:
 
-this is aliased to "reduce" on Parser, with a simplified interface:
+```javascript
+var number = $.regex(/\d+/).onMatch(function (m) { return parseInt(m[0]); });
+val expr = $.reduce(
+  number,
+  "+",
+  function (n) { return n; },
+  function (total, sep, n) { return total + n; }
+);
+```
 
-    number = parser.regex(/\d+/).onMatch (m) -> parseInt(m[0])
-    expr = number.reduce parser.string("+"), (sum, op, n) -> sum + n
 
 implicit conversion
 -------------------
 
-for many functions, an object that isn't a parser will be converted into a
-parser at runtime, to simplify your code:
+any function that takes a parser will also implicitly convert non-parser objects into parsers, to simplify your code:
 
-- a string will be converted to `parser.string(...)`
+- a string will be converted to `string(...)`.
 
-- a regex will be converted to `parser.regex(...)`
+- a regex will be converted to `regex(...)`.
 
-- an array will be converted to `parser.seq(...)`
+- an array will be converted to `seq(...)`.
 
-- a function will be called, under the assumption that it returns a parser --
-  but only when the parser is `parse`d, allowing for lazy evaluation
+- a function will be called (with no arguments), under the assumption that it returns a parser. each function is called exactly once, and the result is cached.
+
 
 executing
 ---------
@@ -173,7 +197,11 @@ to execute a parser, call either:
 - `parse(string)` - matches as much of the string as it can
 - `consume(string)` - matches the entire string, or fails
 
-each function returns an object with state:
+because packrattle will stop once it succeeds in matching, you usually want 'consume'. in some ambiguous parsers, 'parse' may seem to stop before consuming much of the string, because it operates "lazily" instead of "greedily".
+
+('consume' is just an alias for `parse(seq(p, end))`.)
+
+both 'parse' and 'consume' return a match object with these fields:
 
 - `ok` - true if the parser succeeded, false if not
 - `state` - a `ParserState` object with the current position (see below)
@@ -189,17 +217,10 @@ the `ParserState` object contains:
 - `xpos` - the position of `pos` within the current line, counting from 0
 - `line()` - returns the content of the line around `pos` (the `lineno` line)
 
-automatic whitespace skipping
------------------------------
 
-if a global whitespace parser is set:
+author
+------
 
-    parser.setWhitespace /\s+/
+credit and blame: Robey Pointer <robeypointer@gmail.com>
 
-then text matching that parser will be automatically skipped between items in
-a `seq`, `times`, or `foldLeft`. it has the same effect as calling `skip` on
-each of the tiems.
-
-this global setting is used at the time the parser is constructed, not when
-it's used, so you can change its value before and after constructing parsers,
-if they have varying whitespace requirements.
+special thanks to daniel spiewak, brian mckenna, and vegard øye for sharing info about GLL.
