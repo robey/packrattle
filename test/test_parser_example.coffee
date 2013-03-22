@@ -4,7 +4,7 @@ parser = require '../src/packrattle/parser'
 describe "Parser example", ->
   $ = parser
   binary = (left, op, right) -> { op: op, left: left, right: right }
-  ws = (p) -> $.dropPrefix(/\s*/, p)
+  ws = (p) -> $.seqIgnore(/\s*/, p).onMatch (x) -> x[0]
   number = ws(/\d+/).onMatch (m) -> parseInt(m[0])
   parens = $.seq(ws($.drop("(")), (-> expr), ws($.drop(")")))
   atom = $.alt(number, parens.onMatch((e) -> e[0]))

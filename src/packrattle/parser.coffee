@@ -1,8 +1,4 @@
 
-# str -> entry
-# entry = { continuations[], results[] }
-
-
 inspect = require("util").inspect
 
 # set this to get debugging
@@ -271,10 +267,6 @@ not_ = (p) ->
 # throw away the match.
 drop = (p) -> implicit(p).onMatch (x) -> null
 
-dropPrefix = (prefix, p) ->
-  seq(optional(prefix), p).onMatch (x) ->
-    x[1]
-
 # chain together p1 & p2 such that if p1 matches, p2 is executed. if both
 # match, 'combiner' is called with the two matched objects, to create a
 # single match result.
@@ -457,7 +449,6 @@ exports.check = check
 exports.commit = commit
 exports.not_ = not_
 exports.drop = drop
-exports.dropPrefix = dropPrefix
 exports.seq = seq
 exports.seqIgnore = seqIgnore
 exports.alt = alt
