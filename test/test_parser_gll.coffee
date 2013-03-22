@@ -33,3 +33,13 @@ describe "Parser GLL flow", ->
     $.consume(p, "xx$").match.should.eql([ "x", "x", "$" ])
     $.consume(p, "xx$xx$$").match.should.eql([ [ "x", "x", "$" ], [ "x", "x", "$" ], "$" ])
     $.consume(p, "xx$xx$").ok.should.eql(false)
+
+  it "adds numbers", ->
+    # p + p | \d+
+    p = $.alt(
+      $.seq((-> p), "+", (-> p)).onMatch((x) -> x[0] + x[2]),
+      $.regex(/\d+/).onMatch((x) -> parseInt(x))
+    )
+    $.consume(p, "23").match.should.eql(23)
+    $.consume(p, "2+3").match.should.eql(5)
+    $.consume(p, "23+100+9").match.should.eql(132)
