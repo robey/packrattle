@@ -348,7 +348,7 @@ repeat = (p, minCount=0, maxCount=null) ->
     nextCont = (rv, list=[], lastState=origState) ->
       if not rv.ok
         if count >= minCount
-          # intentionally use the "last good state" from our repeating parser.ª
+          # intentionally use the "last good state" from our repeating parser.
           return cont(new Match(lastState, list, rv.commit))
         return origState.fail(cont, message())
       count += 1
