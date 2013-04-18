@@ -157,7 +157,7 @@ class Parser
     new Parser @_message, (state, cont) =>
       @parse state, (rv) ->
         if not rv.ok then return cont(rv)
-        rv = if f instanceof Function
+        rv = if typeof f == "function"
           try
             new Match(rv.state, f(rv.match), rv.commit)
           catch e
@@ -390,13 +390,14 @@ reduce = (p, separator="", accumulator=null, reducer=null, minCount=1, maxCount=
 implicit = (p) ->
   # wow, javascript's type system completely falls apart here.
   if typeof p == "string" then return string(p)
-  if p instanceof RegExp then return regex(p)
-  if p instanceof Array then return seq(p...)
+  className = p.constructor.toString().split(" ")[1]
+  if className == "RegExp()" then return regex(p)
+  if className == "Array()" then return seq(p...)
   p
 
 # allow functions to be passed in, and resolved only at parse-time.
 resolve = (p) ->
-  if not (p instanceof Function) then return implicit(p)
+  if not (typeof p == "function") then return implicit(p)
   p = implicit(p())
   if not p? then throw new Error("Can't resolve parser")
   p
