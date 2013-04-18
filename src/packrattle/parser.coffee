@@ -323,7 +323,7 @@ alt = (parsers...) ->
       for p in parsers then debug("<alt> -- #{p}")
       debug("<alt> --.")
     aborting = false
-    for p in parsers.reverse() then do (p) ->
+    for p in parsers[...].reverse() then do (p) ->
       state.trampoline.push ->
         if debug? then debug("<alt> next try: #{p}")
         if aborting then return
