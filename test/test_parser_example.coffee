@@ -63,3 +63,11 @@ describe "Parser example", ->
     rv.ok.should.eql(true)
     rv.match.should.eql([ "this", "is", "csv" ])
 
+  it "parses alternatives in priority (left to right) order", ->
+    abc = $.string('abc')
+    wordOrSep = $.alt(/\s+/, /\S+/).onMatch((m) -> {word: m[0]})
+    line = $.repeat($.alt(abc, wordOrSep))
+    rv = $.consume(line, 'abcabc def')
+    rv.ok.should.eql(true)
+    rv.match.should.eql [ "abc", "abc", { word: " " }, { word: "def" } ]
+
