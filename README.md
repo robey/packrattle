@@ -160,13 +160,13 @@ with an optional limit on the minimum or maximum number of 'p' there can be. two
 
 - `accumulator(first)` is called with the first result of 'p' and can be used to transform the result, just like 'onMatch'. the default accumulator creates a new array with the match result as its only element.
 
-- `reducer(total, sep, next)` is called for each subsequent match of 'p' and a separator. the first parameter is the total result so for (or the result of the accumulator function). the second is the result of the separator, and the last is the result of the current 'p'. this function should return the new 'total' that will be passed in on future matches.
+- `reducer(total, sep, next)` is called for each subsequent match of 'p' and a separator. the first parameter is the total result so far (or the result of the accumulator function). the second is the result of the separator, and the last is the result of the current 'p'. this function should return the new 'total' that will be passed in on future matches.
 
 for example, here is a parser that identifies strings like "3+50+2" and returns the match result 55:
 
 ```javascript
 var number = $.regex(/\d+/).onMatch(function (m) { return parseInt(m[0]); });
-val expr = $.reduce(
+var expr = $.reduce(
   number,
   "+",
   function (n) { return n; },
@@ -186,7 +186,7 @@ any function that takes a parser will also implicitly convert non-parser objects
 
 - an array will be converted to `seq(...)`.
 
-- a function will be called (with no arguments), under the assumption that it returns a parser. each function is called exactly once, and the result is cached.
+- a function will be called (with no arguments), under the assumption that it returns a parser. each function is called exactly once, and the result is cached. this can be used to make forward references, if your parser is recursive.
 
 
 executing
