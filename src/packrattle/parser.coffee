@@ -12,14 +12,20 @@ class Trampoline
     # map of (parser -> position -> [ continuations, results ])
     @cache = {}
 
-  push: (job) -> @work.push job
+  push: (desc, job) ->
+    @work.push [ desc, job ]
+    if debug?
+      debug "(+) push work to trampoline. new contents:"
+      for [ d, j ] in @work
+        debug "( ) #{d()}"
+      debug "(.)"
 
   size: -> @work.length
 
   # execute the next branch of parsing on the trampoline.
   next: ->
-    f = @work.pop()
-    if f? then f()
+    item = @work.pop()
+    if item? then item[1]()
 
   ready: -> (@work.length > 0)
 
@@ -117,7 +123,7 @@ class Parser
   parse: (state, cont) ->
     if debug?
       debug("-> state=#{state}")
-      debug("   parse: #{@}")
+      debug("   parse (#{@id}): #{@}")
     newCont = (rv) ->
       if debug? then debug("<- #{rv}")
       cont(rv)
@@ -126,7 +132,7 @@ class Parser
     if entry.continuations.length == 0
       # first to try it!
       entry.continuations.push newCont
-      state.trampoline.push =>
+      state.trampoline.push (=> "parse: #{state}, #{@toString()}"), =>
         @matcher state, (rv) =>
           # push our (new?) result
           found = false
@@ -319,13 +325,13 @@ alt = (parsers...) ->
   new Parser message, (state, cont) ->
     parsers = (resolve(p) for p in parsers)
     if debug?
-      debug("<alt> start:")
+      debug("<alt> start: #{state}")
       for p in parsers then debug("<alt> -- #{p}")
       debug("<alt> --.")
     aborting = false
     for p in parsers[...].reverse() then do (p) ->
-      state.trampoline.push ->
-        if debug? then debug("<alt> next try: #{p}")
+      state.trampoline.push (=> "alt: #{state}, #{p.message()}"), ->
+        if debug? then debug("<alt> next try: #{p} at #{state}")
         if aborting then return
         p.parse state, (rv) ->
           if rv.abort then aborting = true
@@ -355,8 +361,8 @@ repeat = (p, minCount=0, maxCount=null) ->
       if rv.match? then list.push rv.match
       if count < maxCount
         # if a parser matches nothing, we could go on forever...
-        if rv.state.pos == origState.pos then throw new Error("Repeating parser isn't making progress: #{p}")
-        rv.state.trampoline.push ->
+        if rv.state.pos == origState.pos then throw new Error("Repeating parser isn't making progress: #{rv.state.pos}=#{origState.pos} #{p}")
+        rv.state.trampoline.push (=> "repeat: #{state}, #{message()}"), ->
           p.parse rv.state, (x) -> nextCont(x, list[...], rv.state)
       else
         cont(new Match(rv.state, list, rv.commit))
@@ -408,7 +414,7 @@ parse = (p, str) ->
   p = resolve(p)
   successes = []
   failures = []
-  state.trampoline.push ->
+  state.trampoline.push (=> "start: #{state}, #{p.toString()}"), ->
     p.parse state, (rv) ->
       if rv.ok
         if debug? then debug "--- registering success: #{rv}"
