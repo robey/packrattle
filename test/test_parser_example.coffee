@@ -71,3 +71,27 @@ describe "Parser example", ->
     rv.ok.should.eql(true)
     rv.match.should.eql [ "abc", "abc", { word: " " }, { word: "def" } ]
 
+  it "exhausts leftmost alternatives before trying others", ->
+    expr = $.alt(
+      $.seq((-> expr), "+", (-> expr)).onMatch((x) -> x[0] + x[2]),
+      $.regex(/\d+/).onMatch((m) -> parseInt(m[0])),
+      $.regex(/.+/).onMatch((m) -> "BAD")
+    )
+    rv = $.consume(expr, "4+80+3+200+12")
+    rv.ok.should.eql(true)
+    rv.match.should.eql(299)
+
+  it "obeys leftmost/depth precedence in the face of ambiguity", ->
+    expr = $.repeat(
+      $.alt(
+        $.repeat($.alt('++', '--'), 1),
+        $.regex(/\S+/).onMatch((m) -> m[0]),
+        $.regex(/\s+/).onMatch(-> null)
+      )
+    )
+    rv = $.consume(expr, '++--')
+    rv.ok.should.eql(true)
+    rv.match.should.eql([ [ "++", "--" ] ])
+    rv = $.consume(expr, '++y++ --++ ++')
+    rv.ok.should.eql(true)
+    rv.match.should.eql([ [ "++" ], "y++", [ "--", "++" ], [ "++" ] ])

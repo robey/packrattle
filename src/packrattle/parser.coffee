@@ -1,5 +1,6 @@
-
 inspect = require("util").inspect
+
+PriorityQueue = require("./priority_queue").PriorityQueue
 
 # set this to get debugging
 debug = null
@@ -8,26 +9,26 @@ setDebug = (f) -> debug = f
 
 class Trampoline
   constructor: ->
-    @work = []
+    @work = new PriorityQueue()
     # map of (parser -> position -> [ continuations, results ])
     @cache = {}
 
-  push: (desc, job) ->
-    @work.push [ desc, job ]
+  push: (priority, description, job) ->
+    @work.put { description, job }, priority
     if debug?
       debug "(+) push work to trampoline. new contents:"
-      for [ d, j ] in @work
-        debug "( ) #{d()}"
+      for item in @work.queue
+        debug "( ) #{item.priority} - #{item.item.description()}"
       debug "(.)"
 
-  size: -> @work.length
+  size: -> @work.length()
 
   # execute the next branch of parsing on the trampoline.
   next: ->
-    item = @work.pop()
-    if item? then item[1]()
+    item = @work.get()
+    if item? then item.job()
 
-  ready: -> (@work.length > 0)
+  ready: -> not @work.isEmpty()
 
   getCache: (parser, state) ->
     x = @cache[parser.id]
@@ -41,13 +42,13 @@ class Trampoline
 
 # parser state, used internally.
 class ParserState
-  constructor: (@text, @pos=0, @end, @lineno=0, @xpos=0, @trampoline=null) ->
+  constructor: (@text, @pos=0, @end, @lineno=0, @xpos=0, @trampoline=null, @depth=0) ->
     if not @end? then @end = @text.length
     if not @trampoline? then @trampoline = new Trampoline()
 
   toString: ->
     truncated = if @text.length > 10 then "'#{@text[...10]}...'" else "'#{@text}'"
-    "ParserState(text=#{truncated}, pos=#{@pos}, end=#{@end}, lineno=#{@lineno}, xpos=#{@xpos}, work=#{@trampoline.size()})"
+    "ParserState(text=#{truncated}, pos=#{@pos}, end=#{@end}, lineno=#{@lineno}, xpos=#{@xpos}, depth=#{@depth}, work=#{@trampoline.size()})"
 
   # return a new ParserState with the position advanced 'n' places.
   # the new @lineno and @xpos are adjusted by watching for linefeeds.
@@ -61,7 +62,7 @@ class ParserState
         xpos = 0
       else
         xpos++
-    state = new ParserState(@text, pos, @end, lineno, xpos, @trampoline)
+    state = new ParserState(@text, pos, @end, lineno, xpos, @trampoline, @depth)
     state
 
   # return the text of the current line around @pos.
@@ -81,6 +82,10 @@ class ParserState
     cont(new NoMatch(@, "Expected " + message))
 
   getCache: (parser) -> @trampoline.getCache(parser, @)
+
+  addJob: (description, job) -> @trampoline.push @depth, description, job
+
+  deeper: -> new ParserState(@text, @pos, @end, @lineno, @xpos, @trampoline, @depth + 1)
 
 
 class Match
@@ -121,6 +126,7 @@ class Parser
 
   # executes @matcher, passing the result (Match or NoMatch) to 'cont'.
   parse: (state, cont) ->
+    state = state.deeper()
     if debug?
       debug("-> state=#{state}")
       debug("   parse (#{@id}): #{@}")
@@ -132,7 +138,7 @@ class Parser
     if entry.continuations.length == 0
       # first to try it!
       entry.continuations.push newCont
-      state.trampoline.push (=> "parse: #{state}, #{@toString()}"), =>
+      state.addJob (=> "parse: #{state}, #{@toString()}"), =>
         @matcher state, (rv) =>
           # push our (new?) result
           found = false
@@ -153,7 +159,7 @@ class Parser
 
   # transforms the error message of a parser
   onFail: (newMessage) ->
-    new Parser newMessage, (state, cont) =>
+    new Parser @_message, (state, cont) =>
       @parse state, (rv) ->
         if rv.ok then return cont(rv)
         cont(new NoMatch(rv.state, newMessage, rv.abort))
@@ -259,6 +265,7 @@ commit = (p) ->
     p.parse state, (rv) ->
       if not rv.ok then return cont(rv)
       rv.commit = true
+      if debug? then debug("commit!")
       cont(rv)
 
 # succeed (with an empty match) if the parser failed; otherwise fail.
@@ -277,7 +284,7 @@ drop = (p) -> implicit(p).onMatch (x) -> null
 # match, 'combiner' is called with the two matched objects, to create a
 # single match result.
 chain = (p1, p2, combiner) ->
-  new Parser (-> "(#{resolve(p1).message()}) then (#{resolve(p2).message()})"), (state, cont) ->
+  new Parser (-> "(#{resolve(p1).message()}) chain (#{resolve(p2).message()})"), (state, cont) ->
     p1 = resolve(p1)
     p1.parse state, (rv1) ->
       if not rv1.ok then return cont(rv1)
@@ -329,10 +336,12 @@ alt = (parsers...) ->
       for p in parsers then debug("<alt> -- #{p}")
       debug("<alt> --.")
     aborting = false
-    for p in parsers[...].reverse() then do (p) ->
-      state.trampoline.push (=> "alt: #{state}, #{p.message()}"), ->
+    for p in parsers[...] then do (p) ->
+      state.addJob (=> "alt: #{state}, #{p.message()}"), ->
         if debug? then debug("<alt> next try: #{p} at #{state}")
-        if aborting then return
+        if aborting
+          if debug? then debug("<alt> -- er, n/m, aborting")
+          return
         p.parse state, (rv) ->
           if rv.abort then aborting = true
           return cont(rv)
@@ -362,7 +371,7 @@ repeat = (p, minCount=0, maxCount=null) ->
       if count < maxCount
         # if a parser matches nothing, we could go on forever...
         if rv.state.pos == origState.pos then throw new Error("Repeating parser isn't making progress: #{rv.state.pos}=#{origState.pos} #{p}")
-        rv.state.trampoline.push (=> "repeat: #{state}, #{message()}"), ->
+        rv.state.addJob (=> "repeat: #{state}, #{message()}"), ->
           p.parse rv.state, (x) -> nextCont(x, list[...], rv.state)
       else
         cont(new Match(rv.state, list, rv.commit))
@@ -414,7 +423,7 @@ parse = (p, str) ->
   p = resolve(p)
   successes = []
   failures = []
-  state.trampoline.push (=> "start: #{state}, #{p.toString()}"), ->
+  state.addJob (=> "start: #{state}, #{p.toString()}"), ->
     p.parse state, (rv) ->
       if rv.ok
         if debug? then debug "--- registering success: #{rv}"
