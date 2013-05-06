@@ -57,3 +57,11 @@ describe "PriorityQueue", ->
     q.get().should.eql "f"
     q.get().should.eql "b"
     (-> q.get()).should.throw /empty/
+
+  it "preserves ordering with the same priority", ->
+    q = new priority_queue.PriorityQueue()
+    q.put "a", 0
+    q.put "b", 0
+    q.put "c", 0
+    q.queue.map((x) -> x.item).should.eql [ "c", "b", "a" ]
+    
