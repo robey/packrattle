@@ -51,7 +51,7 @@ would need to be refactored a lot to work in most parser libraries. it can be ex
 ```coffeescript
 expr = $.alt(
   $.seq((-> expr), "+", (-> expr)),
-  $.regex(/\d+/)
+  $.regex(/\d+/).onMatch((m) -> m[0])
 )
 ```
 
@@ -60,8 +60,15 @@ or in javascript as
 ```javascript
 var expr = $.alt(
   $.seq(function() { return expr; }, "+", function() { return expr; }),
-  $.regex(/\d+/)
+  $.regex(/\d+/).onMatch(function (m) { return m[0]; })
 );
+```
+
+and it actually matches strings:
+
+```coffeescript
+$.consume(expr, "3+10+200")
+=> { ok: true, match: [ [ '3', '+', '10' ], '+', '200' ] }
 ```
 
 the nested anonymous functions on line 2 allow js/cs to handle recursive definitions by delaying evaluation. the functions will only be called once (when first invoked) and then cached.
