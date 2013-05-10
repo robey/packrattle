@@ -1,4 +1,10 @@
 
+## 2.1.0  (10 may 2013)
+
+- forced the GLL algorithm to prioritize left branches of alt() over right
+  branches, which makes the logic more understandable for ambiguous grammars
+- fixed "instance of" checking under recent node releases
+
 ## 2.0.0  (22 march 2013)
 
 - added GLL support, rewriting all of the internals
