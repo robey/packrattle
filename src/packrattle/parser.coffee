@@ -1,43 +1,6 @@
-inspect = require("util").inspect
-
-PriorityQueue = require("./priority_queue").PriorityQueue
-
-# set this to get debugging
-debug = null
-setDebug = (f) -> debug = f
-
-
-class Trampoline
-  constructor: ->
-    @work = new PriorityQueue()
-    # map of (parser -> position -> [ continuations, results ])
-    @cache = {}
-
-  push: (priority, description, job) ->
-    @work.put { description, job }, priority
-    if debug?
-      debug "(+) push work to trampoline. new contents:"
-      for item in @work.queue
-        debug "( ) #{item.priority} - #{item.item.description()}"
-      debug "(.)"
-
-  size: -> @work.length()
-
-  # execute the next branch of parsing on the trampoline.
-  next: ->
-    item = @work.get()
-    if item? then item.job()
-
-  ready: -> not @work.isEmpty()
-
-  getCache: (parser, state) ->
-    x = @cache[parser.id]
-    if not x?
-      @cache[parser.id] = x = {}
-    entry = x[state.pos]
-    if not entry?
-      x[state.pos] = entry = { continuations: [], results: [] }
-    entry
+util = require 'util'
+debug = require("./debugging").debug
+Trampoline = require("./trampoline").Trampoline
 
 
 # parser state, used internally.
@@ -92,7 +55,7 @@ class Match
   constructor: (@state, @match, @commit=false) ->
     @ok = true
 
-  toString: -> "Match(state=#{@state}, match=#{inspect(@match)}, commit=#{@commit})"
+  toString: -> "Match(state=#{@state}, match=#{util.inspect(@match)}, commit=#{@commit})"
 
   equals: (other) -> other.ok and @match == other.match and @state.pos == other.state.pos
 
@@ -127,11 +90,11 @@ class Parser
   # executes @matcher, passing the result (Match or NoMatch) to 'cont'.
   parse: (state, cont) ->
     state = state.deeper()
-    if debug?
-      debug("-> state=#{state}")
-      debug("   parse (#{@id}): #{@}")
+    debug =>
+      "-> state=#{state}\n" +
+      "   parse (#{@id}): #{@}"
     newCont = (rv) ->
-      if debug? then debug("<- #{rv}")
+      debug -> "<- #{rv}"
       cont(rv)
 
     entry = state.getCache(@)
@@ -145,13 +108,13 @@ class Parser
           for r in entry.results
             if r.equals(rv) then found = true
           if not found
-            if debug?
-              debug "<- coming back from #{@}"
-              debug "   cache++ (#{@id},#{state.pos}) = #{rv}"
+            debug =>
+              "<- coming back from #{@}\n" +
+                "   cache++ (#{@id},#{state.pos}) = #{rv}"
             entry.results.push rv
             for c in entry.continuations then c(rv)
     else
-      if debug? then debug("<- answer from cache (#{@id},#{state.pos}): #{inspect(entry.results)}")
+      debug => "<- answer from cache (#{@id},#{state.pos}): #{util.inspect(entry.results)}"
       entry.continuations.push newCont
       for r in entry.results then newCont(r)
 
@@ -265,7 +228,7 @@ commit = (p) ->
     p.parse state, (rv) ->
       if not rv.ok then return cont(rv)
       rv.commit = true
-      if debug? then debug("commit!")
+      debug -> "commit!"
       cont(rv)
 
 # succeed (with an empty match) if the parser failed; otherwise fail.
@@ -331,16 +294,16 @@ alt = (parsers...) ->
   message = -> ("(" + resolve(p).message() + ")" for p in parsers).join(" or ")
   new Parser message, (state, cont) ->
     parsers = (resolve(p) for p in parsers)
-    if debug?
-      debug("<alt> start: #{state}")
-      for p in parsers then debug("<alt> -- #{p}")
-      debug("<alt> --.")
+    debug ->
+      "<alt> start: #{state}\n" +
+        (for p in parsers then "<alt> -- #{p}\n") +
+        "<alt> --."
     aborting = false
     for p in parsers[...] then do (p) ->
       state.addJob (=> "alt: #{state}, #{p.message()}"), ->
-        if debug? then debug("<alt> next try: #{p} at #{state}")
+        debug -> "<alt> next try: #{p} at #{state}"
         if aborting
-          if debug? then debug("<alt> -- er, n/m, aborting")
+          debug -> "<alt> -- er, n/m, aborting"
           return
         p.parse state, (rv) ->
           if rv.abort then aborting = true
@@ -426,18 +389,18 @@ parse = (p, str) ->
   state.addJob (=> "start: #{state}, #{p.toString()}"), ->
     p.parse state, (rv) ->
       if rv.ok
-        if debug? then debug "--- registering success: #{rv}"
+        debug -> "--- registering success: #{rv}"
         successes.push rv
       else
-        if debug? then debug "--- registering failure: #{rv}"
+        debug -> "--- registering failure: #{rv}"
         failures.push rv
   while state.trampoline.ready() and successes.length == 0
     state.trampoline.next()
-  if debug?
-    debug "--- final tally:"
-    for x in successes then debug "+++ #{x}"
-    for x in failures then debug "--- #{x}"
-    debug "--- GOOD DAY SIR"
+  debug ->
+    "--- final tally:\n" +
+      (for x in successes then "+++ #{x}\n") +
+      (for x in failures then "--- #{x}\n") +
+      "--- GOOD DAY SIR"
   if successes.length > 0
     successes[0]
   else
@@ -448,8 +411,6 @@ consume = (p, str) ->
   p = chain implicit(p), end, (a, b) -> a
   parse(p, str)
 
-
-exports.setDebug = setDebug
 
 exports.ParserState = ParserState
 exports.Match = Match
