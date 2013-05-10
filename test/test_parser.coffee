@@ -1,6 +1,7 @@
 should = require 'should'
 parser = require '../src/packrattle/parser'
 inspect = require("util").inspect
+ParserState = require("../src/packrattle/parser_state").ParserState
 
 describe "Parser", ->
   $ = parser
@@ -328,7 +329,7 @@ describe "Parser", ->
     p = $.seq "hello", /\s*/, $.string("there").onMatch (x) ->
       count++
       x
-    s = new parser.ParserState("hello  there!")
+    s = new ParserState("hello  there!")
     count.should.equal(0)
     rv = $.parse(p, s)
     rv.ok.should.equal(true)
