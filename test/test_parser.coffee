@@ -182,7 +182,7 @@ describe "Parser", ->
       )
       hits.should.equal(0)
       rv = $.parse(p, "   abc xyz\tghk")
-      hits.should.equal(6)
+      hits.should.equal(4)
       rv.ok.should.equal(true)
       rv.match.should.eql([ "abc", "xyz", "ghk" ])
 

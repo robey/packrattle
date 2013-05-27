@@ -1,4 +1,5 @@
 util = require 'util'
+WeakMap = require 'weakmap'
 debug = require("./debugging").debug
 parser_state = require("./parser_state")
 
@@ -314,9 +315,18 @@ implicit = (p) ->
 # allow functions to be passed in, and resolved only at parse-time.
 resolve = (p) ->
   if not (typeof p == "function") then return implicit(p)
-  p = implicit(p())
+  p = fromLazyCache(p)
+  p = implicit(p)
   if not p? then throw new Error("Can't resolve parser")
   p
+
+lazyCache = new WeakMap
+fromLazyCache = (p) ->
+  memo = lazyCache.get(p)
+  if !memo
+    memo = p()
+    lazyCache.set(p, memo)
+  memo
 
 # execute a parser over a string.
 parse = (p, str) ->
