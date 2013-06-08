@@ -70,15 +70,18 @@ class Parser
     new Parser @_message, (state, cont) =>
       @parse state, (rv) ->
         if not rv.ok then return cont(rv)
-        rv = if typeof f == "function"
+        if typeof f == "function"
           try
-            new Match(rv.state, f(rv.match), rv.commit)
+            result = f(rv.match)
+            if result instanceof Parser
+              result.parse(rv.state, cont)
+            else
+              cont(new Match(rv.state, result, rv.commit))
           catch e
-            new NoMatch(state, e.toString())
+            cont(new NoMatch(state, e.toString()))
         else
-          new Match(rv.state, f, rv.commit)
-        cont(rv)
-  
+          cont(new Match(rv.state, f, rv.commit))
+
   # only succeed if f(match) returns true.
   matchIf: (f) ->
     new Parser @_message, (state, cont) =>
@@ -114,6 +117,11 @@ end = new Parser "end", (state, cont) ->
 
 # never matches anything.
 reject = new Parser "failure", (state, cont) -> @fail(state, cont)
+
+# always matches without consuming input and yields the given value.
+succeed = (v) ->
+  new Parser "succeed(#{v})", (state, cont) ->
+    cont(new Match(state, v))
 
 # matches a literal string.
 string = (s) ->
@@ -354,6 +362,7 @@ exports.Parser = Parser
 
 exports.end = end
 exports.reject = reject
+exports.succeed = succeed
 exports.string = string
 exports.regex = regex
 exports.optional = optional
