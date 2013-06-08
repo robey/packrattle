@@ -27,7 +27,8 @@
     "glob": "*",
     "mocha": "*",
     "should": "*",
-    "sync": "*"
+    "sync": "*",
+    "weakmap": "0.0.6"
   },
   "main": "./lib/packrattle",
   "files": [
