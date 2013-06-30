@@ -1,0 +1,8 @@
+load "coffee"
+load "mocha"
+
+task "clean", description: "erase built files", run: ->
+  rm "-rf", "lib"
+
+task "distclean", description: "erase everything that wasn't in git", must: "clean", run: ->
+  rm "-rf", "node_modules"
