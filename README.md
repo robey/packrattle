@@ -1,6 +1,8 @@
 packrattle
 ==========
 
+[![Build Status](https://travis-ci.org/robey/packrattle.png?branch=master)](https://travis-ci.org/robey/packrattle)
+
 this is a simple GLL-based parser-combinator library for coffeescript / javascript. it lets you write parsing code without the use of an external tool like lex or antlr: the parser is in js/cs with the rest of your code!
 
 an example, from the unit tests:
