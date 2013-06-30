@@ -17,7 +17,7 @@
   ],
 
   "scripts": {
-    "test": "cake test"
+    "test": "plz test"
   },
   "dependencies": {
     "coffee-script": "*"
