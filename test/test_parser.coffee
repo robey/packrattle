@@ -95,6 +95,7 @@ describe "Parser", ->
       rv = $.parse p, "hello"
       rv.ok.should.equal(false)
       rv.message.should.match(/utter failure/)
+      rv.state.pos.should.eql(5)
 
     a = "foo"
     m = parser.string("foo")
@@ -415,10 +416,19 @@ describe "Parser", ->
       rv.ok.should.equal(false)
       rv.message.should.match(/Expected '0'/)
 
-    it "remembers committing through a chain", ->
+    it "is remembered through a chain", ->
       p = $.alt(
         [ $.string("!").commit(), "x", "y", /\d+/ ],
         /.xyz/
-      )      
+      )
+      rv = $.parse(p, "!xyz")
+      rv.ok.should.equal(false)
+
+    it "is remembered through an exception", ->
+      require("../lib/packrattle").setDebugLogger console.log
+      p = $.alt(
+        $.seq($.string("!").commit(), "x", "y").onMatch((m) -> throw new Error("Y!")),
+        /.xyz/
+      )
       rv = $.parse(p, "!xyz")
       rv.ok.should.equal(false)

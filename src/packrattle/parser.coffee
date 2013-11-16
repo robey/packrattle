@@ -80,7 +80,7 @@ class Parser
             else
               cont(new Match(rv.state, result, rv.commit))
           catch e
-            cont(new NoMatch(state, e.toString()))
+            cont(new NoMatch(rv.state, e.toString(), rv.commit))
         else
           cont(new Match(rv.state, f, rv.commit))
 
