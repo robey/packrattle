@@ -17,17 +17,15 @@
   ],
 
   "scripts": {
-    "test": "plz test"
+    "test": "plz --color -v test"
   },
   "dependencies": {
     "coffee-script": "*"
   },
   "devDependencies": {
-    "fibers": "*",
     "glob": "*",
     "mocha": "*",
     "should": "*",
-    "sync": "*",
     "weakmap": "0.0.6"
   },
   "main": "./lib/packrattle",
