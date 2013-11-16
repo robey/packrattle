@@ -5,12 +5,16 @@
 # LOT of times with debugging info as the parser makes progress (or doesn't).
 #
 
-debugf = null
+__debug = null
 
-setDebugLogger = (f) -> debugf = f
+debugLines = (lines) ->
+  for line in lines
+    if Array.isArray(line) then debugLines(line) else __debug(line)
 
-exports.setDebugLogger = setDebugLogger
+exports.setDebugLogger = (f) -> __debug = f
+
 exports.debug = (f) ->
-  if debugf?
-    lines = f().split("\n")
-    for line in lines then debugf(line)
+  if __debug?
+    lines = f()
+    unless Array.isArray(lines) then lines = lines.split("\n")
+    debugLines(lines)

@@ -7,6 +7,7 @@ ParserState = parser_state.ParserState
 Match = parser_state.Match
 NoMatch = parser_state.NoMatch
 
+pad = (n) -> [0...n].map((x) -> "  ").join("")
 
 _parser_id = 0
 class Parser
@@ -30,10 +31,10 @@ class Parser
   parse: (state, cont) ->
     state = state.deeper()
     debug =>
-      "-> state=#{state}\n" +
-      "   parse (#{@id}): #{@}"
-    newCont = (rv) ->
-      debug -> "<- #{rv}"
+      pad(state.depth) + "-> (#{@id}): #{@} / state=#{state}"
+    newCont = (rv) =>
+      debug =>
+        pad(state.depth) + "<- (#{@id}): #{rv}"
       cont(rv)
 
     entry = state.getCache(@)
@@ -48,12 +49,12 @@ class Parser
             if r.equals(rv) then found = true
           if not found
             debug =>
-              "<- coming back from #{@}\n" +
-                "   cache++ (#{@id},#{state.pos}) = #{rv}"
+              pad(state.depth) + "<- (#{@id}): cache++ #{rv} / state=#{state}"
             entry.results.push rv
             for c in entry.continuations then c(rv)
     else
-      debug => "<- answer from cache (#{@id},#{state.pos}): #{util.inspect(entry.results)}"
+      debug =>
+        pad(state.depth) + "<- (#{@id}): answer from cache #{util.inspect(entry.results)} / state=#{state}"
       entry.continuations.push newCont
       for r in entry.results then newCont(r)
 
@@ -241,16 +242,16 @@ alt = (parsers...) ->
   message = -> ("(" + resolve(p).message() + ")" for p in parsers).join(" or ")
   new Parser message, (state, cont) ->
     parsers = (resolve(p) for p in parsers)
-    debug ->
-      "<alt> start: #{state}\n" +
-        (for p in parsers then "<alt> -- #{p}\n") +
-        "<alt> --."
+    debug -> [
+      "alt: start @ #{state}"
+      for p in parsers then "- #{p}"
+    ]
     aborting = false
-    for p in parsers[...] then do (p) ->
+    for p in parsers then do (p) ->
       state.addJob (=> "alt: #{state}, #{p.message()}"), ->
-        debug -> "<alt> next try: #{p} at #{state}"
+        debug -> "alt: next try: #{p} at #{state}"
         if aborting
-          debug -> "<alt> -- er, n/m, aborting"
+          debug -> "alt: er, n/m, aborting"
           return
         p.parse state, (rv) ->
           if rv.abort then aborting = true
@@ -352,11 +353,18 @@ parse = (p, str) ->
         failures.push rv
   while state.trampoline.ready() and successes.length == 0
     state.trampoline.next()
-  debug ->
-    "--- final tally:\n" +
-      (for x in successes then "+++ #{x}\n") +
-      (for x in failures then "--- #{x}\n") +
-      "--- GOOD DAY SIR"
+  # message with 'abort' set has highest priority. secondary sort by index.
+  failures.sort (a, b) ->
+    if a.abort != b.abort
+      if a.abort then 1 else -1
+    else
+      b.state.pos - a.state.pos
+  debug -> [
+    "--- final tally:"
+    (for x in successes then "+++ #{x}")
+    (for x in failures then "--- #{x}")
+    "--- GOOD DAY SIR"
+  ]
   if successes.length > 0
     successes[0]
   else

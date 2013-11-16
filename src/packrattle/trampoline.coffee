@@ -9,17 +9,15 @@ class Trampoline
 
   push: (priority, description, job) ->
     @work.put { description, job }, priority
-    debug =>
-      "(+) push work to trampoline. new contents:\n" +
-      (for item in @work.queue
-        "( ) #{item.priority} - #{item.item.description()}\n"
-      ) +
-      "(.)"
 
   size: -> @work.length()
 
   # execute the next branch of parsing on the trampoline.
   next: ->
+    debug => [
+      "fetch next job:"
+      for item in @work.inspect() then "[#{item.priority}] #{item.item.description()}"
+    ]
     item = @work.get()
     if item? then item.job()
 
