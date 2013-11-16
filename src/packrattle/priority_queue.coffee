@@ -27,5 +27,8 @@ class PriorityQueue
     else
       @putRange n + 1, right, item, priority
 
+  inspect: ->
+    @queue[...].reverse()
+
 
 exports.PriorityQueue = PriorityQueue

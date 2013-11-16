@@ -205,7 +205,7 @@ chain = (p1, p2, combiner) ->
           # no backtracking if the left match was commit()'d.
           if rv1.commit then rv2.abort = true
           return cont(rv2)
-        cont(new Match(rv2.state, combiner(rv1.match, rv2.match), rv2.commit))
+        cont(new Match(rv2.state, combiner(rv1.match, rv2.match), rv2.commit or rv1.commit))
 
 # chain together a sequence of parsers. if they all match, the match result
 # will contain an array of all the results that weren't null.
