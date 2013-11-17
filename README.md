@@ -8,27 +8,27 @@ this is a simple GLL-based parser-combinator library for coffeescript / javascri
 an example, from the unit tests:
 
 ```coffeescript
-$ = require("packrattle")
+pr = require("packrattle")
 
-csv = $.repeatSeparated(
-  $.regex(/([^,]*)/).onMatch (m) -> m[0]
+csv = pr.repeatSeparated(
+  pr.regex(/([^,]*)/).onMatch (m) -> m[0]
   /,/
 )
 
-$.consume(csv, "this,is,csv")
+pr.consume(csv, "this,is,csv")
 => { ok: true, match: [ "this", "is", "csv" ] }
 ```
 
 or, in javascript:
 ```javascript
-var $ = require("packrattle");
+var pr = require("packrattle");
 
-var csv = $.repeatSeparated(
-  $.regex(/([^,]*)/).onMatch(function (m) { return m[0]; }),
+var csv = pr.repeatSeparated(
+  pr.regex(/([^,]*)/).onMatch(function (m) { return m[0]; }),
   /,/
 );
 
-$.consume(csv, "this,is,csv");
+pr.consume(csv, "this,is,csv");
 => { ok: true, match: [ "this", "is", "csv" ] }
 ```
 
@@ -51,25 +51,25 @@ being "GLL-based" means that a trampoline is used to avoid recursion and to memo
 would need to be refactored a lot to work in most parser libraries. it can be expressed in packrattle as
 
 ```coffeescript
-expr = $.alt(
-  $.seq((-> expr), "+", (-> expr)),
-  $.regex(/\d+/).onMatch((m) -> m[0])
+expr = pr.alt(
+  pr.seq((-> expr), "+", (-> expr)),
+  pr.regex(/\d+/).onMatch((m) -> m[0])
 )
 ```
 
 or in javascript as
 
 ```javascript
-var expr = $.alt(
-  $.seq(function() { return expr; }, "+", function() { return expr; }),
-  $.regex(/\d+/).onMatch(function (m) { return m[0]; })
+var expr = pr.alt(
+  pr.seq(function() { return expr; }, "+", function() { return expr; }),
+  pr.regex(/\d+/).onMatch(function (m) { return m[0]; })
 );
 ```
 
 and it actually matches strings:
 
 ```coffeescript
-$.consume(expr, "3+10+200")
+pr.consume(expr, "3+10+200")
 => { ok: true, match: [ [ '3', '+', '10' ], '+', '200' ] }
 ```
 
@@ -174,8 +174,8 @@ with an optional limit on the minimum or maximum number of 'p' there can be. two
 for example, here is a parser that identifies strings like "3+50+2" and returns the match result 55:
 
 ```javascript
-var number = $.regex(/\d+/).onMatch(function (m) { return parseInt(m[0]); });
-var expr = $.reduce(
+var number = pr.regex(/\d+/).onMatch(function (m) { return parseInt(m[0]); });
+var expr = pr.reduce(
   number,
   "+",
   function (n) { return n; },
@@ -196,6 +196,18 @@ any function that takes a parser will also implicitly convert non-parser objects
 - an array will be converted to `seq(...)`.
 
 - a function will be called (with no arguments), under the assumption that it returns a parser. each function is called exactly once, and the result is cached. this can be used to make forward references, if your parser is recursive.
+
+the packrattle module object can be used as a function for converting objects into parsers, so:
+
+```javascript
+pr.seq(pr.regex(/\d+/), pr.string("!").drop())
+```
+
+can also be expressed as:
+
+```javascript
+pr([ /\d+/, pr("!").drop() ])
+```
 
 
 executing
