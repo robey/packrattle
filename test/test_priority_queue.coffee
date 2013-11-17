@@ -1,9 +1,11 @@
 should = require 'should'
-priority_queue = require '../src/packrattle/priority_queue'
+util = require 'util'
+
+pr = require("../lib/packrattle")
 
 describe "PriorityQueue", ->
   it "puts items sorted", ->
-    q = new priority_queue.PriorityQueue()
+    q = new pr.PriorityQueue()
     q.put "a", 3
     q.queue.should.eql [ { item: "a", priority: 3 } ]
     q.put "b", 2
@@ -43,7 +45,7 @@ describe "PriorityQueue", ->
     ]
 
   it "gets items sorted", ->
-    q = new priority_queue.PriorityQueue()
+    q = new pr.PriorityQueue()
     q.put "a", 3
     q.put "b", 2
     q.put "c", 6
@@ -59,7 +61,7 @@ describe "PriorityQueue", ->
     (-> q.get()).should.throw /empty/
 
   it "preserves ordering with the same priority", ->
-    q = new priority_queue.PriorityQueue()
+    q = new pr.PriorityQueue()
     q.put "a", 0
     q.put "b", 0
     q.put "c", 0
