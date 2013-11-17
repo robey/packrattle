@@ -21,7 +21,10 @@ class Parser
     @recursing = false
     rv
 
-  toString: -> "Parser(#{@message()})"
+  toString: ->
+    message = @message()
+    if message[0] != '(' then message = "(#{message})"
+    "Parser[#{@id}]#{message}"
 
   # helper for internal use: immediately fail.
   fail: (state, cont) ->
@@ -64,7 +67,8 @@ class Parser
   onFail: (newMessage) ->
     new Parser @_message, (state, cont) =>
       @parse state, (rv) ->
-        if rv.ok then return cont(rv)
+        if rv.ok or rv.abort then return cont(rv)
+        debug => "rewriting error '#{rv.message}' to '#{newMessage}'"
         cont(new NoMatch(rv.state, newMessage, rv.abort))
 
   # transforms the result of a parser if it succeeds.
@@ -80,6 +84,7 @@ class Parser
             else
               cont(new Match(rv.state, result, rv.commit))
           catch e
+            debug => "onmatch threw exception: #{e.toString()}"
             cont(new NoMatch(rv.state, e.toString(), rv.commit))
         else
           cont(new Match(rv.state, f, rv.commit))
@@ -151,7 +156,7 @@ regex = (r) ->
 # present (usually the empty string).
 optional = (p, defaultValue="") ->
   p = implicit(p)
-  new Parser (-> "optional #{resolve(p).message()}"), (state, cont) ->
+  new Parser (-> "optional(#{resolve(p).message()})"), (state, cont) ->
     p = resolve(p)
     p.parse state, (rv) ->
       if rv.ok then return cont(rv)
@@ -182,7 +187,7 @@ commit = (p) ->
 # succeed (with an empty match) if the parser failed; otherwise fail.
 not_ = (p) ->
   p = implicit(p)
-  message = -> "not " + resolve(p).message()
+  message = -> "not(#{resolve(p).message()})"
   new Parser message, (state, cont) ->
     p = resolve(p)
     p.parse state, (rv) ->
@@ -195,7 +200,7 @@ drop = (p) -> implicit(p).onMatch (x) -> null
 # match, 'combiner' is called with the two matched objects, to create a
 # single match result.
 chain = (p1, p2, combiner) ->
-  new Parser (-> "(#{resolve(p1).message()}) chain (#{resolve(p2).message()})"), (state, cont) ->
+  new Parser (-> "(#{resolve(p1).message()} then #{resolve(p2).message()})"), (state, cont) ->
     p1 = resolve(p1)
     p1.parse state, (rv1) ->
       if not rv1.ok then return cont(rv1)
@@ -211,7 +216,7 @@ chain = (p1, p2, combiner) ->
 # will contain an array of all the results that weren't null.
 seq = (parsers...) ->
   parsers = (implicit(p) for p in parsers)
-  message = -> ("(" + resolve(p).message() + ")" for p in parsers).join(" then ")
+  message = -> "(" + (resolve(p).message() for p in parsers).join(" then ") + ")"
   combiner = (sum, x) ->
     sum = sum[...]
     if x? then sum.push x
@@ -226,7 +231,7 @@ seq = (parsers...) ->
 # used for discarding whitespace in lexical parsing.
 seqIgnore = (ignore, parsers...) ->
   parsers = (implicit(p) for p in parsers)
-  message = -> ("(" + resolve(p).message() + ")" for p in parsers).join(" then ")
+  message = -> "(" + (resolve(p).message() for p in parsers).join(" then ") + ")"
   newseq = []
   for p in parsers
     newseq.push optional(ignore).drop()
@@ -239,7 +244,7 @@ seqIgnore = (ignore, parsers...) ->
 # looking for the first match.
 alt = (parsers...) ->
   parsers = (implicit(p) for p in parsers)
-  message = -> ("(" + resolve(p).message() + ")" for p in parsers).join(" or ")
+  message = -> "(" + (resolve(p).message() for p in parsers).join(" or ") + ")"
   new Parser message, (state, cont) ->
     parsers = (resolve(p) for p in parsers)
     debug -> [
@@ -248,11 +253,9 @@ alt = (parsers...) ->
     ]
     aborting = false
     for p in parsers then do (p) ->
-      state.addJob (=> "alt: #{state}, #{p.message()}"), ->
+      state.addJob (=> "alt: #{state}, #{p}"), ->
+        if aborting then return
         debug -> "alt: next try: #{p} at #{state}"
-        if aborting
-          debug -> "alt: er, n/m, aborting"
-          return
         p.parse state, (rv) ->
           if rv.abort then aborting = true
           return cont(rv)
