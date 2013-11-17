@@ -3,9 +3,9 @@ Trampoline = require("./trampoline").Trampoline
 
 # parser state, used internally.
 class ParserState
-  constructor: (@text, @pos=0, @end, @lineno=0, @xpos=0, @trampoline=null, @depth=0) ->
+  constructor: (@text, @pos=0, @end, @lineno=0, @xpos=0, @trampoline=null, @depth=0, @debugger=null) ->
     if not @end? then @end = @text.length
-    if not @trampoline? then @trampoline = new Trampoline()
+    if not @trampoline? then @trampoline = new Trampoline(@)
 
   toString: ->
     truncated = if @text.length > 10 then "'#{@text[...10]}...'" else "'#{@text}'"
@@ -23,7 +23,7 @@ class ParserState
         xpos = 0
       else
         xpos++
-    state = new ParserState(@text, pos, @end, lineno, xpos, @trampoline, @depth)
+    state = new ParserState(@text, pos, @end, lineno, xpos, @trampoline, @depth, @debugger)
     state
 
   # return the text of the current line around @pos.
@@ -46,7 +46,17 @@ class ParserState
 
   addJob: (description, job) -> @trampoline.push @depth, description, job
 
-  deeper: -> new ParserState(@text, @pos, @end, @lineno, @xpos, @trampoline, @depth + 1)
+  deeper: -> new ParserState(@text, @pos, @end, @lineno, @xpos, @trampoline, @depth + 1, @debugger)
+
+  debug: (f) ->
+    return unless @debugger
+    lines = if typeof f == 'function' then f() else f
+    unless Array.isArray(lines) then lines = lines.split("\n")
+    @debugLines(lines)
+
+  debugLines: (lines) ->
+    for line in lines
+      if Array.isArray(line) then @debugLines(line) else @debugger(line)
 
 
 class Match

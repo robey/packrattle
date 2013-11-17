@@ -1,6 +1,5 @@
 util = require 'util'
 WeakMap = require 'weakmap'
-debug = require("./debugging").debug
 parser_state = require("./parser_state")
 
 ParserState = parser_state.ParserState
@@ -33,10 +32,10 @@ class Parser
   # executes @matcher, passing the result (Match or NoMatch) to 'cont'.
   parse: (state, cont) ->
     state = state.deeper()
-    debug =>
+    state.debug =>
       pad(state.depth) + "-> (#{@id}): #{@} / state=#{state}"
     newCont = (rv) =>
-      debug =>
+      state.debug =>
         pad(state.depth) + "<- (#{@id}): #{rv}"
       cont(rv)
 
@@ -51,12 +50,12 @@ class Parser
           for r in entry.results
             if r.equals(rv) then found = true
           if not found
-            debug =>
+            state.debug =>
               pad(state.depth) + "<- (#{@id}): cache++ #{rv} / state=#{state}"
             entry.results.push rv
             for c in entry.continuations then c(rv)
     else
-      debug =>
+      state.debug =>
         pad(state.depth) + "<- (#{@id}): answer from cache #{util.inspect(entry.results)} / state=#{state}"
       entry.continuations.push newCont
       for r in entry.results then newCont(r)
@@ -68,7 +67,7 @@ class Parser
     new Parser @_message, (state, cont) =>
       @parse state, (rv) ->
         if rv.ok or rv.abort then return cont(rv)
-        debug => "rewriting error '#{rv.message}' to '#{newMessage}'"
+        state.debug => "rewriting error '#{rv.message}' to '#{newMessage}'"
         cont(new NoMatch(rv.state, newMessage, rv.abort))
 
   # transforms the result of a parser if it succeeds.
@@ -84,7 +83,7 @@ class Parser
             else
               cont(new Match(rv.state, result, rv.commit))
           catch e
-            debug => "onmatch threw exception: #{e.toString()}"
+            state.debug => "onmatch threw exception: #{e.toString()}"
             cont(new NoMatch(rv.state, e.toString(), rv.commit))
         else
           cont(new Match(rv.state, f, rv.commit))
@@ -181,7 +180,7 @@ commit = (p) ->
     p.parse state, (rv) ->
       if not rv.ok then return cont(rv)
       rv.commit = true
-      debug -> "commit!"
+      state.debug -> "commit!"
       cont(rv)
 
 # succeed (with an empty match) if the parser failed; otherwise fail.
@@ -247,7 +246,7 @@ alt = (parsers...) ->
   message = -> "(" + (resolve(p).message() for p in parsers).join(" or ") + ")"
   new Parser message, (state, cont) ->
     parsers = (resolve(p) for p in parsers)
-    debug -> [
+    state.debug -> [
       "alt: start @ #{state}"
       for p in parsers then "- #{p}"
     ]
@@ -255,7 +254,7 @@ alt = (parsers...) ->
     for p in parsers then do (p) ->
       state.addJob (=> "alt: #{state}, #{p}"), ->
         if aborting then return
-        debug -> "alt: next try: #{p} at #{state}"
+        state.debug -> "alt: next try: #{p} at #{state}"
         p.parse state, (rv) ->
           if rv.abort then aborting = true
           return cont(rv)
@@ -341,18 +340,19 @@ fromLazyCache = (p) ->
   memo
 
 # execute a parser over a string.
-parse = (p, str) ->
+parse = (p, str, options = {}) ->
   state = if str instanceof ParserState then str else new ParserState(str)
+  if options.debugger? then state.debugger = options.debugger
   p = resolve(p)
   successes = []
   failures = []
   state.addJob (=> "start: #{state}, #{p.toString()}"), ->
     p.parse state, (rv) ->
       if rv.ok
-        debug -> "--- registering success: #{rv}"
+        state.debug -> "--- registering success: #{rv}"
         successes.push rv
       else
-        debug -> "--- registering failure: #{rv}"
+        state.debug -> "--- registering failure: #{rv}"
         failures.push rv
   while state.trampoline.ready() and successes.length == 0
     state.trampoline.next()
@@ -362,7 +362,7 @@ parse = (p, str) ->
       if b.abort then 1 else -1
     else
       b.state.depth - a.state.depth
-  debug -> [
+  state.debug -> [
     "--- final tally:"
     (for x in successes then "+++ #{x}")
     (for x in failures then "--- #{x}")
@@ -374,9 +374,9 @@ parse = (p, str) ->
     failures[0]
 
 # must match the entire string, to the end.
-consume = (p, str) ->
+consume = (p, str, options) ->
   p = chain implicit(p), end, (a, b) -> a
-  parse(p, str)
+  parse(p, str, options)
 
 
 exports.Parser = Parser
