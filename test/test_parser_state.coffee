@@ -1,43 +1,34 @@
 should = require 'should'
-ParserState = require("../src/packrattle/parser_state").ParserState
+util = require 'util'
+
+pr = require("../lib/packrattle")
 
 describe "ParserState", ->
+  text = "line one\nline two\nline 3\n\nline 4"
+
+  verify = (state, lineno, xpos) ->
+    lines = text.split("\n")
+    state.line().should.eql(lines[lineno])
+    state.lineno.should.eql(lineno)
+    state.xpos.should.eql(xpos)
+
   it "finds the current line", ->
-    text = "line one\nline two\nline 3\n\nline 4"
-    state = new ParserState(text).advance(0)
-    state.line().should.eql("line one")
-    state.lineno.should.equal(0)
-    state.xpos.should.equal(0)
-    state = new ParserState(text).advance(5)
-    state.line().should.eql("line one")
-    state.lineno.should.equal(0)
-    state.xpos.should.equal(5)
-    state = new ParserState(text).advance(7)
-    state.line().should.eql("line one")
-    state.lineno.should.equal(0)
-    state.xpos.should.equal(7)
-    state = new ParserState(text).advance(8)
-    state.line().should.eql("line one")
-    state.lineno.should.equal(0)
-    state.xpos.should.equal(8)
-    state = new ParserState(text).advance(9)
-    state.line().should.eql("line two")
-    state.lineno.should.equal(1)
-    state.xpos.should.equal(0)
-    state = new ParserState(text).advance(20)
-    state.line().should.eql("line 3")
-    state.lineno.should.equal(2)
-    state.xpos.should.equal(2)
-    state = new ParserState(text).advance(25)
-    state.line().should.eql("")
-    state.lineno.should.equal(3)
-    state.xpos.should.equal(0)
-    state = new ParserState(text).advance(26)
-    state.line().should.eql("line 4")
-    state.lineno.should.equal(4)
-    state.xpos.should.equal(0)
-    state = new ParserState(text).advance(31)
-    state.line().should.eql("line 4")
-    state.lineno.should.equal(4)
-    state.xpos.should.equal(5)
+    state = new pr.ParserState(text).advance(0)
+    verify(state, 0, 0)
+    state = new pr.ParserState(text).advance(5)
+    verify(state, 0, 5)
+    state = new pr.ParserState(text).advance(7)
+    verify(state, 0, 7)
+    state = new pr.ParserState(text).advance(8)
+    verify(state, 0, 8)
+    state = new pr.ParserState(text).advance(9)
+    verify(state, 1, 0)
+    state = new pr.ParserState(text).advance(20)
+    verify(state, 2, 2)
+    state = new pr.ParserState(text).advance(25)
+    verify(state, 3, 0)
+    state = new pr.ParserState(text).advance(26)
+    verify(state, 4, 0)
+    state = new pr.ParserState(text).advance(31)
+    verify(state, 4, 5)
     
