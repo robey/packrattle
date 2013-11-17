@@ -1,3 +1,4 @@
+util = require 'util'
 Trampoline = require("./trampoline").Trampoline
 
 # parser state, used internally.
@@ -63,7 +64,7 @@ class NoMatch
 
   toString: -> "NoMatch(state=#{@state}, message='#{@message}', abort=#{@abort})"
 
-  equals: (other) -> (not other.ok) and @state.pos == other.state.pos
+  equals: (other) -> (not other.ok) and @state.pos == other.state.pos and @message == other.message
 
 
 exports.ParserState = ParserState

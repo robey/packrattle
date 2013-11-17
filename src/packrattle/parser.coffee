@@ -358,10 +358,10 @@ parse = (p, str) ->
     state.trampoline.next()
   # message with 'abort' set has highest priority. secondary sort by index.
   failures.sort (a, b) ->
-    if a.abort != b.abort
-      if a.abort then 1 else -1
+    if a.abort != b.abort and false
+      if b.abort then 1 else -1
     else
-      b.state.pos - a.state.pos
+      b.state.depth - a.state.depth
   debug -> [
     "--- final tally:"
     (for x in successes then "+++ #{x}")

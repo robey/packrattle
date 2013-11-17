@@ -1,7 +1,7 @@
 should = require 'should'
-parser = require '../src/packrattle/parser'
+parser = require '../lib/packrattle/parser'
 inspect = require("util").inspect
-ParserState = require("../src/packrattle/parser_state").ParserState
+ParserState = require("../lib/packrattle/parser_state").ParserState
 
 describe "Parser", ->
   $ = parser
@@ -385,8 +385,8 @@ describe "Parser", ->
     it "can commit to an alternative", ->
       p = $.seq(
         $.string("!").commit()
-        /\d+/
-      ).onFail("! must be a number").or([ "@", /\d+/ ]).onMatch (a) ->
+        $.regex(/\d+/).onFail("! must be a number")
+      ).or([ "@", /\d+/ ]).onMatch (a) ->
         [ a[0], a[1][0] ]
       rv = $.parse(p, "!3")
       rv.ok.should.equal(true)
@@ -425,7 +425,6 @@ describe "Parser", ->
       rv.ok.should.equal(false)
 
     it "is remembered through an exception", ->
-      require("../lib/packrattle").setDebugLogger console.log
       p = $.alt(
         $.seq($.string("!").commit(), "x", "y").onMatch((m) -> throw new Error("Y!")),
         /.xyz/
