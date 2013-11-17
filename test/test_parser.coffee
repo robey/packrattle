@@ -6,20 +6,20 @@ ParserState = require("../lib/packrattle/parser_state").ParserState
 describe "Parser", ->
   $ = parser
 
-  it "intentionally fails", ->
+  it "reject", ->
     p = $.reject
     rv = $.parse p, ""
     rv.state.pos.should.equal(0)
     rv.message.should.match(/failure/)
 
-  it "trivially succeeds", ->
+  it "succeed", ->
     p = $.succeed("foo")
     rv = $.parse p, ""
     rv.state.pos.should.equal(0)
     rv.ok.should.equal(true)
     rv.match.should.equal("foo")
 
-  it "matches a literal", ->
+  it "literal string", ->
     p = $.string("hello")
     rv = $.parse p, "cat"
     rv.state.pos.should.equal(0)
@@ -55,7 +55,7 @@ describe "Parser", ->
     rv.ok.should.equal(false)
     rv.message.should.match(/there/)
 
-  it "handles regexen", ->
+  it "regex", ->
     p = $.regex(/h(i)?/)
     rv = $.parse p, "no"
     rv.state.pos.should.equal(0)
@@ -65,7 +65,7 @@ describe "Parser", ->
     rv.match[0].should.eql("hi")
     rv.match[1].should.eql("i")
 
-  it "transforms the error message", ->
+  it "onFail", ->
     p = $.string("hello").onFail("Try a greeting.")
     rv = $.parse p, "cat"
     rv.state.pos.should.equal(0)
@@ -74,61 +74,8 @@ describe "Parser", ->
     rv.state.pos.should.equal(5)
     rv.match.should.equal("hello")
 
-  describe "onMatch", ->
-    it "transforms a match", ->
-      p = parser.string("hello").onMatch((s) -> s.toUpperCase())
-      rv = $.parse p, "cat"
-      rv.state.pos.should.equal(0)
-      rv.message.should.match(/hello/)
-      rv = $.parse p, "hellon"
-      rv.state.pos.should.equal(5)
-      rv.match.should.equal("HELLO")
 
-    it "transforms a match into a constant", ->
-      p = parser.string("hello").onMatch("yes")
-      rv = $.parse p, "hello"
-      rv.state.pos.should.equal(5)
-      rv.match.should.eql("yes")
 
-    it "transforms a match into a failure on exception", ->
-      p = parser.string("hello").onMatch((s) -> throw "utter failure")
-      rv = $.parse p, "hello"
-      rv.ok.should.equal(false)
-      rv.message.should.match(/utter failure/)
-      rv.state.pos.should.eql(5)
-
-    a = "foo"
-    m = parser.string("foo")
-    f = (s) -> parser.string(s + "bar")
-    g = (s) -> parser.string(s + "baz")
-
-    shouldBeIdentical = (p1, p2, input) ->
-      rv1 = $.parse(p1, input)
-      rv2 = $.parse(p2, input)
-      rv1.ok.should.equal(true)
-      rv2.ok.should.equal(true)
-      rv1.match.should.equal(rv2.match)
-
-    it "satisfies monad left identity", ->
-      p1 = parser.succeed(a).onMatch(f)
-      p2 = f(a)
-      shouldBeIdentical(p1, p2, "foobar")
-
-    it "satisfies monad right identity", ->
-      p1 = m.onMatch(parser.succeed)
-      p2 = m
-      shouldBeIdentical(p1, p2, "foo")
-
-    it "satisfies monad associativity", ->
-      p1 = m.onMatch(f).onMatch(g)
-      p2 = m.onMatch((s) -> f(s).onMatch(g))
-      shouldBeIdentical(p1, p2, "foofoobarfoobarbaz")
-
-    it "fails if a nested parser fails", ->
-      p = m.onMatch(-> parser.reject.onFail("no foo"))
-      rv = $.parse p, "foo"
-      rv.ok.should.equal(false)
-      rv.message.should.equal("no foo")
 
   it "matches with a condition", ->
     p = $.regex(/\d+/).matchIf((s) -> parseInt(s[0]) % 2 == 0).onFail("Expected an even number")
