@@ -94,9 +94,9 @@ class Parser
     new Parser @_message, (state, cont) =>
       @parse state, (rv) =>
         if not rv.ok then return cont(rv)
-        if not f(rv.match) then return @fail(state, cont)
+        if not f(rv.match) then return cont(new NoMatch(state, "Expected " + @message(), rv.commit))
         cont(rv)
-
+    
   # ----- convenience methods for accessing the combinators
 
   then: (p) -> chain @, p, (a, b) -> [ a, b ]
