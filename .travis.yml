@@ -4,5 +4,5 @@ node_js:
   - "0.10"
 
 before_install:
-  - "npm install -g plz --registry http://www.lag.net/npm"
-
+  - "npm install -g plz"
+  - "plz --version"
