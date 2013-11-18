@@ -25,6 +25,7 @@
   "devDependencies": {
     "glob": "*",
     "mocha": "*",
+    "plz": "*",
     "should": "*",
     "weakmap": "0.0.6"
   },
