@@ -1,4 +1,3 @@
-debugging = require("./packrattle/debugging")
 parser = require("./packrattle/parser")
 parser_state = require("./packrattle/parser_state")
 priority_queue = require("./packrattle/priority_queue")
