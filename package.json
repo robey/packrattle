@@ -17,7 +17,7 @@
   ],
 
   "scripts": {
-    "test": "plz --color -v test"
+    "test": "plz --color -v test mocha.display=list"
   },
   "dependencies": {
     "coffee-script": "*"
