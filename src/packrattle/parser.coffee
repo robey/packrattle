@@ -81,12 +81,12 @@ class Parser
             if result instanceof Parser
               result.parse(rv.state, cont)
             else
-              cont(new Match(rv.state, result, rv.commit))
+              cont(new Match(rv.state, result, rv.commit, @_message))
           catch e
             state.debug => "onmatch threw exception: #{e.toString()}"
             cont(new NoMatch(rv.state, e.toString(), rv.commit))
         else
-          cont(new Match(rv.state, f, rv.commit))
+          cont(new Match(rv.state, f, rv.commit, @_message))
 
   # only succeed if f(match) returns true.
   matchIf: (f) ->
@@ -95,6 +95,10 @@ class Parser
         if not rv.ok then return cont(rv)
         if not f(rv.match) then return cont(new NoMatch(state, "Expected " + @message(), rv.commit))
         cont(rv)
+
+  describe: (message) ->
+    @_message = message
+    @
     
   # ----- convenience methods for accessing the combinators
 
@@ -119,25 +123,27 @@ class Parser
 
 # matches the end of the string.
 end = new Parser "end", (state, cont) ->
-  if state.pos == state.end then cont(new Match(state, null)) else @fail(state, cont)
+  if state.pos == state.end then cont(new Match(state, null, false, "end")) else @fail(state, cont)
 
 # never matches anything.
 reject = new Parser "failure", (state, cont) -> @fail(state, cont)
 
 # always matches without consuming input and yields the given value.
 succeed = (v) ->
-  new Parser "succeed(#{v})", (state, cont) ->
-    cont(new Match(state, v))
+  message = "succeed(#{v})"
+  new Parser message, (state, cont) ->
+    cont(new Match(state, v, false, message))
 
 # matches a literal string.
 string = (s) ->
   len = s.length
-  new Parser "'#{s}'", (state, cont) ->
+  message = "'#{s}'"
+  new Parser message, (state, cont) ->
     candidate = state.text.slice(state.pos, state.pos + len)
     if candidate == s
-      cont(new Match(state.advance(len), candidate))
+      cont(new Match(state.advance(len), candidate, false, message))
     else
-      state.fail(cont, @message())
+      @fail(state, cont)
 
 # matches a regex
 regex = (r) ->
@@ -145,9 +151,10 @@ regex = (r) ->
   m = if r.multiline then "m" else ""
   source = if r.source[0] == "^" then r.source else ("^" + r.source)
   r2 = new RegExp(source, i + m)
-  new Parser r.toString(), (state, cont) ->
+  message = r.toString()
+  new Parser message, (state, cont) ->
     m = r2.exec(state.text.slice(state.pos))
-    if m? then cont(new Match(state.advance(m[0].length), m)) else @fail(state, cont)
+    if m? then cont(new Match(state.advance(m[0].length), m, false, message)) else @fail(state, cont)
 
 # ----- combinators:
 
@@ -155,21 +162,23 @@ regex = (r) ->
 # present (usually the empty string).
 optional = (p, defaultValue="") ->
   p = implicit(p)
-  new Parser (-> "optional(#{resolve(p).message()})"), (state, cont) ->
+  message = -> "optional(#{resolve(p).message()})"
+  new Parser message, (state, cont) ->
     p = resolve(p)
     p.parse state, (rv) ->
       if rv.ok then return cont(rv)
-      cont(new Match(state, defaultValue))
+      cont(new Match(state, defaultValue, rv.commit, message))
 
 # check that this parser matches, but don't advance the string. (perl calls
 # this a zero-width lookahead.)
 check = (p) ->
   p = implicit(p)
-  new Parser (-> resolve(p).message()), (state, cont) ->
+  message = -> resolve(p).message()
+  new Parser message, (state, cont) ->
     p = resolve(p)
     p.parse state, (rv) ->
       if not rv.ok then return cont(rv)
-      cont(new Match(state, rv.match, rv.commit))      
+      cont(new Match(state, rv.match, rv.commit, message))
 
 # if the parser matches up to here, refuse to backtrack to previous
 # alternatives.
@@ -189,8 +198,8 @@ not_ = (p) ->
   message = -> "not(#{resolve(p).message()})"
   new Parser message, (state, cont) ->
     p = resolve(p)
-    p.parse state, (rv) ->
-      if rv.ok then state.fail(cont, message()) else cont(new Match(state, ""))
+    p.parse state, (rv) =>
+      if rv.ok then @fail(state, cont) else cont(new Match(state, "", rv.commit, message))
 
 # throw away the match.
 drop = (p) -> implicit(p).onMatch (x) -> null
@@ -199,7 +208,8 @@ drop = (p) -> implicit(p).onMatch (x) -> null
 # match, 'combiner' is called with the two matched objects, to create a
 # single match result.
 chain = (p1, p2, combiner) ->
-  new Parser (-> "(#{resolve(p1).message()} then #{resolve(p2).message()})"), (state, cont) ->
+  message = -> "(#{resolve(p1).message()} then #{resolve(p2).message()})"
+  new Parser message, (state, cont) ->
     p1 = resolve(p1)
     p1.parse state, (rv1) ->
       if not rv1.ok then return cont(rv1)
@@ -209,7 +219,7 @@ chain = (p1, p2, combiner) ->
           # no backtracking if the left match was commit()'d.
           if rv1.commit then rv2.abort = true
           return cont(rv2)
-        cont(new Match(rv2.state, combiner(rv1.match, rv2.match), rv2.commit or rv1.commit))
+        cont(new Match(rv2.state, combiner(rv1.match, rv2.match), rv2.commit or rv1.commit, message))
 
 # chain together a sequence of parsers. if they all match, the match result
 # will contain an array of all the results that weren't null.
@@ -220,7 +230,7 @@ seq = (parsers...) ->
     sum = sum[...]
     if x? then sum.push x
     sum
-  rv = new Parser "''", (state, cont) -> cont(new Match(state, []))
+  rv = new Parser "''", (state, cont) -> cont(new Match(state, [], false, "''"))
   for p in parsers then rv = chain(rv, p, combiner)
   new Parser message, (state, cont) ->
     rv.parse state, cont
@@ -273,12 +283,12 @@ repeat = (p, minCount=0, maxCount=null) ->
     p = resolve(p)
     origState = state
     count = 0
-    nextCont = (rv, list=[], lastState=origState) ->
+    nextCont = (rv, list=[], lastState=origState) =>
       if not rv.ok
         if count >= minCount
           # intentionally use the "last good state" from our repeating parser.
-          return cont(new Match(lastState, list, rv.commit))
-        return origState.fail(cont, message())
+          return cont(new Match(lastState, list, rv.commit, message))
+        return @fail(origState, cont)
       count += 1
       if rv.match? then list.push rv.match
       if count < maxCount
@@ -287,7 +297,7 @@ repeat = (p, minCount=0, maxCount=null) ->
         rv.state.addJob (=> "repeat: #{state}, #{message()}"), ->
           p.parse rv.state, (x) -> nextCont(x, list[...], rv.state)
       else
-        cont(new Match(rv.state, list, rv.commit))
+        cont(new Match(rv.state, list, rv.commit, message))
     p.parse origState, nextCont
 
 # like 'repeat', but each element may be optionally preceded by 'ignore',
@@ -362,7 +372,7 @@ parse = (p, str, options = {}) ->
       if b.abort then 1 else -1
     else
       b.state.depth - a.state.depth
-  state.debug -> [
+  state.info -> [
     "--- final tally:"
     (for x in successes then "+++ #{x}")
     (for x in failures then "--- #{x}")

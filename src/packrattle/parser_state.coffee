@@ -38,30 +38,43 @@ class ParserState
     while lend < end and text[lend] != '\n' then lend++
     text.slice(lstart, lend)
 
-  # helper for internal use: immediately fail.
-  fail: (cont, message) ->
-    cont(new NoMatch(@, "Expected " + message))
-
   getCache: (parser) -> @trampoline.getCache(parser, @)
 
   addJob: (description, job) -> @trampoline.push @depth, description, job
 
   deeper: -> new ParserState(@text, @pos, @end, @lineno, @xpos, @trampoline, @depth + 1, @debugger)
 
-  debug: (f) ->
+  debugAtLevel: (name, f) ->
     return unless @debugger
-    lines = if typeof f == 'function' then f() else f
+    # "debugger" is a reserved word in coffeescript (sometimes) (?!)
+    debuggr = if typeof @debugger == "object" then @debugger[name] else @debugger
+    return unless debuggr
+    lines = if typeof f == "function" then f() else f
     unless Array.isArray(lines) then lines = lines.split("\n")
-    @debugLines(lines)
+    @debugLines(debuggr, lines)
 
-  debugLines: (lines) ->
+  info: (f) -> @debugAtLevel("info", f)
+  debug: (f) -> @debugAtLevel("debug", f)
+
+  debugLines: (debuggr, lines) ->
     for line in lines
-      if Array.isArray(line) then @debugLines(line) else @debugger(line)
+      if Array.isArray(line) then @debugLines(debuggr, line) else debuggr(line)
 
 
 class Match
-  constructor: (@state, @match, @commit=false) ->
+  constructor: (@state, @match, @commit=false, @message) ->
     @ok = true
+    @state.info =>
+      pad = (n, s) -> if s.toString().length < n then pad(n, " " + s) else s
+      message = if @message?
+        if typeof @message == "function" then @message() else @message
+      else
+        "*"
+      [
+        "MATCH: #{message}: #{util.inspect(@match)}"
+        "  [#{pad(4, @state.lineno + 1)}] #{@state.line()}"
+        pad(9 + @state.xpos, "") + "^"
+      ]
 
   toString: -> "Match(state=#{@state}, match=#{util.inspect(@match)}, commit=#{@commit})"
 
@@ -80,4 +93,3 @@ class NoMatch
 exports.ParserState = ParserState
 exports.Match = Match
 exports.NoMatch = NoMatch
-
