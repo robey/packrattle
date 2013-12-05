@@ -53,3 +53,23 @@ describe "Parser.commit", ->
     )
     rv = pr.parse(p, "!xyz")
     rv.ok.should.equal(false)
+
+  it "doesn't persist through new alternatives", ->
+    p = pr.alt(
+      pr([ pr("b").commit(), "x", pr.alt(
+        /[a-z]z/,
+        pr([ pr("m").commit(), "q" ]),
+        /[a-z]a/
+      )]),
+      /[a-z]/
+    )
+    rv = pr.parse(p, "bxma")
+    rv.ok.should.equal(false)
+    rv = pr.parse(p, "bxmq")
+    rv.ok.should.equal(true)
+
+  it "works in an optional branch", ->
+    p = pr([ "a", pr([ pr("zz").commit(), "q" ]).optional(), /[a-z]{3}/ ])
+    rv = pr.parse(p, "azzc")
+    rv.ok.should.equal(false)
+    

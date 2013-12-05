@@ -166,7 +166,7 @@ optional = (p, defaultValue="") ->
   new Parser message, (state, cont) ->
     p = resolve(p)
     p.parse state, (rv) ->
-      if rv.ok then return cont(rv)
+      if rv.ok or rv.abort then return cont(rv)
       cont(new Match(state, defaultValue, rv.commit, message))
 
 # check that this parser matches, but don't advance the string. (perl calls
