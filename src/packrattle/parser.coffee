@@ -225,13 +225,22 @@ chain = (p1, p2, combiner) ->
 # will contain an array of all the results that weren't null.
 seq = (parsers...) ->
   parsers = (implicit(p) for p in parsers)
+  if parsers.length == 1 then return parsers[0]
   message = -> "(" + (resolve(p).message() for p in parsers).join(" then ") + ")"
-  combiner = (sum, x) ->
-    sum = sum[...]
-    if x? then sum.push x
+  p0 = parsers.shift()
+  p1 = parsers.shift()
+  p = chain p0, p1, (rv1, rv2) -> 
+    sum = []
+    if rv1? then sum.push rv1
+    if rv2? then sum.push rv2
     sum
-  rv = new Parser "''", (state, cont) -> cont(new Match(state, [], false, "''"))
-  for p in parsers then rv = chain(rv, p, combiner)
+  parsers.unshift p
+  combiner = (sum, x) ->
+    if x?
+      sum = sum[...]
+      sum.push x
+    sum
+  rv = parsers.reduce (p1, p2) -> chain(p1, p2, combiner)
   new Parser message, (state, cont) ->
     rv.parse state, cont
 
