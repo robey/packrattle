@@ -23,7 +23,7 @@ describe "Parser example", ->
     rv.match.should.eql(op: "+", left: 2, right: 3)
 
   it "recognizes a complex expression", ->
-    rv = pr.consume(expr, "1 + 2 * 3 + 4 * (5 + 6)")
+    rv = pr.consume(expr, "1 + 2 * 3 + 4 * (5 + 6)", debugger: { graph: {} })
     rv.ok.should.eql(true)
     rv.match.should.eql(
       op: "+"
@@ -46,6 +46,7 @@ describe "Parser example", ->
         }
       }
     )
+    rv.state.debugGraph()
 
   it "can add with reduce", ->
     number = pr.regex(/\d+/).onMatch (m) -> parseInt(m[0])

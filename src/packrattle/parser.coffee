@@ -172,12 +172,20 @@ regex = (r) ->
 # execute a parser over a string.
 parse = (p, str, options = {}) ->
   state = if str instanceof ParserState then str else new ParserState(str)
+  state.previousState = "start"
   if options.debugger? then state.debugger = options.debugger
   p = resolve(p)
   successes = []
   failures = []
   state.addJob (=> "start: #{state}, #{p.toString()}"), ->
     p.parse state, (rv) ->
+      if rv.state.debugger?.graph? and rv.ok
+        graph = rv.state.debugger.graph
+        if not graph.nodes? then graph.nodes = {}
+        if not graph.edges? then graph.edges = []
+        if rv.state.previousState?
+          graph.edges.push(from: rv.state.previousState, to: "success")
+
       if rv.ok
         state.debug -> "--- registering success: #{rv}"
         successes.push rv
