@@ -160,11 +160,7 @@ regex = (r) ->
     m = r2.exec(state.text.slice(state.pos))
     if m? then cont(new Match(state.advance(m[0].length), m, false, message)) else @fail(state, cont)
 
-# ----- combinators:
-
-
-
-
+# ----- top-level API:
 
 # execute a parser over a string.
 parse = (p, str, options = {}) ->
