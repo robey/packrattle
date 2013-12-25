@@ -3,7 +3,7 @@ Trampoline = require("./trampoline").Trampoline
 
 # parser state, used internally.
 class ParserState
-  constructor: (@text, @pos=0, @end, @lineno=0, @xpos=0, @trampoline=null, @depth=0, @debugger=null, @previousState=null) ->
+  constructor: (@text, @pos=0, @end, @lineno=0, @xpos=0, @trampoline=null, @depth=0, @debugger=null, @stateName=null, @previousStateName=null) ->
     if not @end? then @end = @text.length
     if not @trampoline? then @trampoline = new Trampoline(@)
 
@@ -23,7 +23,7 @@ class ParserState
         xpos = 0
       else
         xpos++
-    state = new ParserState(@text, pos, @end, lineno, xpos, @trampoline, @depth, @debugger, @previousState)
+    state = new ParserState(@text, pos, @end, lineno, xpos, @trampoline, @depth, @debugger, @stateName, @previousStateName)
     state
 
   # return the text of the current line around @pos.
@@ -38,11 +38,30 @@ class ParserState
     while lend < end and text[lend] != '\n' then lend++
     text.slice(lstart, lend)
 
+  # silly indicator (for ascii terminals) of where we are
+  around: (width) ->
+    line = @line()
+    left = @xpos - width
+    right = @xpos + width
+    if left < 0 then left = 0
+    if right >= line.length then right = line.length - 1
+    line[left ... @xpos] + "[" + (line[@xpos] or "") + "]" + line[@xpos + 1 ... right + 1]
+
   getCache: (parser) -> @trampoline.getCache(parser, @)
 
   addJob: (description, job) -> @trampoline.push @depth, description, job
 
-  deeper: -> new ParserState(@text, @pos, @end, @lineno, @xpos, @trampoline, @depth + 1, @debugger, @previousState)
+  deeper: (parser) ->
+    newStateName = "#{parser.id}:#{@pos}"
+    state = new ParserState(@text, @pos, @end, @lineno, @xpos, @trampoline, @depth + 1, @debugger, newStateName, @stateName)
+    if @debugger?.graph?
+      @debugger.graph.addNode(newStateName, parser, state)
+      if @stateName? then @debugger.graph.addEdge(@stateName, newStateName)
+    state
+
+  logSuccess: ->
+    if @debugger?.graph?
+      @debugger.graph.addEdge(@stateName, "success")
 
   debugAtLevel: (name, f) ->
     return unless @debugger
@@ -60,16 +79,9 @@ class ParserState
     for line in lines
       if Array.isArray(line) then @debugLines(debuggr, line) else debuggr(line)
 
-  debugGraph: ->
+  debugGraphToDot: ->
     return unless @debugger?.graph?
-    graph = @debugger.graph
-    console.log "digraph packrattle {"
-    for edge in graph.edges
-      console.log "  \"#{edge.from}\" -> \"#{edge.to}\";"
-    console.log ""
-    for k, v of graph.nodes
-      console.log "  \"#{k}\" [label=\"@#{v.state.pos}: #{v.parser.kind}\"];"
-    console.log "}"
+    @debugger.graph.toDot()
 
 class Match
   constructor: (@state, @match, @commit=false, @message) ->

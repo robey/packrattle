@@ -1,7 +1,10 @@
 util = require 'util'
 combiners = require './combiners'
+debug_graph = require './debug_graph'
 helpers = require './helpers'
 parser_state = require './parser_state'
+
+DebugGraph = debug_graph.DebugGraph
 
 implicit = helpers.implicit
 resolve = helpers.resolve
@@ -35,25 +38,11 @@ class Parser
 
   # executes @matcher, passing the result (Match or NoMatch) to 'cont'.
   parse: (state, cont) ->
-    state = state.deeper()
-    if state.debugger?.graph?
-      graph = state.debugger.graph
-      if not graph.nodes? then graph.nodes = {}
-      if not graph.edges? then graph.edges = []
-      stateName = "#{@id}:#{state.pos}"
-      graph.nodes[stateName] = { parser: @, state: state }
-      if state.previousState?
-        graph.edges.push(from: state.previousState, to: stateName)
-      newCont = (rv) ->
-        rv.state.previousState = stateName
-        cont(rv)
-    else
-      newCont = cont
-
+    state = state.deeper(@)
     entry = state.getCache(@)
     if entry.continuations.length == 0
       # first to try it!
-      entry.continuations.push newCont
+      entry.continuations.push cont
       state.addJob (=> "parse: #{state}, #{@toString()}"), =>
         @matcher state, (rv) =>
           # push our (new?) result
@@ -68,8 +57,8 @@ class Parser
     else
       state.debug =>
         pad(state.depth) + "<- (#{@id}): answer from cache #{util.inspect(entry.results)} / state=#{state}"
-      entry.continuations.push newCont
-      for r in entry.results then newCont(r)
+      entry.continuations.push cont
+      for r in entry.results then cont(r)
 
   # ----- transformations and combinations:
 
@@ -172,19 +161,15 @@ regex = (r) ->
 # execute a parser over a string.
 parse = (p, str, options = {}) ->
   state = if str instanceof ParserState then str else new ParserState(str)
-  state.previousState = "start"
+  state.stateName = "start"
   if options.debugger? then state.debugger = options.debugger
+  if options.debugGraph then state.debugger = { graph: new DebugGraph() }
   p = resolve(p)
   successes = []
   failures = []
   state.addJob (=> "start: #{state}, #{p.toString()}"), ->
     p.parse state, (rv) ->
-      if rv.state.debugger?.graph? and rv.ok
-        graph = rv.state.debugger.graph
-        if not graph.nodes? then graph.nodes = {}
-        if not graph.edges? then graph.edges = []
-        if rv.state.previousState?
-          graph.edges.push(from: rv.state.previousState, to: "success")
+      if rv.ok then rv.state.logSuccess()
 
       if rv.ok
         state.debug -> "--- registering success: #{rv}"
