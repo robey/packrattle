@@ -3,7 +3,7 @@ Trampoline = require("./trampoline").Trampoline
 
 # parser state, used internally.
 class ParserState
-  constructor: (@text, @pos=0, @end, @lineno=0, @xpos=0, @trampoline=null, @depth=0, @debugger=null) ->
+  constructor: (@text, @pos=0, @end, @lineno=0, @xpos=0, @trampoline=null, @depth=0, @debugger=null, @previousState=null) ->
     if not @end? then @end = @text.length
     if not @trampoline? then @trampoline = new Trampoline(@)
 
@@ -23,7 +23,7 @@ class ParserState
         xpos = 0
       else
         xpos++
-    state = new ParserState(@text, pos, @end, lineno, xpos, @trampoline, @depth, @debugger)
+    state = new ParserState(@text, pos, @end, lineno, xpos, @trampoline, @depth, @debugger, @previousState)
     state
 
   # return the text of the current line around @pos.
@@ -42,7 +42,7 @@ class ParserState
 
   addJob: (description, job) -> @trampoline.push @depth, description, job
 
-  deeper: -> new ParserState(@text, @pos, @end, @lineno, @xpos, @trampoline, @depth + 1, @debugger)
+  deeper: -> new ParserState(@text, @pos, @end, @lineno, @xpos, @trampoline, @depth + 1, @debugger, @previousState)
 
   debugAtLevel: (name, f) ->
     return unless @debugger
@@ -60,6 +60,16 @@ class ParserState
     for line in lines
       if Array.isArray(line) then @debugLines(debuggr, line) else debuggr(line)
 
+  debugGraph: ->
+    return unless @debugger?.graph?
+    graph = @debugger.graph
+    console.log "digraph packrattle {"
+    for edge in graph.edges
+      console.log "  \"#{edge.from}\" -> \"#{edge.to}\";"
+    console.log ""
+    for k, v of graph.nodes
+      console.log "  \"#{k}\" [label=\"@#{v.state.pos}: #{v.parser.message()}\"];"
+    console.log "}"
 
 class Match
   constructor: (@state, @match, @commit=false, @message) ->

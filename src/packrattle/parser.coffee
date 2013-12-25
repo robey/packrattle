@@ -36,12 +36,19 @@ class Parser
   # executes @matcher, passing the result (Match or NoMatch) to 'cont'.
   parse: (state, cont) ->
     state = state.deeper()
-    state.debug =>
-      pad(state.depth) + "-> (#{@id}): #{@} / state=#{state}"
-    newCont = (rv) =>
-      state.debug =>
-        pad(state.depth) + "<- (#{@id}): #{rv}"
-      cont(rv)
+    if state.debugger?.graph?
+      graph = state.debugger.graph
+      if not graph.nodes? then graph.nodes = {}
+      if not graph.edges? then graph.edges = []
+      stateName = "#{@id}:#{state.pos}"
+      graph.nodes[stateName] = { parser: @, state: state }
+      if state.previousState?
+        graph.edges.push(from: state.previousState, to: stateName)
+      newCont = (rv) ->
+        rv.state.previousState = stateName
+        cont(rv)
+    else
+      newCont = cont
 
     entry = state.getCache(@)
     if entry.continuations.length == 0
