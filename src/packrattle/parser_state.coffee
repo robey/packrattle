@@ -68,7 +68,7 @@ class ParserState
       console.log "  \"#{edge.from}\" -> \"#{edge.to}\";"
     console.log ""
     for k, v of graph.nodes
-      console.log "  \"#{k}\" [label=\"@#{v.state.pos}: #{v.parser.message()[...10]}\"];"
+      console.log "  \"#{k}\" [label=\"@#{v.state.pos}: #{v.parser.kind}\"];"
     console.log "}"
 
 class Match

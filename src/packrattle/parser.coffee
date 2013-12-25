@@ -14,7 +14,7 @@ pad = (n) -> [0...n].map((x) -> "  ").join("")
 
 _parser_id = 0
 class Parser
-  constructor: (@_message, @matcher) ->
+  constructor: (@kind, @_message, @matcher) ->
     @id = _parser_id++
 
   message: ->
@@ -75,7 +75,7 @@ class Parser
 
   # transforms the error message of a parser
   onFail: (newMessage) ->
-    new Parser @_message, (state, cont) =>
+    new Parser "onFail", @_message, (state, cont) =>
       @parse state, (rv) ->
         if rv.ok or rv.abort then return cont(rv)
         state.debug => "rewriting error '#{rv.message}' to '#{newMessage}'"
@@ -83,7 +83,7 @@ class Parser
 
   # transforms the result of a parser if it succeeds.
   onMatch: (f) ->
-    new Parser @_message, (state, cont) =>
+    new Parser "onMatch", @_message, (state, cont) =>
       @parse state, (rv) ->
         if not rv.ok then return cont(rv)
         if typeof f == "function"
@@ -101,7 +101,7 @@ class Parser
 
   # only succeed if f(match) returns true.
   matchIf: (f) ->
-    new Parser @_message, (state, cont) =>
+    new Parser "matchIf", @_message, (state, cont) =>
       @parse state, (rv) =>
         if not rv.ok then return cont(rv)
         if not f(rv.match) then return cont(new NoMatch(state, "Expected " + @message(), rv.commit))
@@ -133,23 +133,23 @@ class Parser
 
 
 # matches the end of the string.
-end = new Parser "end", (state, cont) ->
+end = new Parser "end", "end", (state, cont) ->
   if state.pos == state.end then cont(new Match(state, null, false, "end")) else @fail(state, cont)
 
 # never matches anything.
-reject = new Parser "failure", (state, cont) -> @fail(state, cont)
+reject = new Parser "reject", "reject", (state, cont) -> cont(new NoMatch(state, "failure"))
 
 # always matches without consuming input and yields the given value.
 succeed = (v) ->
   message = "succeed(#{v})"
-  new Parser message, (state, cont) ->
+  new Parser "succeed", message, (state, cont) ->
     cont(new Match(state, v, false, message))
 
 # matches a literal string.
 string = (s) ->
   len = s.length
   message = "'#{s}'"
-  new Parser message, (state, cont) ->
+  new Parser "lit: #{message}", message, (state, cont) ->
     candidate = state.text.slice(state.pos, state.pos + len)
     if candidate == s
       cont(new Match(state.advance(len), candidate, false, message))
@@ -163,7 +163,7 @@ regex = (r) ->
   source = if r.source[0] == "^" then r.source else ("^" + r.source)
   r2 = new RegExp(source, i + m)
   message = r.toString()
-  new Parser message, (state, cont) ->
+  new Parser "re: #{message}", message, (state, cont) ->
     m = r2.exec(state.text.slice(state.pos))
     if m? then cont(new Match(state.advance(m[0].length), m, false, message)) else @fail(state, cont)
 

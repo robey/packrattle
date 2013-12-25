@@ -18,7 +18,7 @@ NoMatch = parser_state.NoMatch
 optional = (p, defaultValue="") ->
   p = implicit(p)
   message = -> "optional(#{resolve(p).message()})"
-  new parser.Parser message, (state, cont) ->
+  new parser.Parser "optional", message, (state, cont) ->
     p = resolve(p)
     p.parse state, (rv) ->
       if rv.ok or rv.abort then return cont(rv)
@@ -29,7 +29,7 @@ optional = (p, defaultValue="") ->
 check = (p) ->
   p = implicit(p)
   message = -> resolve(p).message()
-  new parser.Parser message, (state, cont) ->
+  new parser.Parser "check", message, (state, cont) ->
     p = resolve(p)
     p.parse state, (rv) ->
       if not rv.ok then return cont(rv)
@@ -39,7 +39,7 @@ check = (p) ->
 # alternatives.
 commit = (p) ->
   p = implicit(p)
-  new parser.Parser (-> resolve(p).message()), (state, cont) ->
+  new parser.Parser "commit", (-> resolve(p).message()), (state, cont) ->
     p = resolve(p)
     p.parse state, (rv) ->
       if not rv.ok then return cont(rv)
@@ -51,7 +51,7 @@ commit = (p) ->
 not_ = (p) ->
   p = implicit(p)
   message = -> "not(#{resolve(p).message()})"
-  new parser.Parser message, (state, cont) ->
+  new parser.Parser "not", message, (state, cont) ->
     p = resolve(p)
     p.parse state, (rv) =>
       if rv.ok then @fail(state, cont) else cont(new Match(state, "", rv.commit, message))
@@ -64,7 +64,7 @@ drop = (p) -> implicit(p).onMatch (x) -> null
 # single match result.
 chain = (p1, p2, combiner) ->
   message = -> "(#{resolve(p1).message()} then #{resolve(p2).message()})"
-  new parser.Parser message, (state, cont) ->
+  new parser.Parser "chain", message, (state, cont) ->
     p1 = resolve(p1)
     p1.parse state, (rv1) ->
       if not rv1.ok then return cont(rv1)
@@ -96,7 +96,7 @@ seq = (parsers...) ->
       sum.push x
     sum
   rv = parsers.reduce (p1, p2) -> chain(p1, p2, combiner)
-  new parser.Parser message, (state, cont) ->
+  new parser.Parser "seq", message, (state, cont) ->
     rv.parse state, cont
 
 # chain together a sequence of parsers. before each parser is checked, the
@@ -110,7 +110,7 @@ seqIgnore = (ignore, parsers...) ->
     newseq.push optional(ignore).drop()
     newseq.push p
   rv = seq(newseq...)
-  new parser.Parser message, (state, cont) ->
+  new parser.Parser "seqIgnore", message, (state, cont) ->
     rv.parse state, cont
 
 # try each of these parsers, in order (starting from the same position),
@@ -118,7 +118,7 @@ seqIgnore = (ignore, parsers...) ->
 alt = (parsers...) ->
   parsers = (implicit(p) for p in parsers)
   message = -> "(" + (resolve(p).message() for p in parsers).join(" or ") + ")"
-  new parser.Parser message, (state, cont) ->
+  new parser.Parser "alt", message, (state, cont) ->
     parsers = (resolve(p) for p in parsers)
     state.debug -> [
       "alt: start @ #{state}"
@@ -143,7 +143,7 @@ repeat = (p, minCount=0, maxCount=null) ->
     countMessage = "{#{minCount}+}"
     maxCount = Math.pow(2, 31)
   message = -> "(" + resolve(p).message() + ")#{countMessage}"
-  new parser.Parser message, (state, cont) ->
+  new parser.Parser "repeat", message, (state, cont) ->
     p = resolve(p)
     origState = state
     count = 0
