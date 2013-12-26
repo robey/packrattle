@@ -35,13 +35,11 @@ class DebugGraph
       description = v.parser.description()
       if description.length > 30 then description = v.parser.kind + "..."
       description = description.replace("\\", "\\\\").replace("\"", "\\\"")
-
       label = "@#{v.state.pos}: #{description}\\n'#{v.state.around(4)}'"
       "  \"#{k}\" [label=\"#{label}\"];"
     data = [
       "digraph packrattle {"
       "  node [fontname=Courier];"
-#      "  graph [rankdir=LR];"
     ]
     data = data.concat(edges)
     data.push ""

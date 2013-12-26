@@ -84,30 +84,14 @@ chain = (p1, p2, combiner) ->
             return cont(rv2)
           cont(new Match(rv2.state, combiner(rv1.match, rv2.match), rv2.commit or rv1.commit))
 
-# chain together a sequence of parsers. if they all match, the match result
-# will contain an array of all the results that weren't null.
 seq = (parsers...) ->
   parsers = (implicit(p) for p in parsers)
-  if parsers.length == 1 then return parsers[0]
   p0 = parsers.shift()
-  p1 = parsers.shift()
-  p = chain p0, p1, (rv1, rv2) -> 
+  if parsers.length == 0 then return (-> resolve(p0).onMatch (m) -> [ m ])
+  chain p0, seq(parsers...), (rv1, rv2) ->
     sum = []
     if rv1? then sum.push rv1
-    if rv2? then sum.push rv2
-    sum
-  parsers.unshift p
-  combiner = (sum, x) ->
-    if x?
-      sum = sum[...]
-      sum.push x
-    sum
-  rv = parsers.reduce (p1, p2) -> chain(p1, p2, combiner)
-  parser.newParser "seq",
-    nested: parsers
-    describer: (ps) -> ps.join(" then ")
-    matcher: (state, cont) ->
-      rv.parse state, cont
+    sum.concat(rv2)
 
 # chain together a sequence of parsers. before each parser is checked, the
 # 'ignore' parser is optionally matched and thrown away. this is typicially
@@ -126,7 +110,7 @@ alt = (parsers...) ->
   parsers = (implicit(p) for p in parsers)
   parser.newParser "alt",
     nested: parsers
-    describer: (ps) -> ps.join(" or ")
+    describer: (ps) -> "(" + ps.join(" or ") + ")"
     matcher: (state, cont) ->
       parsers = (resolve(p) for p in parsers)
       aborting = false
