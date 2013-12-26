@@ -13,10 +13,6 @@ class Trampoline
 
   # execute the next branch of parsing on the trampoline.
   next: ->
-    @state.debug => [
-      "fetch next job:"
-      for item in @work.inspect() then "[#{item.priority}] #{item.item.description()}"
-    ]
     item = @work.get()
     if item? then item.job()
 
