@@ -5,7 +5,7 @@ pr = require("../lib/packrattle")
 
 describe "Parser example", ->
   binary = (left, op, right) -> { op: op, left: left, right: right }
-  ws = (p) -> pr.seqIgnore(/\s*/, p).onMatch (x) -> x[0]
+  ws = (p) -> pr.seqIgnore(/\s+/, p).onMatch (x) -> x[0]
   number = ws(/\d+/).onMatch (m) -> parseInt(m[0])
   parens = pr([ ws(pr("(").drop()), (-> expr), ws(pr(")").drop()) ])
   atom = pr.alt(number, parens.onMatch((e) -> e[0]))
