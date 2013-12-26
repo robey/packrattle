@@ -99,7 +99,7 @@ class Parser
           if not rv.ok then return cont(rv)
           if typeof f == "function"
             try
-              result = f(rv.match)
+              result = f(rv.match, rv.state.flip())
               if result instanceof Parser
                 result.parse(rv.state, cont)
               else

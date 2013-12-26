@@ -3,9 +3,22 @@ Trampoline = require("./trampoline").Trampoline
 
 # parser state, used internally.
 class ParserState
-  constructor: (@text, @pos=0, @end, @lineno=0, @xpos=0, @trampoline=null, @depth=0, @debugger=null, @stateName=null, @previousStateName=null) ->
+  constructor: (@text, @pos=0, @end) ->
     if not @end? then @end = @text.length
-    if not @trampoline? then @trampoline = new Trampoline(@)
+    @lineno = 0
+    @xpos = 0
+    @trampoline = new Trampoline(@)
+    @depth = 0
+    @debugger = null
+    @stateName = null
+    @previousStateName = null
+
+  copy: (changes) ->
+    rv = {}
+    rv.prototype = @prototype
+    for k of @ then rv[k] = @[k]
+    for k, v of changes then rv[k] = v
+    rv
 
   toString: ->
     truncated = if @text.length > 10 then "'#{@text[...10]}...'" else "'#{@text}'"
@@ -13,6 +26,7 @@ class ParserState
 
   # return a new ParserState with the position advanced 'n' places.
   # the new @lineno and @xpos are adjusted by watching for linefeeds.
+  # the previous position is saved as 'oldpos'
   advance: (n) ->
     pos = @pos
     lineno = @lineno
@@ -23,8 +37,15 @@ class ParserState
         xpos = 0
       else
         xpos++
-    state = new ParserState(@text, pos, @end, lineno, xpos, @trampoline, @depth, @debugger, @stateName, @previousStateName)
-    state
+    @copy(oldpos: @pos, pos: pos, lineno: lineno, xpos: xpos)
+
+  # turn (oldpos, pos) into (pos, endpos) to create a covering span for a successful match.
+  flip: ->
+    @copy(pos: @oldpos, endpos: @pos)
+
+  # rewind oldpos to cover a previous state, too.
+  backfill: (otherState) ->
+    @copy(oldpos: otherState.oldpos)
 
   # return the text of the current line around @pos.
   line: ->
@@ -53,7 +74,7 @@ class ParserState
 
   deeper: (parser) ->
     newStateName = "#{parser.id}:#{@pos}"
-    state = new ParserState(@text, @pos, @end, @lineno, @xpos, @trampoline, @depth + 1, @debugger, newStateName, @stateName)
+    state = @copy(depth: @depth + 1, stateName: newStateName, previousStateName: @stateName)
     if @debugger?.graph?
       @debugger.graph.addNode(newStateName, parser, state)
       if @stateName? then @debugger.graph.addEdge(@stateName, newStateName)
