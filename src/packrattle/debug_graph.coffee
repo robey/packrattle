@@ -12,11 +12,12 @@ class DebugGraph
     @nodes[name] = { parser, state }
 
   # filter out parsers with a name of "kind"
-  filterOut: (kind) ->
-    nodesToRemove = []
-    for k, v of @nodes
-      if v.parser.kind == kind then nodesToRemove.push k
-    for node in nodesToRemove then @removeNode(node)
+  filterOut: (kinds...) ->
+    for kind in kinds
+      nodesToRemove = []
+      for k, v of @nodes
+        if v.parser.kind == kind then nodesToRemove.push k
+      for node in nodesToRemove then @removeNode(node)
 
   removeNode: (node) ->
     targets = @edges.filter((edge) -> edge.from == node).map((edge) -> edge.to)
@@ -28,17 +29,23 @@ class DebugGraph
         @addEdge(source, target)
 
   toDot: ->
-    @filterOut("chain")
-    @filterOut("seq")
-    @filterOut("onMatch")
+    @filterOut("chain", "seq", "onMatch", "matchIf")
+    edges = for edge in @edges then "  \"#{edge.from}\" -> \"#{edge.to}\";"
+    nodes = for k, v of @nodes
+      description = v.parser.description()
+      if description.length > 30 then description = v.parser.kind + "..."
+      description = description.replace("\\", "\\\\").replace("\"", "\\\"")
+
+      label = "@#{v.state.pos}: #{description}\\n'#{v.state.around(4)}'"
+      "  \"#{k}\" [label=\"#{label}\"];"
     data = [
       "digraph packrattle {"
       "  node [fontname=Courier];"
 #      "  graph [rankdir=LR];"
     ]
-    data = data.concat(for edge in @edges then "  \"#{edge.from}\" -> \"#{edge.to}\";")
+    data = data.concat(edges)
     data.push ""
-    data = data.concat(for k, v of @nodes then "  \"#{k}\" [label=\"@#{v.state.pos}: #{v.parser.kind}\\n'#{v.state.around(4)}'\"];")
+    data = data.concat(nodes)
     data.push ""
     data.push "  \"start\" [shape=rect, style=filled, fillcolor=yellow];"
     data.push "  \"success\" [shape=rect, style=filled, fillcolor=green];"

@@ -63,40 +63,17 @@ class ParserState
     if @debugger?.graph?
       @debugger.graph.addEdge(@stateName, "success")
 
-  debugAtLevel: (name, f) ->
-    return unless @debugger
-    # "debugger" is a reserved word in coffeescript (sometimes) (?!)
-    debuggr = if typeof @debugger == "object" then @debugger[name] else @debugger
-    return unless debuggr
-    lines = if typeof f == "function" then f() else f
-    unless Array.isArray(lines) then lines = lines.split("\n")
-    @debugLines(debuggr, lines)
-
-  info: (f) -> @debugAtLevel("info", f)
-  debug: (f) -> @debugAtLevel("debug", f)
-
-  debugLines: (debuggr, lines) ->
-    for line in lines
-      if Array.isArray(line) then @debugLines(debuggr, line) else debuggr(line)
+  logFailure: ->
+    # don't do anything for now.
 
   debugGraphToDot: ->
     return unless @debugger?.graph?
     @debugger.graph.toDot()
 
+
 class Match
-  constructor: (@state, @match, @commit=false, @message) ->
+  constructor: (@state, @match, @commit=false) ->
     @ok = true
-    @state.info =>
-      pad = (n, s) -> if s.toString().length < n then pad(n, " " + s) else s
-      message = if @message?
-        if typeof @message == "function" then @message() else @message
-      else
-        "*"
-      [
-        "MATCH: #{message}: #{util.inspect(@match)}"
-        "  [#{pad(4, @state.lineno + 1)}] #{@state.line()}"
-        pad(9 + @state.xpos, "") + "^"
-      ]
 
   toString: -> "Match(state=#{@state}, match=#{util.inspect(@match)}, commit=#{@commit})"
 
