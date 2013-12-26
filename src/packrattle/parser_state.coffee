@@ -37,22 +37,23 @@ class ParserState
         xpos = 0
       else
         xpos++
-    @copy(oldpos: @pos, pos: pos, lineno: lineno, xpos: xpos)
+    @copy(oldpos: [ @pos, @xpos, @lineno ], pos: pos, lineno: lineno, xpos: xpos)
 
   # turn (oldpos, pos) into (pos, endpos) to create a covering span for a successful match.
   flip: ->
-    @copy(pos: @oldpos, endpos: @pos)
+    [ pos, xpos, lineno ] = if @oldpos? then @oldpos else [ @pos, @xpos, @lineno ]
+    @copy(pos: pos, xpos: xpos, lineno: lineno, endpos: @pos, endxpos: @xpos, endlineno: @lineno)
 
   # rewind oldpos to cover a previous state, too.
   backfill: (otherState) ->
     @copy(oldpos: otherState.oldpos)
 
-  # return the text of the current line around @pos.
-  line: ->
+  # return the text of the current line around 'pos'.
+  line: (pos = @pos) ->
     text = @text
     end = @end
-    lstart = @pos
-    lend = @pos
+    lstart = pos
+    lend = pos
     if lstart > 0 and text[lstart] == '\n' then lstart--
     while lstart > 0 and text[lstart] != '\n' then lstart--
     if text[lstart] == '\n' then lstart++
@@ -90,6 +91,15 @@ class ParserState
   debugGraphToDot: ->
     return unless @debugger?.graph?
     @debugger.graph.toDot()
+
+  toSquiggles: ->
+    line = @line()
+    endxpos = @endxpos
+    if @endlineno != @lineno
+      # multi-line: just show the first line.
+      endxpos = line.length
+    if endxpos == @xpos then endxpos += 1
+    [ line, [0 ... @xpos].map(-> " ").join("") + [@xpos ... endxpos].map(-> "~").join("") ]
 
 
 class Match

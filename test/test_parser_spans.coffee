@@ -51,3 +51,25 @@ describe "Parser onMatch spans", ->
     state.endpos.should.eql 9
     m[2].pos.should.eql 4
     m[2].endpos.should.eql 8
+
+  it "crosses line boundaries", ->
+    p = pr.seq(
+      /\w+/,
+      /\s+/,
+      pr("line\nbreak").onMatch((m, state) -> state),
+      /\s+/,
+      /\w+/
+    )
+    rv = pr.parse p, "hello line\nbreak ok"
+    rv.ok.should.eql(true)
+    state = rv.match[2]
+    state.pos.should.eql 6
+    state.lineno.should.eql 0
+    state.xpos.should.eql 6
+    state.endpos.should.eql 16
+    state.endlineno.should.eql 1
+    state.endxpos.should.eql 5
+    state.toSquiggles().should.eql [
+      "hello line"
+      "      ~~~~"
+    ]
