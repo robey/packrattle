@@ -1,7 +1,9 @@
+util = require 'util'
 helpers = require './helpers'
 parser = require './parser'
 parser_state = require './parser_state'
 
+defer = helpers.defer
 implicit = helpers.implicit
 resolve = helpers.resolve
 
@@ -87,11 +89,14 @@ chain = (p1, p2, combiner) ->
 seq = (parsers...) ->
   parsers = (implicit(p) for p in parsers)
   p0 = parsers.shift()
-  if parsers.length == 0 then return (-> resolve(p0).onMatch (m) -> [ m ])
+  if parsers.length == 0 then return defer(p0).onMatch (m) -> [ m ]
   chain p0, seq(parsers...), (rv1, rv2) ->
-    sum = []
-    if rv1? then sum.push rv1
-    sum.concat(rv2)
+    if rv1?
+      rv = rv2[...]
+      rv.unshift(rv1)
+    else
+      rv = rv2
+    rv
 
 # chain together a sequence of parsers. before each parser is checked, the
 # 'ignore' parser is optionally matched and thrown away. this is typicially

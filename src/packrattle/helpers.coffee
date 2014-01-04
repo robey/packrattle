@@ -1,4 +1,5 @@
 WeakMap = require 'weakmap'
+parser = require './parser'
 
 #
 # helper functions used by the parsers & combiners -- not exported.
@@ -11,6 +12,14 @@ fromLazyCache = (p) ->
     memo = p()
     lazyCache.set(p, memo)
   memo
+
+# helper to defer an unresolved parser into one that can be combined
+defer = (p) ->
+  parser.newParser "defer",
+    wrap: p,
+    matcher: (state, cont) ->
+      p = resolve(p)
+      p.parse state, cont
 
 # turn strings, regexen, and arrays into parsers implicitly.
 implicit = (p) ->
@@ -33,5 +42,6 @@ resolve = (p) ->
   p
 
 
+exports.defer = defer
 exports.implicit = implicit
 exports.resolve = resolve
