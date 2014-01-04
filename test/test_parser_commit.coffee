@@ -46,6 +46,17 @@ describe "Parser.commit", ->
     rv = pr.parse(p, "!xyz")
     rv.ok.should.equal(false)
 
+  it "is remembered through nested chains", ->
+    p = pr.alt(
+      pr.seq(
+        [ pr("!").commit(), "x" ]
+        "y"
+      ),
+      /.xz/
+    )
+    rv = pr.parse(p, "!xz")
+    rv.ok.should.equal(false)
+    
   it "is remembered through an exception", ->
     p = pr.alt(
       pr([ pr("!").commit(), "x", "y" ]).onMatch((m) -> throw new Error("Y!")),
