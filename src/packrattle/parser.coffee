@@ -28,10 +28,11 @@ newParser = (kind, options = {}) ->
   options.matcher ?= (state, cont) -> throw new Error("Undefined matcher")
   if options.wrap?
     options.nested = [ options.wrap ]
-    options.describer = options.wrap.describer
+    options.describer = (ps) -> ps.join()
   new Parser(kind, options.nested, options.describer, options.matcher)
 
 
+_count = 0
 class Parser
   constructor: (@kind, @nested, @describer, @matcher) ->
     @id = _parser_id++
@@ -48,9 +49,10 @@ class Parser
     if @recursing then return "..."
     if typeof @describer == "string" then return @describer
     @recursing = true
-    rv = @nested.map((p) -> resolve(p).description())
+    ps = @nested.map((p) -> resolve(p).description())
     @recursing = false
-    return @describer(rv)
+    @describer = @describer(ps)
+    @describer
 
   toString: ->
     "Parser[#{@id}, #{@kind}]" + @nestedList()
