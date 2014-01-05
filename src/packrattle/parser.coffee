@@ -57,12 +57,43 @@ class Parser
   toString: ->
     "Parser[#{@id}, #{@kind}]" + @nestedList()
 
+  # create a dot graph of the parser nesting
+  toDot: (maxLength = 40) ->
+    seen = {}
+    nodes = []
+    edges = []
+    traverse = (parser) ->
+      seen[parser.id] = true
+      nodes.push { id: parser.id, kind: parser.kind, description: parser.description() }
+      for p in parser.nested
+        p = resolve(p)
+        edges.push { from: parser.id, to: p.id }
+        if not seen[p.id]? then traverse(p)
+    traverse @
+    edges = edges.map (e) -> "  \"#{e.from}\" -> \"#{e.to}\";"
+    nodes = nodes.map (n) ->
+      description = if n.description.length > maxLength then "#{n.description[...maxLength]}..." else n.description
+      description = description.replace(/\\/g, "\\\\").replace(/"/g, "\\\"")
+      kind = n.kind.replace(/\\/g, "\\\\").replace(/"/g, "\\\"")
+      label = "#{kind}\\n#{description}"
+      "  \"#{n.id}\" [label=\"#{label}\"];"
+    data = [
+      "digraph packrattle {"
+      "  node [fontname=Courier];"
+    ]
+    data = data.concat(edges)
+    data.push ""
+    data = data.concat(nodes)
+    data.push "}"
+    data.join("\n") + "\n"
+
   # helper for internal use: immediately fail.
   fail: (state, cont) ->
     cont(new NoMatch(state, "Expected " + @description()))
 
   # executes @matcher, passing the result (Match or NoMatch) to 'cont'.
   parse: (state, cont) ->
+    _count += 1
     state = state.deeper(@)
     entry = state.getCache(@)
     if entry.continuations.length == 0
@@ -190,6 +221,7 @@ regex = (r) ->
 
 # execute a parser over a string.
 parse = (p, str, options = {}) ->
+  _count = 0
   state = if str instanceof ParserState then str else new ParserState(str)
   state.stateName = "start"
   if options.debugGraph then state.debugger = { graph: new DebugGraph() }
