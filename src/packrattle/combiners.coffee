@@ -144,17 +144,20 @@ repeat = (p, minCount=0, maxCount=null) ->
       count = 0
       nextCont = (rv, list=[], lastState=origState) =>
         if not rv.ok
+          if rv.abort then return cont(rv)
           if count >= minCount
             # intentionally use the "last good state" from our repeating parser.
             return cont(new Match(lastState, list, rv.commit))
-          return @fail(origState, cont)
+          return cont(new NoMatch(origState, "Expected #{@description()}"))
         count += 1
-        if rv.match? then list.push rv.match
+        if rv.match?
+          list = list[...]
+          list.push rv.match
         if count < maxCount
           # if a parser matches nothing, we could go on forever...
           if rv.state.pos == origState.pos then throw new Error("Repeating parser isn't making progress: #{rv.state.pos}=#{origState.pos} #{p}")
           rv.state.addJob (=> "repeat: #{state}, #{p.description()}"), ->
-            p.parse rv.state, (x) -> nextCont(x, list[...], rv.state)
+            p.parse rv.state, (x) -> nextCont(x, list, rv.state)
         else
           cont(new Match(rv.state, list, rv.commit))
       p.parse origState, nextCont

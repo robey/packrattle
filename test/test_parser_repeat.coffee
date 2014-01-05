@@ -64,3 +64,21 @@ describe "Parser.repeat", ->
   it "but throws an error if there's no progress", ->
     p = pr.repeat(pr.string(""))
     (-> pr.parse(p, "?")).should.throw(/isn't making progress/)
+
+  it "aborts if a repeating phrase aborts", ->
+    ws = pr(/\s*/).drop()
+    algebra = pr.reduce(
+      pr(/\d+/).onMatch((m) -> m[0]).onFail("Expected operand"),
+      pr([ ws, pr.alt("+", "-"), ws ]).commit().onMatch((m) -> m[0]),
+      ((x) -> x),
+      ((left, op, right) -> { binary: op, left: left, right: right })
+    )
+    rv = pr.consume(algebra, "3 + 2")
+    rv.ok.should.equal(true)
+    rv.match.should.eql(binary: "+", left: "3", right: "2")
+    rv = pr.consume(algebra, "3 +")
+    rv.ok.should.equal(false)
+    rv.message.should.eql "Expected operand"
+    rv = pr.consume(algebra, "3 + 5 +")
+    rv.ok.should.equal(false)
+    rv.message.should.eql "Expected operand"

@@ -240,7 +240,7 @@ parse = (p, str, options = {}) ->
     state.trampoline.next()
   # message with 'abort' set has highest priority. secondary sort by index.
   failures.sort (a, b) ->
-    if a.abort != b.abort and false
+    if a.abort != b.abort
       if b.abort then 1 else -1
     else
       b.state.depth - a.state.depth
