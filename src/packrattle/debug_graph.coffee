@@ -42,12 +42,12 @@ class DebugGraph
         for e in edgesToRemove then if e.from == edge.from and e.to == edge.to then keep = false
         keep
 
-  toDot: ->
+  toDot: (maxLength = 40) ->
     @filterOut("chain", "seq", "onMatch", "matchIf")
     edges = for edge in @edges then "  \"#{edge.from}\" -> \"#{edge.to}\";"
     nodes = for k, v of @nodes when v.parser?
       description = v.parser.description()
-      if description.length > 300 then description = v.parser.kind + "..."
+      if description.length > maxLength then description = v.parser.kind + "..."
       description = description.replace("\\", "\\\\").replace("\"", "\\\"")
       label = "@#{v.state.pos} #{v.state.depth}: #{description}\\n'#{v.state.around(4)}'"
       label = label.replace /"/g, "\\\""
