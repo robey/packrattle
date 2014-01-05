@@ -154,7 +154,7 @@ class Parser
 
   describe: (message) ->
     @describer = -> message
-    @
+    @onFail "Expected #{message}"
     
   # ----- convenience methods for accessing the combinators
 
