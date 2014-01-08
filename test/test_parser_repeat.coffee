@@ -79,6 +79,8 @@ describe "Parser.repeat", ->
     rv = pr.consume(algebra, "3 +")
     rv.ok.should.equal(false)
     rv.message.should.eql "Expected operand"
+    rv.state.pos.should.eql 3
     rv = pr.consume(algebra, "3 + 5 +")
     rv.ok.should.equal(false)
     rv.message.should.eql "Expected operand"
+    rv.state.pos.should.eql 7
