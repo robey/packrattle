@@ -3,21 +3,17 @@ util = require 'util'
 
 pr = require("../lib/packrattle")
 
+matchSpan = (rv) ->
+  state = rv.state.flip()
+  [ rv.match, state.pos, state.endpos ]
+
 describe "Parser.repeat", ->
   it "0 or more", ->
     p = pr.repeat("hi")
-    rv = pr.parse(p, "h")
-    rv.state.pos.should.equal(0)
-    rv.match.should.eql([])
-    rv = pr.parse(p, "hi")
-    rv.state.pos.should.equal(2)
-    rv.match.should.eql([ "hi" ])
-    rv = pr.parse(p, "hiho")
-    rv.state.pos.should.equal(2)
-    rv.match.should.eql([ "hi" ])
-    rv = pr.parse(p, "hihihi")
-    rv.state.pos.should.equal(6)
-    rv.match.should.eql([ "hi", "hi", "hi" ])
+    matchSpan(pr.parse(p, "h")).should.eql [ [], 0, 0 ]
+    matchSpan(pr.parse(p, "hi")).should.eql [ [ "hi" ], 0, 2 ]
+    matchSpan(pr.parse(p, "hiho")).should.eql [ [ "hi" ], 0, 2 ]
+    matchSpan(pr.parse(p, "hihihi")).should.eql [ [ "hi", "hi", "hi" ], 0, 6 ]
 
   it "2 or 3", ->
     p = pr.repeat("hi", 2, 3)
@@ -25,15 +21,9 @@ describe "Parser.repeat", ->
     rv.ok.should.equal(false)
     rv.state.pos.should.equal(0)
     rv.message.should.match(/\('hi'\)\{2, 3}/)
-    rv = pr.parse(p, "hihi")
-    rv.state.pos.should.equal(4)
-    rv.match.should.eql([ "hi", "hi" ])
-    rv = pr.parse(p, "hihihi")
-    rv.state.pos.should.equal(6)
-    rv.match.should.eql([ "hi", "hi", "hi" ])
-    rv = pr.parse(p, "hihihihi")
-    rv.state.pos.should.equal(6)
-    rv.match.should.eql([ "hi", "hi", "hi" ])
+    matchSpan(pr.parse(p, "hihi")).should.eql [ [ "hi", "hi" ], 0, 4 ]
+    matchSpan(pr.parse(p, "hihihi")).should.eql [ [ "hi", "hi", "hi" ], 0, 6 ]
+    matchSpan(pr.parse(p, "hihihihi")).should.eql [ [ "hi", "hi", "hi" ], 0, 6 ]
 
   it "nested", ->
     p = pr.repeat([ "hi", pr.repeat("!") ])
@@ -47,9 +37,7 @@ describe "Parser.repeat", ->
 
   it "with whitespace ignoring", ->
     p = pr.repeatIgnore(/\s+/, "hi")
-    rv = pr.parse(p, "hi  hihi ")
-    rv.state.pos.should.equal(8)
-    rv.match.should.eql([ "hi", "hi", "hi" ])
+    matchSpan(pr.parse(p, "hi  hihi ")).should.eql [ [ "hi", "hi", "hi" ], 0, 8 ]
 
   it "and honors nested drops", ->
     p = pr.string("123").drop().repeat()

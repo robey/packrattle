@@ -46,7 +46,7 @@ class ParserState
 
   # rewind oldpos to cover a previous state, too.
   backfill: (otherState) ->
-    @copy(oldpos: otherState.oldpos)
+    @copy(oldpos: if otherState.oldpos? then otherState.oldpos else [ otherState.pos, otherState.xpos, otherState.lineno ])
 
   # return the text of the current line around 'pos'.
   line: (pos = @pos) ->

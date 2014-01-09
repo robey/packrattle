@@ -147,7 +147,7 @@ repeat = (p, minCount=0, maxCount=null) ->
           if rv.abort then return cont(rv)
           if count >= minCount
             # intentionally use the "last good state" from our repeating parser.
-            return cont(new Match(lastState, list, rv.commit))
+            return cont(new Match(lastState.backfill(origState), list, rv.commit))
           return cont(new NoMatch(origState, "Expected #{@description()}"))
         count += 1
         if rv.match?
@@ -159,7 +159,7 @@ repeat = (p, minCount=0, maxCount=null) ->
           rv.state.addJob (=> "repeat: #{state}, #{p.description()}"), ->
             p.parse rv.state, (x) -> nextCont(x, list, rv.state)
         else
-          cont(new Match(rv.state, list, rv.commit))
+          cont(new Match(rv.state.backfill(origState), list, rv.commit))
       p.parse origState, nextCont
 
 # like 'repeat', but each element may be optionally preceded by 'ignore',
