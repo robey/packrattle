@@ -12,13 +12,14 @@ class ParserState
     @debugger = null
     @stateName = null
     @previousStateName = null
+    Object.freeze(@)
 
   copy: (changes) ->
     rv = {}
     rv.prototype = @prototype
     for k of @ then rv[k] = @[k]
     for k, v of changes then rv[k] = v
-    rv
+    Object.freeze(rv)
 
   toString: ->
     truncated = if @text.length > 10 then "'#{@text[...10]}...'" else "'#{@text}'"
@@ -46,7 +47,11 @@ class ParserState
 
   # rewind oldpos to cover a previous state, too.
   backfill: (otherState) ->
-    @copy(oldpos: if otherState.oldpos? then otherState.oldpos else [ otherState.pos, otherState.xpos, otherState.lineno ])
+    if @endpos?
+      # this state has already been flipped. rewind pos
+      @copy(pos: otherState.pos, xpos: otherState.xpos, lineno: otherState.lineno)
+    else
+      @copy(oldpos: if otherState.oldpos? then otherState.oldpos else [ otherState.pos, otherState.xpos, otherState.lineno ])
 
   # return the text of the current line around 'pos'.
   line: (pos = @pos) ->
