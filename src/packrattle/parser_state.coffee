@@ -1,62 +1,94 @@
 util = require 'util'
 Trampoline = require("./trampoline").Trampoline
 
-# parser state, used internally.
-class ParserState
-  constructor: (@text, @pos=0, @end) ->
-    if not @end? then @end = @text.length
-    @lineno = 0
-    @xpos = 0
-    @trampoline = new Trampoline(@)
-    @depth = 0
-    @debugger = null
-    @stateName = null
-    @previousStateName = null
-    Object.freeze(@)
-
-  copy: (changes) ->
-    rv = {}
-    rv.prototype = @prototype
-    for k of @ then rv[k] = @[k]
-    for k, v of changes then rv[k] = v
-    Object.freeze(rv)
+class Location
+  constructor: (@pos, @xpos, @lineno) ->
 
   toString: ->
-    truncated = if @text.length > 10 then "'#{@text[...10]}...'" else "'#{@text}'"
-    "ParserState(text=#{truncated}, pos=#{@pos}, end=#{@end}, lineno=#{@lineno}, xpos=#{@xpos}, depth=#{@depth}, work=#{@trampoline.size()})"
+    "(pos=#{@pos}, xpos=#{@xpos}, lineno=#{@lineno})"
+
+  # return a new Location with the position advanced 'n' places.
+  # the new @lineno and @xpos are adjusted by watching for linefeeds.
+  advance: (n, text) ->
+    pos = @pos
+    xpos = @xpos
+    lineno = @lineno
+    while pos < @pos + n
+      if text[pos++] == '\n'
+        lineno++
+        xpos = 0
+      else
+        xpos++
+    new Location(pos, xpos, lineno)
+
+# parser state, used internally.
+# - permanent text state: text, end
+# - internal state: trampoline, debugger
+# - text position: pos, xpos, lineno, oldpos, endpos, endxpos, endlineno
+# - transient: depth, stateName, previousStateName
+class ParserState
+  constructor: (text, pos=0, end) ->
+    if not end? then end = text.length
+    @loc = new Location(pos, 0, 0)
+    @depth = 0
+    @stateName = null
+    @internal =
+      text: text
+      end: end
+      trampoline: new Trampoline(@)
+      debugger: null
+
+  clone: ->
+    rv = Object.create(@.__proto__)
+    rv.loc = @loc
+    rv.oldloc = @oldloc
+    rv.endloc = @endloc
+    rv.depth = @depth
+    rv.stateName = @stateName
+    rv.internal = @internal
+    rv
+
+  toString: ->
+    truncated = if @internal.text.length > 10 then "'#{@internal.text[...10]}...'" else "'#{@internal.text}'"
+    "ParserState(text=#{truncated}, loc=#{@loc}, depth=#{@depth})"
+
+  startDebugGraph: ->
+    @internal.debugger = { graph: new DebugGraph() }
 
   # return a new ParserState with the position advanced 'n' places.
   # the new @lineno and @xpos are adjusted by watching for linefeeds.
   # the previous position is saved as 'oldpos'
   advance: (n) ->
-    pos = @pos
-    lineno = @lineno
-    xpos = @xpos
-    while pos < @pos + n
-      if @text[pos++] == '\n'
-        lineno++
-        xpos = 0
-      else
-        xpos++
-    @copy(oldpos: [ @pos, @xpos, @lineno ], pos: pos, lineno: lineno, xpos: xpos)
+    rv = @clone()
+    rv.oldloc = @loc
+    rv.loc = @loc.advance(n, @internal.text)
+    rv
 
-  # turn (oldpos, pos) into (pos, endpos) to create a covering span for a successful match.
+  # turn (oldloc, loc) into (loc, endloc) to create a covering span for a successful match.
   flip: ->
-    [ pos, xpos, lineno ] = if @oldpos? then @oldpos else [ @pos, @xpos, @lineno ]
-    @copy(pos: pos, xpos: xpos, lineno: lineno, endpos: @pos, endxpos: @xpos, endlineno: @lineno)
+    loc = if @oldloc? then @oldloc else @loc
+    rv = @clone()
+    rv.loc = loc
+    rv.endloc = @loc
+    rv
 
   # rewind oldpos to cover a previous state, too.
   backfill: (otherState) ->
-    if @endpos?
+    rv = @clone()
+    if @endloc?
       # this state has already been flipped. rewind pos
-      @copy(pos: otherState.pos, xpos: otherState.xpos, lineno: otherState.lineno)
+      rv.loc = otherState.loc
     else
-      @copy(oldpos: if otherState.oldpos? then otherState.oldpos else [ otherState.pos, otherState.xpos, otherState.lineno ])
+      rv.oldloc = if otherState.oldloc? then otherState.oldloc else otherState.loc
+    rv
+
+  pos: -> @loc.pos
+  endpos: -> @endloc.pos
 
   # return the text of the current line around 'pos'.
-  line: (pos = @pos) ->
-    text = @text
-    end = @end
+  line: (pos = @loc.pos) ->
+    text = @internal.text
+    end = @internal.end
     lstart = pos
     lend = pos
     if lstart > 0 and text[lstart] == '\n' then lstart--
@@ -74,17 +106,19 @@ class ParserState
     if right >= line.length then right = line.length - 1
     line[left ... @xpos] + "[" + (line[@xpos] or "") + "]" + line[@xpos + 1 ... right + 1]
 
-  getCache: (parser) -> @trampoline.getCache(parser, @)
+  getCache: (parser) -> @internal.trampoline.getCache(parser, @)
 
-  addJob: (description, job) -> @trampoline.push @depth, description, job
+  addJob: (description, job) -> @internal.trampoline.push @depth, description, job
 
   deeper: (parser) ->
-    newStateName = "#{parser.id}:#{@pos}"
-    state = @copy(depth: @depth + 1, stateName: newStateName, previousStateName: @stateName)
-    if @debugger?.graph?
-      @debugger.graph.addNode(newStateName, parser, state)
-      if @stateName? then @debugger.graph.addEdge(@stateName, newStateName)
-    state
+    rv = @clone()
+    rv.depth = @depth + 1
+    if not @debugger?.graph? then return rv
+    newStateName = "#{parser.id}:#{@loc.pos}"
+    rv.stateName = newStateName
+    @debugger.graph.addNode(newStateName, parser, rv)
+    if @stateName? then @debugger.graph.addEdge(@stateName, newStateName)
+    rv
 
   logSuccess: ->
     if @debugger?.graph?
@@ -99,12 +133,12 @@ class ParserState
 
   toSquiggles: ->
     line = @line()
-    endxpos = @endxpos
-    if @endlineno != @lineno
+    endxpos = @endloc?.xpos
+    if @endloc?.lineno != @loc.lineno
       # multi-line: just show the first line.
       endxpos = line.length
-    if endxpos == @xpos then endxpos += 1
-    [ line, [0 ... @xpos].map(-> " ").join("") + [@xpos ... endxpos].map(-> "~").join("") ]
+    if endxpos == @loc.xpos then endxpos += 1
+    [ line, [0 ... @loc.xpos].map(-> " ").join("") + [@loc.xpos ... endxpos].map(-> "~").join("") ]
 
 
 class Match
@@ -113,7 +147,7 @@ class Match
 
   toString: -> "Match(state=#{@state}, match=#{util.inspect(@match)}, commit=#{@commit})"
 
-  equals: (other) -> other.ok and @match == other.match and @state.pos == other.state.pos
+  equals: (other) -> other.ok and @match == other.match and @state.pos() == other.state.pos()
 
 
 class NoMatch
@@ -122,7 +156,7 @@ class NoMatch
 
   toString: -> "NoMatch(state=#{@state}, message='#{@message}', abort=#{@abort})"
 
-  equals: (other) -> (not other.ok) and @state.pos == other.state.pos and @message == other.message
+  equals: (other) -> (not other.ok) and @state.pos() == other.state.pos() and @message == other.message
 
 
 exports.ParserState = ParserState

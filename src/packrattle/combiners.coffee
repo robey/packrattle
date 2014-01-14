@@ -142,7 +142,7 @@ repeat = (p, minCount=0, maxCount=null) ->
       p = resolve(p)
       origState = state
       count = 0
-      nextCont = (rv, list=[], lastState=origState) =>
+      nextCont = (rv, list = [], lastState = origState) =>
         if not rv.ok
           if rv.abort then return cont(rv)
           if count >= minCount
@@ -155,7 +155,8 @@ repeat = (p, minCount=0, maxCount=null) ->
           list.push rv.match
         if count < maxCount
           # if a parser matches nothing, we could go on forever...
-          if rv.state.pos == origState.pos then throw new Error("Repeating parser isn't making progress: #{rv.state.pos}=#{origState.pos} #{p}")
+          if rv.state.loc.pos == origState.loc.pos
+            throw new Error("Repeating parser isn't making progress: #{rv.state.loc.pos}=#{origState.loc.pos} #{p}")
           rv.state.addJob (=> "repeat: #{state}, #{p.description()}"), ->
             p.parse rv.state, (x) -> nextCont(x, list, rv.state)
         else

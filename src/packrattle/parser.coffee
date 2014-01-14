@@ -189,7 +189,7 @@ class Parser
 # matches the end of the string.
 end = newParser "end",
   matcher: (state, cont) ->
-    if state.pos == state.end then cont(new Match(state, null, false)) else @fail(state, cont)
+    if state.loc.pos == state.internal.end then cont(new Match(state, null, false)) else @fail(state, cont)
 
 # never matches anything.
 reject = newParser "reject",
@@ -208,7 +208,7 @@ string = (s) ->
   newParser "lit: '#{s}'",
     describer: "'#{s}'"
     matcher: (state, cont) ->
-      candidate = state.text.slice(state.pos, state.pos + len)
+      candidate = state.internal.text.slice(state.loc.pos, state.loc.pos + len)
       if candidate == s
         cont(new Match(state.advance(len), candidate, false))
       else
@@ -223,7 +223,7 @@ regex = (r) ->
   newParser "re: #{r.toString()}",
     describer: r.toString()
     matcher: (state, cont) ->
-      m = r2.exec(state.text.slice(state.pos))
+      m = r2.exec(state.internal.text.slice(state.loc.pos))
       if m? then cont(new Match(state.advance(m[0].length), m, false)) else @fail(state, cont)
 
 # ----- top-level API:
@@ -233,7 +233,7 @@ parse = (p, str, options = {}) ->
   _count = 0
   state = if str instanceof ParserState then str else new ParserState(str)
   state.stateName = "start"
-  if options.debugGraph then state.debugger = { graph: new DebugGraph() }
+  if options.debugGraph then state.startDebugGraph()
   p = resolve(p)
   successes = []
   failures = []
@@ -245,8 +245,8 @@ parse = (p, str, options = {}) ->
       else
         rv.state.logFailure()
         failures.push rv
-  while state.trampoline.ready() and successes.length == 0
-    state.trampoline.next()
+  while state.internal.trampoline.ready() and successes.length == 0
+    state.internal.trampoline.next()
   # message with 'abort' set has highest priority. secondary sort by index.
   failures.sort (a, b) ->
     if a.abort != b.abort

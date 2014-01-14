@@ -49,7 +49,7 @@ class DebugGraph
       description = v.parser.description()
       if description.length > maxLength then description = v.parser.kind + "..."
       description = description.replace("\\", "\\\\").replace("\"", "\\\"")
-      label = "@#{v.state.pos} #{v.state.depth}: #{description}\\n'#{v.state.around(4)}'"
+      label = "@#{v.state.pos()} #{v.state.depth}: #{description}\\n'#{v.state.around(4)}'"
       label = label.replace /"/g, "\\\""
       "  \"#{k}\" [label=\"#{label}\"];"
     data = [

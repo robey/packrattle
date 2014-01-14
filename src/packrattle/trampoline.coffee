@@ -22,9 +22,9 @@ class Trampoline
     x = @cache[parser.id]
     if not x?
       @cache[parser.id] = x = {}
-    entry = x[state.pos]
+    entry = x[state.loc.pos]
     if not entry?
-      x[state.pos] = entry = { continuations: [], results: [] }
+      x[state.loc.pos] = entry = { continuations: [], results: [] }
     entry
 
 exports.Trampoline = Trampoline
