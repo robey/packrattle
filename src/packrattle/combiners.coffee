@@ -165,7 +165,7 @@ repeat = (p, minCount=0, maxCount=null) ->
 # like 'repeat', but each element may be optionally preceded by 'ignore',
 # which will be thrown away. this is usually used to remove leading
 # whitespace.
-repeatIgnore = (ignore, p, minCount=0, maxCount=null) ->
+repeatIgnore = (ignore, p, minCount = 0, maxCount = null) ->
   p2 = seq(optional(ignore).drop(), p).onMatch (x) -> x[0]
   repeat(p2, minCount, maxCount)
 
@@ -184,7 +184,10 @@ reduce = (p, separator="", accumulator=null, reducer=null, minCount=1, maxCount=
   if not accumulator? then accumulator = (x) -> [ x ]
   if not reducer? then reducer = (sum, sep, x) -> sum.push(x)
   seq(p, repeat(seq(separator, p), minCount - 1, if maxCount? then maxCount - 1 else maxCount)).onMatch (x) ->
-    [ accumulator(x[0]) ].concat(x[1]).reduce (sum, item) -> reducer(sum, item[0], item[1])
+    if x.length > 0
+      [ accumulator(x[0]) ].concat(x[1]).reduce (sum, item) -> reducer(sum, item[0], item[1])
+    else
+      x[0]
 
 
 exports.optional = optional
