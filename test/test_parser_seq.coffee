@@ -7,13 +7,13 @@ describe "Parser.seq", ->
   it "can do a sequence", ->
     p = pr.string("abc").then(pr.string("123"))
     rv = pr.parse(p, "abc123")
-    rv.state.pos.should.equal(6)
+    rv.state.pos().should.equal(6)
     rv.match.should.eql([ "abc", "123" ])
     rv = pr.parse(p, "abcd")
-    rv.state.pos.should.equal(3)
+    rv.state.pos().should.equal(3)
     rv.message.should.match(/123/)
     rv = pr.parse(p, "123")
-    rv.state.pos.should.equal(0)
+    rv.state.pos().should.equal(0)
     rv.message.should.match(/abc/)
 
   it "strings together a chained sequence", ->
@@ -23,7 +23,7 @@ describe "Parser.seq", ->
       pr.string("xyz")
     )
     rv = pr.parse(p, "abc123xyz")
-    rv.state.pos.should.equal(9)
+    rv.state.pos().should.equal(9)
     rv.match.should.eql([ "abc", "xyz" ])
 
   it "can lazily chain a sequence", ->
@@ -36,16 +36,16 @@ describe "Parser.seq", ->
     hits.should.equal(0)
     rv = pr.parse(p, "abc123xyz")
     hits.should.equal(3)
-    rv.state.pos.should.equal(9)
+    rv.state.pos().should.equal(9)
     rv.match.should.eql([ "abc", "xyz" ])
 
   it "can sequence optional elements", ->
     p = [ "abc", pr.optional(/\d+/), "xyz" ]
     rv = pr.parse(p, "abcxyz")
-    rv.state.pos.should.equal(6)
+    rv.state.pos().should.equal(6)
     rv.match.should.eql([ "abc", "", "xyz" ])
     rv = pr.parse(p, "abc99xyz")
-    rv.state.pos.should.equal(8)
+    rv.state.pos().should.equal(8)
     rv.match[0].should.eql("abc")
     rv.match[1][0].should.eql("99")
     rv.match[2].should.eql("xyz")
@@ -76,14 +76,14 @@ describe "Parser.seq", ->
   it "handles regexen in a sequence", ->
     p = pr.seq(/\s*/, "if")
     rv = pr.parse p, "   if"
-    rv.state.pos.should.equal(5)
+    rv.state.pos().should.equal(5)
     rv.match[0][0].should.eql("   ")
     rv.match[1].should.eql("if")
     rv = pr.parse p, "if"
-    rv.state.pos.should.equal(2)
+    rv.state.pos().should.equal(2)
     rv.match[0][0].should.eql("")
     rv.match[1].should.eql("if")
     rv = pr.parse p, ";  if"
-    rv.state.pos.should.equal(0)
+    rv.state.pos().should.equal(0)
     rv.message.should.match(/if/)
 

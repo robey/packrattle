@@ -9,8 +9,8 @@ describe "ParserState", ->
   verify = (state, lineno, xpos) ->
     lines = text.split("\n")
     state.line().should.eql(lines[lineno])
-    state.lineno.should.eql(lineno)
-    state.xpos.should.eql(xpos)
+    state.loc.lineno.should.eql(lineno)
+    state.loc.xpos.should.eql(xpos)
 
   it "finds the current line", ->
     state = new pr.ParserState(text).advance(0)

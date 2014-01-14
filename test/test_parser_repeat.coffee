@@ -5,7 +5,7 @@ pr = require("../lib/packrattle")
 
 matchSpan = (rv) ->
   state = rv.state.flip()
-  [ rv.match, state.pos, state.endpos ]
+  [ rv.match, state.loc.pos, state.endloc.pos ]
 
 describe "Parser.repeat", ->
   it "0 or more", ->
@@ -17,10 +17,7 @@ describe "Parser.repeat", ->
 
   it "2 or 3", ->
     p = pr.repeat("hi", 2, 3)
-    rv = pr.parse(p, "hi")
-    rv.ok.should.equal(false)
-    rv.state.pos.should.equal(0)
-    rv.message.should.match(/\('hi'\)\{2, 3}/)
+    (-> p.run("hi")).should.throw /\('hi'\)\{2, 3}/
     matchSpan(pr.parse(p, "hihi")).should.eql [ [ "hi", "hi" ], 0, 4 ]
     matchSpan(pr.parse(p, "hihihi")).should.eql [ [ "hi", "hi", "hi" ], 0, 6 ]
     matchSpan(pr.parse(p, "hihihihi")).should.eql [ [ "hi", "hi", "hi" ], 0, 6 ]
@@ -28,7 +25,7 @@ describe "Parser.repeat", ->
   it "nested", ->
     p = pr.repeat([ "hi", pr.repeat("!") ])
     rv = pr.parse(p, "hi!hi!!!hi?")
-    rv.state.pos.should.equal(10)
+    rv.state.loc.pos.should.equal(10)
     rv.match.should.eql([
       [ "hi", [ "!" ] ]
       [ "hi", [ "!", "!", "!" ] ]
@@ -61,14 +58,16 @@ describe "Parser.repeat", ->
       ((x) -> x),
       ((left, op, right) -> { binary: op, left: left, right: right })
     )
-    rv = pr.consume(algebra, "3 + 2")
-    rv.ok.should.equal(true)
-    rv.match.should.eql(binary: "+", left: "3", right: "2")
-    rv = pr.consume(algebra, "3 +")
-    rv.ok.should.equal(false)
-    rv.message.should.eql "Expected operand"
-    rv.state.pos.should.eql 3
-    rv = pr.consume(algebra, "3 + 5 +")
-    rv.ok.should.equal(false)
-    rv.message.should.eql "Expected operand"
-    rv.state.pos.should.eql 7
+    algebra.run("3 + 2").should.eql(binary: "+", left: "3", right: "2")
+    try
+      algebra.run("3 +")
+      throw new Error("nope")
+    catch e
+      e.message.should.eql "Expected operand"
+      e.state.loc.pos.should.eql 3
+    try
+      algebra.run("3 + 5 +")
+      throw new Error("nope")
+    catch e
+      e.message.should.eql "Expected operand"
+      e.state.loc.pos.should.eql 7

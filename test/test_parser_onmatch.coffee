@@ -5,26 +5,19 @@ pr = require("../lib/packrattle")
 
 describe "Parser.onMatch", ->
   it "transforms a match", ->
-    p = pr("hello").onMatch((s) -> s.toUpperCase())
-    rv = pr.parse p, "cat"
-    rv.state.pos.should.equal(0)
-    rv.message.should.match(/hello/)
-    rv = pr.parse p, "hellon"
-    rv.state.pos.should.equal(5)
-    rv.match.should.equal("HELLO")
+    p = pr("hello").onMatch((s, state) -> [ s.toUpperCase(), state.endpos() ])
+    (-> p.run("cat")).should.throw /hello/
+    pr.parse(p, "hellon").match.should.eql [ "HELLO", 5 ]
 
   it "transforms a match into a constant", ->
     p = pr("hello").onMatch("yes")
-    rv = pr.parse p, "hello"
-    rv.state.pos.should.equal(5)
-    rv.match.should.eql("yes")
+    rv = pr.parse(p, "hello")
+    rv.match.should.eql "yes"
+    rv.state.pos().should.equal(5)
 
   it "transforms a match into a failure on exception", ->
     p = pr("hello").onMatch((s) -> throw "utter failure")
-    rv = pr.parse p, "hello"
-    rv.ok.should.equal(false)
-    rv.message.should.match(/utter failure/)
-    rv.state.pos.should.eql(5)
+    (-> p.run("hello")).should.throw /utter failure/
 
   a = "foo"
   m = pr("foo")

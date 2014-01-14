@@ -52,7 +52,7 @@ describe "Parser example", ->
     expr = pr.reduce(number, "+", ((n) -> n), ((sum, op, n) -> sum + n))
     rv = pr.parse(expr, "2+3+4")
     rv.ok.should.eql(true)
-    rv.state.pos.should.equal(5)
+    rv.state.loc.pos.should.equal(5)
     rv.match.should.equal(9)
 
   it "csv", ->
@@ -78,9 +78,7 @@ describe "Parser example", ->
       pr(/\d+/).onMatch((m) -> parseInt(m[0])),
       pr(/.+/).onMatch((m) -> "BAD")
     )
-    rv = pr.consume(expr, "4+80+3+200+12")
-    rv.ok.should.eql(true)
-    rv.match.should.eql(299)
+    expr.run("4+80+3+200+12").should.eql 299
 
   it "obeys leftmost/depth precedence in the face of ambiguity", ->
     expr = pr.repeat(

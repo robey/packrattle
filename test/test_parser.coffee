@@ -3,162 +3,112 @@ util = require 'util'
 
 pr = require("../lib/packrattle")
 
+parse = (p, line) ->
+  rv = pr.parse p, line
+  rv.ok.should.equal true
+  [ rv.match, rv.state.loc.pos ]
+
+consume = (p, line) ->
+  rv = pr.consume p, line
+  rv.ok.should.equal true
+  [ rv.match, rv.state.loc.pos ]
+
+
 describe "Parser", ->
   it "reject", ->
-    p = pr.reject
-    rv = pr.parse p, ""
-    rv.state.pos.should.equal(0)
-    rv.message.should.match(/failure/)
+    (-> pr.reject.run("")).should.throw /failure/
 
   it "succeed", ->
-    p = pr.succeed("foo")
-    rv = pr.parse p, ""
-    rv.state.pos.should.equal(0)
-    rv.ok.should.equal(true)
-    rv.match.should.equal("foo")
+    parse(pr.succeed("foo"), "").should.eql [ "foo", 0 ]
 
   it "literal string", ->
     p = pr.string("hello")
-    rv = pr.parse p, "cat"
-    rv.state.pos.should.equal(0)
-    rv.message.should.match(/hello/)
-    rv = pr.parse p, "hellon"
-    rv.state.pos.should.equal(5)
-    rv.match.should.equal("hello")
+    (-> p.run("cat")).should.throw /hello/
+    parse(p, "hellon").should.eql [ "hello", 5 ]
 
   it "consumes the whole string", ->
     p = pr.string("hello")
-    rv = pr.consume p, "hello"
-    rv.ok.should.equal(true)
-    rv.match.should.eql("hello")
-    rv.state.pos.should.equal(5)
-    rv = pr.consume p, "hello!"
-    rv.ok.should.equal(false)
-    rv.state.pos.should.equal(5)
-    rv.message.should.match(/end/)
+    consume(p, "hello").should.eql [ "hello", 5 ]
+    (-> p.run("hello!")).should.throw /end/
 
   it "checks without consuming", ->
     p = pr.check(pr.string("hello"))
-    rv = pr.parse p, "hello"
-    rv.ok.should.equal(true)
-    rv.match.should.eql("hello")
-    rv.state.pos.should.equal(0)
+    parse(p, "hello").should.eql [ "hello", 0 ]
 
   it "can perform a non-advancing check", ->
     p = pr.seq("hello", pr.check("there"), "th")
-    rv = pr.parse(p, "hellothere")
-    rv.ok.should.equal(true)
-    rv.match.should.eql([ "hello", "there", "th" ])
-    rv = pr.parse(p, "helloth")
-    rv.ok.should.equal(false)
-    rv.message.should.match(/there/)
+    parse(p, "hellothere").should.eql [ [ "hello", "there", "th" ], 7 ]
+    (-> p.run("helloth")).should.throw /there/
 
   it "regex", ->
     p = pr.regex(/h(i)?/)
-    rv = pr.parse p, "no"
-    rv.state.pos.should.equal(0)
-    rv.message.should.match(/h\(i\)\?/)
-    rv = pr.parse p, "hit"
-    rv.state.pos.should.equal(2)
-    rv.match[0].should.eql("hi")
-    rv.match[1].should.eql("i")
+    (-> p.run("no")).should.throw /h\(i\)\?/
+    [ m, pos ] = parse(p, "hit")
+    pos.should.equal(2)
+    m[0].should.eql("hi")
+    m[1].should.eql("i")
 
   it "onFail", ->
     p = pr.string("hello").onFail("Try a greeting.")
-    rv = pr.parse p, "cat"
-    rv.state.pos.should.equal(0)
-    rv.message.should.eql("Try a greeting.")
-    rv = pr.parse p, "hellon"
-    rv.state.pos.should.equal(5)
-    rv.match.should.equal("hello")
+    (-> p.run("cat")).should.throw "Try a greeting."
+    parse(p, "hellon").should.eql [ "hello", 5 ]
 
   it "matches with a condition", ->
     p = pr.regex(/\d+/).matchIf((s) -> parseInt(s[0]) % 2 == 0).onFail("Expected an even number")
-    rv = pr.parse p, "103"
-    rv.state.pos.should.equal(0)
-    rv.message.should.match(/even number/)
-    rv = pr.parse p, "104"
-    rv.state.pos.should.equal(3)
-    rv.match[0].should.eql("104")
+    (-> p.run("103")).should.throw /even number/
+    [ m, pos ] = parse(p, "104")
+    pos.should.equal(3)
+    m[0].should.eql("104")
 
   it "can negate", ->
     p = pr.string("hello").not_()
-    rv = pr.parse(p, "cat")
-    rv.state.pos.should.equal(0)
-    rv.match.should.eql("")
-    rv = pr.parse(p, "hello")
-    rv.state.pos.should.equal(0)
-    rv.message.should.match(/hello/)
+    parse(p, "cat").should.eql [ "", 0 ]
+    (-> p.run("hello")).should.throw /hello/
 
   it "parses optionals", ->
     p = pr.optional(/\d+/, "?")
-    rv = pr.parse(p, "34.")
-    rv.state.pos.should.equal(2)
-    rv.match[0].should.eql("34")
-    rv = pr.parse(p, "no")
-    rv.state.pos.should.equal(0)
-    rv.match.should.eql("?")
+    [ m, pos ] = parse(p, "34.")
+    [ m[0], pos ].should.eql [ "34", 2 ]
+    parse(p, "no").should.eql [ "?", 0 ]
 
   it "can perform an 'alt'", ->
     p = pr.alt("hello", "goodbye")
-    rv = pr.parse(p, "cat")
-    rv.state.pos.should.equal(0)
-    rv.message.should.match(/'hello'/)
-    rv = pr.parse(p, "hello")
-    rv.state.pos.should.equal(5)
-    rv.match.should.equal("hello")
-    rv = pr.parse(p, "goodbye")
-    rv.state.pos.should.equal(7)
-    rv.match.should.equal("goodbye")
+    (-> p.run("cat")).should.throw /'hello'/
+    parse(p, "hello").should.eql [ "hello", 5 ]
+    parse(p, "goodbye").should.eql [ "goodbye", 7 ]
 
   it "can perform an 'or'", ->
     p = pr.string("hello").or(pr.string("goodbye"))
-    rv = pr.parse(p, "cat")
-    rv.state.pos.should.equal(0)
-    rv.message.should.match(/'hello'/)
-    rv = pr.parse(p, "hello")
-    rv.state.pos.should.equal(5)
-    rv.match.should.equal("hello")
-    rv = pr.parse(p, "goodbye")
-    rv.state.pos.should.equal(7)
-    rv.match.should.equal("goodbye")
+    (-> p.run("cat")).should.throw /'hello'/
+    parse(p, "hello").should.eql [ "hello", 5 ]
+    parse(p, "goodbye").should.eql [ "goodbye", 7 ]
 
   describe "implicitly", ->
     it "turns strings into parsers", ->
       p = pr.seq("abc", "123").or("xyz")
-      rv = pr.parse(p, "abc123")
-      rv.state.pos.should.equal(6)
-      rv.match.should.eql([ "abc", "123" ])
-      rv = pr.parse(p, "xyz")
-      rv.state.pos.should.equal(3)
-      rv.match.should.eql("xyz")
+      parse(p, "abc123").should.eql [ [ "abc", "123" ], 6 ]
+      parse(p, "xyz").should.eql [ "xyz", 3 ]
 
     it "strings together a chained sequence", ->
       p = [ "abc", pr.drop(/\d+/), "xyz" ]
-      rv = pr.parse(p, "abc11xyz")
-      rv.state.pos.should.equal(8)
-      rv.match.should.eql([ "abc", "xyz" ])
+      parse(p, "abc11xyz").should.eql [ [ "abc", "xyz" ], 8 ]
 
   describe "lazily resolves", ->
     it "a nested parser", ->
       p = pr.seq ":", -> /\w+/
-      rv = pr.parse(p, ":hello")
-      rv.state.pos.should.equal(6)
-      rv.match[0].should.eql(":")
-      rv.match[1][0].should.eql("hello")
+      [ m, pos ] = parse(p, ":hello")
+      pos.should.equal(6)
+      m[0].should.eql(":")
+      m[1][0].should.eql("hello")
 
     it "only once", ->
       count = 0
       p = pr.seq ":", ->
         count++
         pr.regex(/\w+/).onMatch (m) -> m[0].toUpperCase()
-      rv = pr.parse(p, ":hello")
-      rv.state.pos.should.equal(6)
-      rv.match.should.eql([ ":", "HELLO" ])
+      parse(p, ":hello").should.eql [ [ ":", "HELLO" ], 6 ]
       count.should.equal(1)
-      rv = pr.parse(p, ":goodbye")
-      rv.state.pos.should.equal(8)
-      rv.match.should.eql([ ":", "GOODBYE" ])
+      parse(p, ":goodbye").should.eql [ [ ":", "GOODBYE" ], 8 ]
       count.should.equal(1)
 
   it "only executes a parser once per string/position", ->
