@@ -112,6 +112,15 @@ class Parser
       entry.continuations.push cont
       for r in entry.results then cont(r)
 
+  # consume an entire text with this parser. convert failure into an exception.
+  run: (text, options) ->
+    rv = consume(@, text, options)
+    if not rv.ok
+      e = new Error(rv.message)
+      e.state = rv.state
+      throw e
+    rv.match    
+
   # ----- transformations and combinations:
 
   # transforms the error message of a parser
