@@ -84,6 +84,7 @@ class ParserState
 
   pos: -> @loc.pos
   endpos: -> @endloc.pos
+  lineno: -> @loc.lineno
 
   # return the text of the current line around 'pos'.
   line: (pos = @loc.pos) ->
