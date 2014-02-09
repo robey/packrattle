@@ -83,7 +83,7 @@ class ParserState
     rv
 
   pos: -> @loc.pos
-  endpos: -> @endloc.pos
+  endpos: -> (@endloc or @loc).pos
   lineno: -> @loc.lineno
 
   # return the text of the current line around 'pos'.
@@ -134,8 +134,9 @@ class ParserState
 
   toSquiggles: ->
     line = @line()
-    endxpos = @endloc?.xpos
-    if @endloc?.lineno != @loc.lineno
+    endloc = @endloc or @loc
+    endxpos = endloc.xpos
+    if endloc.lineno != @loc.lineno
       # multi-line: just show the first line.
       endxpos = line.length
     if endxpos == @loc.xpos then endxpos += 1

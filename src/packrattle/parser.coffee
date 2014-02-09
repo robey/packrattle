@@ -41,7 +41,7 @@ class Parser
     if @recursing then return "..."
     if @nested.length == 0 then return ""
     @recursing = true
-    rv = @nested.map((p) -> p.nestedList()).join(", ")
+    rv = @nested.map((p) -> resolve(p).nestedList()).join(", ")
     @recursing = false
     "(#{rv})"
 

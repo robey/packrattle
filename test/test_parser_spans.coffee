@@ -73,3 +73,14 @@ describe "Parser onMatch spans", ->
       "hello line"
       "      ~~~~"
     ]
+
+  it "marks errors", ->
+    p = pr.seq(pr(/\w+/).commit(), /\d+/)
+    rv = pr.parse p, "hello???"
+    rv.ok.should.eql false
+    rv.state.toSquiggles().should.eql [
+      "hello???"
+      "     ~"
+    ]
+    rv.state.pos().should.eql 5
+    rv.state.endpos().should.eql 5
