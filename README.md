@@ -1,3 +1,5 @@
+![logo](docs/packrattle-small.png)
+
 packrattle
 ==========
 
