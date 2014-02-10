@@ -93,6 +93,8 @@ var number = pr.regex(/\d+/).onMatch(function (x) { return parseInt(x); });
 
 - `onFail(newMessage)` - Replace the error message for this parser when it fails to match.
 
+- `describe(message)` - Calls `onFail("Expected " + message)`, but also sets the parser's description for debugging purposes.
+
 - `matchIf(f)` - If the parser is successful, call 'f' on the match result: if it returns true, continue as normal, but if it returns false, fail to match.
 
 
@@ -234,6 +236,27 @@ The `ParserState` object contains a few helper methods:
 - `line()` - the text of the line around `pos()`, assuming `\n` divides lines
 - `toSquiggles()` - an array containing `line()` and a a string with little squiggle characters highlighting the span of `pos()` to `endpos()`
 
+
+Debugging
+---------
+
+Ocassionally, the first draft of a parser may not work exactly the way you want it to. To help you debug, packrattle provides two methods for generating 'dot' graph data.
+
+The first is `toDot()`, which will generate a directed graph of the nesting of parsers. This is useful if you want to see how the sausage is made inside packrattle, as it assembles your parser objects into smaller bits. For example:
+
+```javascript
+var pr = require("packrattle");
+var fs = require("fs");
+var abc = pr([ /aA/, /bB/, /cC/ ]);
+fs.writeFileSync("abc.dot", abc.toDot());
+```
+
+<img style="float: right" src="docs/abc.png">
+will write a graph file named "abc.dot". Dot utilities will be able to generate an image like the one to the right.
+
+```sh
+$ dot -Tpng -oabc.png ./abc.dot
+```
 
 Author
 ------
