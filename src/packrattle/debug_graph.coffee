@@ -6,11 +6,15 @@ class DebugGraph
   constructor: ->
     @nodes = {}
     @edges = []
+    @success = false
+    @failure = false
 
   addEdge: (from, to) ->
     @edges.push { from, to }
     if @nodes[from]? then @nodes[from].children.push to
     if @nodes[to]? then @nodes[to].parents.push from
+    if to == "success" then @success = true
+    if to == "failure" then @failure = true
 
   addNode: (name, parser, state) ->
     node = { parser, state, parents: [], children: [] }
@@ -61,7 +65,10 @@ class DebugGraph
     data = data.concat(nodes)
     data.push ""
     data.push "  \"start\" [shape=rect, style=filled, fillcolor=yellow];"
-    data.push "  \"success\" [shape=rect, style=filled, fillcolor=green];"
+    if @success
+      data.push "  \"success\" [shape=rect, style=filled, fillcolor=green];"
+    if @failure
+      data.push "  \"failure\" [shape=rect, style=filled, fillcolor=red];"
     data.push "}"
     data.join("\n") + "\n"
 

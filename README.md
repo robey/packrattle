@@ -93,7 +93,23 @@ var number = pr.regex(/\d+/).onMatch(function (x) { return parseInt(x); });
 
 - `onFail(newMessage)` - Replace the error message for this parser when it fails to match.
 
+- `describe(message)` - Calls `onFail("Expected " + message)`, but also sets the parser's description for debugging purposes.
+
 - `matchIf(f)` - If the parser is successful, call 'f' on the match result: if it returns true, continue as normal, but if it returns false, fail to match.
+
+
+Onmatch
+-------
+
+The `onMatch(f)` transform calls `f` as a function with two parameters:
+
+```javascript
+f(match, state)
+```
+
+The `match` parameter is the result of the matching parser. For simple parsers like `string` and `regex`, this will be the string literal or regex match object, respectively. For nested parsers with their own `onMatch` transforms, the parameter will be the object the nested parsers returned. For example, the `seq` combinator (below) returns an array of the sequence of matches. An expression parser might build up a tree of expression nodes.
+
+The `state` parameter is a `ParserState` object, described below, under "Executing". The `pos()/endpos()` pair of the state will mark the span of the string that this parser matched. This can be useful for tracking the original source of parsed text when building a large object.
 
 
 Combinators
@@ -233,6 +249,45 @@ The `ParserState` object contains a few helper methods:
 - `lineno()` - the current line number of `pos()`, assuming `\n` divides lines, counting from 0
 - `line()` - the text of the line around `pos()`, assuming `\n` divides lines
 - `toSquiggles()` - an array containing `line()` and a a string with little squiggle characters highlighting the span of `pos()` to `endpos()`
+
+
+Debugging
+---------
+
+Ocassionally, the first draft of a parser may not work exactly the way you want it to. To help you debug, packrattle provides two methods for generating 'dot' graph data.
+
+The first is `toDot()`, which will generate a directed graph of the nesting of parsers. This is useful if you want to see how the sausage is made inside packrattle, as it assembles your parser objects into smaller bits. For example:
+
+```javascript
+var pr = require("packrattle");
+var fs = require("fs");
+
+var abc = pr.alt(/[aA]/, /[bB]/, /[cC]/);
+fs.writeFileSync("abc1.dot", abc.toDot());
+```
+
+will write a graph file named "abc.dot". Dot utilities will be able to generate an image like the one below.
+
+```sh
+$ dot -Tpng -oabc.png ./abc.dot
+```
+
+<img src="docs/abc1.png">
+
+The second method is to pass `debugGraph` as an option to the `parse` or `consume` methods. This tells packrattle to trace its progress through a string, and store the results in the `ParserState` object. On success or failure, we can then generate a 'dot' file of the trace.
+
+```javascript
+var pr = require("./lib/packrattle");
+var fs = require("fs");
+
+var abc = pr.alt(/[aA]/, /[bB]/, /[cC]/);
+var rv = pr.consume(abc, "b", { debugGraph: true });
+fs.writeFileSync("abc2.dot", rv.state.debugGraphToDot());
+```
+
+This (trivial) trace shows the failed match of "a" before succeeding at "b".
+
+<img src="docs/abc2.png">
 
 
 Author

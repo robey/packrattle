@@ -1,4 +1,13 @@
 
+## 3.0.0
+
+- onMatch() will now pass the ParserState to the user function, so matching spans can be tracked
+- scrapped bad logging and replaced it with a graph generator for 'dot' so you can visually walk through the parser's logic
+- optimized ParserState for a huge speed improvement
+- added describe() to tune the error message for a parser
+- refactored & improved the way nested parsers are discovered and stringified for debugging
+- fixed several small bugs with commit()
+
 ## 2.2.0  (17 nov 2013)
 
 - onMatch() may now return another parser, to behave like "flatmap" in monads [jesse hallett]
