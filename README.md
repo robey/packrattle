@@ -251,12 +251,13 @@ var abc = pr([ /aA/, /bB/, /cC/ ]);
 fs.writeFileSync("abc.dot", abc.toDot());
 ```
 
-<img style="float: right" src="docs/abc.png">
-will write a graph file named "abc.dot". Dot utilities will be able to generate an image like the one to the right.
+will write a graph file named "abc.dot". Dot utilities will be able to generate an image like the one below.
 
 ```sh
 $ dot -Tpng -oabc.png ./abc.dot
 ```
+
+<img style="float: right; width: 50%;" src="docs/abc.png">
 
 Author
 ------
