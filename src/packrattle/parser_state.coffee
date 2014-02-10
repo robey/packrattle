@@ -1,4 +1,5 @@
 util = require 'util'
+debug_graph = require("./debug_graph")
 Trampoline = require("./trampoline").Trampoline
 
 class Location
@@ -53,7 +54,7 @@ class ParserState
     "ParserState(text=#{truncated}, loc=#{@loc}, depth=#{@depth})"
 
   startDebugGraph: ->
-    @internal.debugger = { graph: new DebugGraph() }
+    @internal.debugger = { graph: new debug_graph.DebugGraph() }
 
   # return a new ParserState with the position advanced 'n' places.
   # the new @lineno and @xpos are adjusted by watching for linefeeds.
@@ -83,6 +84,7 @@ class ParserState
     rv
 
   pos: -> @loc.pos
+  xpos: -> @loc.xpos
   endpos: -> (@endloc or @loc).pos
   lineno: -> @loc.lineno
 
@@ -101,11 +103,12 @@ class ParserState
   # silly indicator (for ascii terminals) of where we are
   around: (width) ->
     line = @line()
-    left = @xpos - width
-    right = @xpos + width
+    xpos = @xpos()
+    left = xpos - width
+    right = xpos + width
     if left < 0 then left = 0
     if right >= line.length then right = line.length - 1
-    line[left ... @xpos] + "[" + (line[@xpos] or "") + "]" + line[@xpos + 1 ... right + 1]
+    line[left ... xpos] + "[" + (line[xpos] or "") + "]" + line[xpos + 1 ... right + 1]
 
   getCache: (parser) -> @internal.trampoline.getCache(parser, @)
 
@@ -114,23 +117,25 @@ class ParserState
   deeper: (parser) ->
     rv = @clone()
     rv.depth = @depth + 1
-    if not @debugger?.graph? then return rv
+    if not @internal.debugger?.graph? then return rv
     newStateName = "#{parser.id}:#{@loc.pos}"
     rv.stateName = newStateName
-    @debugger.graph.addNode(newStateName, parser, rv)
-    if @stateName? then @debugger.graph.addEdge(@stateName, newStateName)
+    @internal.debugger.graph.addNode(newStateName, parser, rv)
+    if @stateName? then @internal.debugger.graph.addEdge(@stateName, newStateName)
     rv
 
   logSuccess: ->
-    if @debugger?.graph?
-      @debugger.graph.addEdge(@stateName, "success")
+    if @internal.debugger?.graph?
+      @internal.debugger.graph.addEdge(@stateName, "success")
 
   logFailure: ->
+    if @internal.debugger?.graph?
+      @internal.debugger.graph.addEdge(@stateName, "failure")
     # don't do anything for now.
 
   debugGraphToDot: ->
-    return unless @debugger?.graph?
-    @debugger.graph.toDot()
+    return unless @internal.debugger?.graph?
+    @internal.debugger.graph.toDot()
 
   toSquiggles: ->
     line = @line()
