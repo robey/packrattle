@@ -98,6 +98,20 @@ var number = pr.regex(/\d+/).onMatch(function (x) { return parseInt(x); });
 - `matchIf(f)` - If the parser is successful, call 'f' on the match result: if it returns true, continue as normal, but if it returns false, fail to match.
 
 
+Onmatch
+-------
+
+The `onMatch(f)` transform calls `f` as a function with two parameters:
+
+```javascript
+f(match, state)
+```
+
+The `match` parameter is the result of the matching parser. For simple parsers like `string` and `regex`, this will be the string literal or regex match object, respectively. For nested parsers with their own `onMatch` transforms, the parameter will be the object the nested parsers returned. For example, the `seq` combinator (below) returns an array of the sequence of matches. An expression parser might build up a tree of expression nodes.
+
+The `state` parameter is a `ParserState` object, described below, under "Executing". The `pos()/endpos()` pair of the state will mark the span of the string that this parser matched. This can be useful for tracking the original source of parsed text when building a large object.
+
+
 Combinators
 -----------
 
@@ -248,8 +262,8 @@ The first is `toDot()`, which will generate a directed graph of the nesting of p
 var pr = require("packrattle");
 var fs = require("fs");
 
-var abc = pr([ /aA/, /bB/, /cC/ ]);
-fs.writeFileSync("abc.dot", abc.toDot());
+var abc = pr.alt(/[aA]/, /[bB]/, /[cC]/);
+fs.writeFileSync("abc1.dot", abc.toDot());
 ```
 
 will write a graph file named "abc.dot". Dot utilities will be able to generate an image like the one below.
@@ -268,7 +282,7 @@ var fs = require("fs");
 
 var abc = pr.alt(/[aA]/, /[bB]/, /[cC]/);
 var rv = pr.consume(abc, "b", { debugGraph: true });
-fs.writeFileSync("abc.dot", rv.state.debugGraphToDot());
+fs.writeFileSync("abc2.dot", rv.state.debugGraphToDot());
 ```
 
 This (trivial) trace shows the failed match of "a" before succeeding at "b".
