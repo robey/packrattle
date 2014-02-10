@@ -3,3 +3,7 @@ load "mocha"
 
 settings.clean = [ "lib" ]
 settings.distclean = [ "node_modules" ]
+
+# work around bizarre breaking change in coffee-script 1.7
+settings.mocha.options = settings.mocha.options.filter (x) -> x != "--compilers coffee:coffee-script"
+settings.mocha.options.push "--compilers coffee:coffee-script/register"

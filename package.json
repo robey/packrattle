@@ -20,7 +20,7 @@
     "test": "plz --color -v test"
   },
   "devDependencies": {
-    "coffee-script": "~1.6.0",
+    "coffee-script": "~1.7.0",
     "glob": "*",
     "mocha": "*",
     "plz": "*",
