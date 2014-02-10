@@ -247,6 +247,7 @@ The first is `toDot()`, which will generate a directed graph of the nesting of p
 ```javascript
 var pr = require("packrattle");
 var fs = require("fs");
+
 var abc = pr([ /aA/, /bB/, /cC/ ]);
 fs.writeFileSync("abc.dot", abc.toDot());
 ```
@@ -257,7 +258,23 @@ will write a graph file named "abc.dot". Dot utilities will be able to generate 
 $ dot -Tpng -oabc.png ./abc.dot
 ```
 
-<img style="float: right; width: 50%;" src="docs/abc.png">
+<img src="docs/abc1.png">
+
+The second method is to pass `debugGraph` as an option to the `parse` or `consume` methods. This tells packrattle to trace its progress through a string, and store the results in the `ParserState` object. On success or failure, we can then generate a 'dot' file of the trace.
+
+```javascript
+var pr = require("./lib/packrattle");
+var fs = require("fs");
+
+var abc = pr.alt(/[aA]/, /[bB]/, /[cC]/);
+var rv = pr.consume(abc, "b", { debugGraph: true });
+fs.writeFileSync("abc.dot", rv.state.debugGraphToDot());
+```
+
+This (trivial) trace shows the failed match of "a" before succeeding at "b".
+
+<img src="docs/abc2.png">
+
 
 Author
 ------
