@@ -19,13 +19,15 @@
   "scripts": {
     "test": "plz --color -v test"
   },
+  "dependencies": {
+    "weakmap": "0.0.6"
+  },
   "devDependencies": {
     "coffee-script": "~1.7.0",
     "glob": "*",
     "mocha": "*",
     "plz": "*",
-    "should": "*",
-    "weakmap": "0.0.6"
+    "should": "*"
   },
   "main": "./lib/packrattle",
   "files": [
