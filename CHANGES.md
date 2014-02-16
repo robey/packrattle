@@ -1,5 +1,9 @@
 
-## 3.0.0
+## 3.0.1  (15 feb 2013)
+
+- fix dependencies: "weakmap" should be listed; "glob" should not
+
+## 3.0.0  (9 feb 2013)
 
 - onMatch() will now pass the ParserState to the user function, so matching spans can be tracked
 - scrapped bad logging and replaced it with a graph generator for 'dot' so you can visually walk through the parser's logic

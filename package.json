@@ -1,6 +1,6 @@
 {
   "name": "packrattle",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "description": "GLL parser-combinator library",
   "keywords": [ "parser", "packrat", "gll", "coffee-script" ],
   "author": "Robey Pointer <robeypointer@gmail.com>",
@@ -17,14 +17,13 @@
   ],
 
   "scripts": {
-    "test": "plz --color -v test"
+    "test": "./node_modules/.bin/plz --color -v test"
   },
   "dependencies": {
     "weakmap": "0.0.6"
   },
   "devDependencies": {
     "coffee-script": "~1.7.0",
-    "glob": "*",
     "mocha": "*",
     "plz": "*",
     "should": "*"
