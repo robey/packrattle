@@ -111,6 +111,10 @@ describe "Parser", ->
       parse(p, ":goodbye").should.eql [ [ ":", "GOODBYE" ], 8 ]
       count.should.equal(1)
 
+    it "supports drop for lazy parsers", ->
+      p = pr.drop(-> "abc")
+      parse(p, "abc").should.eql [ null, 3]
+
   it "only executes a parser once per string/position", ->
     count = 0
     p = pr.seq "hello", /\s*/, pr.string("there").onMatch (x) ->
