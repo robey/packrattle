@@ -51,7 +51,10 @@ class ParserState
 
   toString: ->
     truncated = if @internal.text.length > 10 then "'#{@internal.text[...10]}...'" else "'#{@internal.text}'"
-    "ParserState(text=#{truncated}, loc=#{@loc}, depth=#{@depth})"
+    extendedInfo = ""
+    if @oldloc? then extendedInfo += ", oldloc=#{@oldloc}"
+    if @endloc? then extendedInfo += ", endloc=#{@endloc}"
+    "ParserState(text=#{truncated}, loc=#{@loc}, depth=#{@depth})#{extendedInfo}"
 
   startDebugGraph: ->
     @internal.debugger = { graph: new debug_graph.DebugGraph() }
