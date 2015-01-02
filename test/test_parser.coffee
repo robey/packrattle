@@ -126,3 +126,15 @@ describe "Parser", ->
     rv.ok.should.equal(true)
     rv.match[2].should.eql("there")
     count.should.equal(1)
+
+  it "advances position correctly past an optional", ->
+    p = pr([
+      /[b]+/
+      pr(/c/).optional().onMatch (m, state) -> { start: state.loc.pos, end: state.endloc.pos }
+      pr(/[d]+/)
+    ])
+    rv = pr.parse(p, "bbbd")
+    rv.ok.should.eql(true)
+    rv.match[1].should.eql { start: 3, end: 3 }
+    rv.match[2][0].should.eql "d"
+

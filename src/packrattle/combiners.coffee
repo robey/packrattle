@@ -26,7 +26,7 @@ optional = (p, defaultValue="") ->
       p = resolve(p)
       p.parse state, (rv) ->
         if rv.ok or rv.abort then return cont(rv)
-        cont(new Match(state, defaultValue, rv.commit))
+        cont(new Match(state.advance(0), defaultValue, rv.commit))
 
 # check that this parser matches, but don't advance the string. (perl calls
 # this a zero-width lookahead.)
@@ -38,7 +38,7 @@ check = (p) ->
       p = resolve(p)
       p.parse state, (rv) ->
         if not rv.ok then return cont(rv)
-        cont(new Match(state, rv.match, rv.commit))
+        cont(new Match(state.advance(0), rv.match, rv.commit))
 
 # if the parser matches up to here, refuse to backtrack to previous
 # alternatives.
@@ -62,10 +62,10 @@ not_ = (p) ->
     matcher: (state, cont) ->
       p = resolve(p)
       p.parse state, (rv) =>
-        if rv.ok then @fail(state, cont) else cont(new Match(state, "", rv.commit))
+        if rv.ok then @fail(state, cont) else cont(new Match(state.advance(0), "", rv.commit))
 
 # throw away the match.
-drop = (p) -> implicit(p).onMatch (x) -> null
+drop = (p) -> implicit(p).onMatch (x, state) -> null
 
 # chain together p1 & p2 such that if p1 matches, p2 is executed. if both
 # match, 'combiner' is called with the two matched objects, to create a
