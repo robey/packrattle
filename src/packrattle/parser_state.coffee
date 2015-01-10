@@ -72,6 +72,11 @@ class ParserState
   flip: ->
     loc = if @oldloc? then @oldloc else @loc
     rv = @clone()
+    rv.internal =
+      text: @internal.text
+      end: @internal.end
+      debugger: @internal.debugger
+    delete rv.oldloc
     rv.loc = loc
     rv.endloc = @loc
     rv
