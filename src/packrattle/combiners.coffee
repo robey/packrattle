@@ -89,7 +89,8 @@ chain = (p1, p2, combiner) ->
 seq = (parsers...) ->
   parsers = (implicit(p) for p in parsers)
   p0 = parsers.shift()
-  if parsers.length == 0 then return defer(p0).onMatch (m) -> [ m ]
+  if parsers.length == 0 then return defer(p0).onMatch (m) ->
+    if m? then [ m ] else []
   chain p0, seq(parsers...), (rv1, rv2) ->
     if rv1?
       rv = rv2[...]
