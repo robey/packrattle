@@ -65,7 +65,15 @@ not_ = (p) ->
         if rv.ok then @fail(state, cont) else cont(new Match(state.advance(0), "", rv.commit))
 
 # throw away the match.
-drop = (p) -> implicit(p).onMatch (x, state) -> null
+drop = (p) ->
+  p = implicit(p)
+  parser.newParser "drop",
+    nested: [ p ]
+    describer: (ps) -> "drop(#{ps.join()})"
+    matcher: (state, cont) ->
+      p = resolve(p)
+      p.parse state, (rv) ->
+        if rv.ok then cont(new Match(rv.state, null, rv.commit)) else cont(rv)
 
 # chain together p1 & p2 such that if p1 matches, p2 is executed. if both
 # match, 'combiner' is called with the two matched objects, to create a
