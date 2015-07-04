@@ -1,5 +1,7 @@
 "use strict";
 
+const util = require("util");
+
 /*
  * given an absolute position within text, calculate the line # and the
  * horizontal offset within that line.
@@ -31,13 +33,6 @@ class Span {
     this.end = end;
     this._startLine = null;
     this._endLine = null;
-  }
-
-  /*
-   * return a span covering both this span and another.
-   */
-  merge(other) {
-    return (this.start < other.start) ? new Span(this.start, other.end) : new Span(other.start, this.end);
   }
 
   get startLine() {
@@ -122,10 +117,28 @@ class ParserState {
   next(parser) {
     const rv = new ParserState();
     rv.pos = this.pos;
-    rv.startpos = this.startpos;
+    rv.startpos = this.pos;
     rv.depth = this.depth + 1;
     rv.parser = parser;
     rv.engine = this.engine;
+    return rv;
+  }
+
+  /*
+   * return a state with a span covering both this state and another.
+   */
+  merge(other) {
+    const rv = new ParserState();
+    rv.depth = this.depth;
+    rv.parser = this.parser;
+    rv.engine = this.engine;
+    if (this.startpos < other.startpos) {
+      rv.startpos = this.startpos;
+      rv.pos = other.pos;
+    } else {
+      rv.startpos = other.startpos;
+      rv.pos = this.pos;
+    }
     return rv;
   }
 

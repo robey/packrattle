@@ -32,8 +32,21 @@ function string(s) {
   });
 }
 
+// matches a regex.
+function regex(r) {
+  const i = r.ignoreCase ? "i" : "";
+  const m = r.multiline ? "m" : "";
+  const source = r.source[0] == "^" ? r.source : ("^" + r.source)
+  const r2 = new RegExp(source, i + m);
+  return parser.newParser(r.toString(), (state, results) => {
+    const m = r2.exec(state.text.slice(state.pos));
+    results.add(m ? state.advance(m[0].length).success(m) : state.failure());
+  });
+}
+
 
 exports.end = end;
+exports.regex = regex;
 exports.reject = reject;
 exports.string = string;
 exports.succeed = succeed;
