@@ -12,12 +12,13 @@
  * values. if a new value is added later, it will receive the new value later.
  */
 class PromiseSet {
-  constructor() {
+  constructor(options = {}) {
     // optimize for the case of 1 value or 1 listener.
     this.value0 = null;
     this.values = null;
     this.listener0 = null;
     this.listeners = null;
+    this.debugger = options.debugger;
   }
 
   add(value) {
@@ -29,6 +30,8 @@ class PromiseSet {
       for (let v of this.values) if (v == value || (v.equals && v.equals(value))) return;
       this.values.push(value);
     }
+
+    if (this.debugger) this.debugger(value.toString());
 
     if (this.listener0) this.listener0(value);
     if (this.listeners) this.listeners.forEach(f => f(value));

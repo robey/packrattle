@@ -1,4 +1,4 @@
-const pr = require("../../lib/packrattle");
+const pr = require("../../lib");
 const util = require("util");
 
 require("should");

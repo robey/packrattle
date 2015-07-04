@@ -6,21 +6,6 @@ const promise_set = require("./promise_set");
 const resolve = require("./resolve");
 
 /*
-# turn strings, regexen, and arrays into parsers implicitly.
-implicit = (p) ->
-  parser = require './parser'
-  combiners = require './combiners'
-
-  # wow, javascript's type system completely falls apart here.
-  if typeof p == "string" then return parser.string(p)
-  className = Object.prototype.toString.call(p)[1 ... -1].split(" ")[1]
-  if className == "RegExp" then return parser.regex(p)
-  if className == "Array" then return combiners.seq(p...)
-  p
-
-*/
-
-/*
  * an Engine processes a string through a tree of parsers, tracking state
  * is it goes for debugging.
  */
@@ -49,6 +34,7 @@ class Engine {
 
     this.ticks++;
     const newState = state.next(parser);
+    if (this.debugger) this.debugger(`${rpad(this.ticks, 4)}. ${parser.toString()} @ ${newState.toString()}`)
 
     if (this.debugGraph) {
       this.debugGraph.addNode(newState.id, parser, newState.span());
@@ -68,14 +54,14 @@ class Engine {
     // skip if we've already done or scheduled this one.
     if (this.cache[state.id]) return this.cache[state.id];
 
-    const results = new promise_set.PromiseSet();
+    const results = new promise_set.PromiseSet({
+      debugger: this.debugger ? (line) => this.debugger(`-> ${state.id} = ${line}`) : null
+    });
     this.cache[state.id] = results;
 
     this.workQueue.put({ parser, state, results }, state.depth);
     return results;
   }
-
-
 
   // execute a parser over a string.
   execute(parser) {
@@ -103,10 +89,26 @@ class Engine {
     failures.sort((a, b) => {
       return (a.abort != b.abort) ? (b.abort ? 1 : -1) : (b.state.depth - a.state.depth);
     });
+
+    if (this.debugger) {
+      if (successes.length > 0) {
+        this.debugger("### successes:");
+        successes.forEach(x => this.debugger("    " + x.toString()));
+      } else {
+        this.debugger("### failures:");
+        failures.forEach(x => this.debugger("    " + x.toString()));
+      }
+    }
+
     return successes.length > 0 ? successes[0] : failures[0];
   }
+}
 
 
+function rpad(s, n) {
+  s = s.toString();
+  while (s.length < n) s = " " + s;
+  return s;
 }
 
 
