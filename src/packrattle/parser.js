@@ -36,7 +36,7 @@ function newParser(name, options = {}, matcher) {
 
 
 /*
- * internal use: not intended to be created by users.
+ * internal use: not intended to be created by users (use `newParser` above).
  */
 class Parser {
   constructor(name, nested, describe, matcher) {
@@ -68,10 +68,16 @@ class Parser {
     return new engine.Engine(text, options).execute(this);
   }
 
+  // return a parser that asserts that the string ends after this parser.
+  consume() {
+    const simple = require("./simple");
+    const combiners = require("./combiners");
+    return combiners.chain(this, simple.end, (a, b) => a);
+  }
+
   // consume an entire text with this parser. convert failure into an exception.
   run(text, options = {}) {
-    // FIXME: consume
-    const rv = this.execute(text, options);
+    const rv = this.consume().execute(text, options);
     if (!rv.ok) {
       const error = new Error(rv.value);
       error.state = rv.state;
