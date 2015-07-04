@@ -64,10 +64,14 @@ class Parser {
     return this.describe;
   }
 
+  execute(text, options = {}) {
+    return new engine.Engine(text, options).execute(this);
+  }
+
   // consume an entire text with this parser. convert failure into an exception.
   run(text, options = {}) {
     // FIXME: consume
-    const rv = new engine.Engine(text, options).execute(this);
+    const rv = this.execute(text, options);
     if (!rv.ok) {
       const error = new Error(rv.value);
       error.state = rv.state;

@@ -17,15 +17,12 @@ describe("Parser", () => {
     (pr.end.run("") == null).should.eql(true);
     (() => pr.end.run("a")).should.throw(/end/);
   })
+
+  it("literal string", () => {
+    const p = pr.string("hello");
+    (() => p.run("cat")).should.throw(/hello/);
+    const rv = p.execute("hellon");
+    rv.state.pos.should.eql(5);
+    rv.value.should.eql("hello");
+  });
 });
-
-
-
-
-
-  //
-  // it "literal string", ->
-  //   p = pr.string("hello")
-  //   (-> p.run("cat")).should.throw /hello/
-  //   parse(p, "hellon").should.eql [ "hello", 5 ]
-  //

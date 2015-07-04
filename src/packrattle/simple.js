@@ -23,7 +23,17 @@ function succeed(value) {
   });
 }
 
+// matches a literal string.
+function string(s) {
+  const len = s.length;
+  return parser.newParser(`'${s}'`, (state, results) => {
+    const segment = state.text.slice(state.pos, state.pos + len);
+    results.add(segment == s ? state.advance(len).success(segment) : state.failure());
+  });
+}
+
 
 exports.end = end;
 exports.reject = reject;
+exports.string = string;
 exports.succeed = succeed;
