@@ -2,7 +2,7 @@
   "name": "packrattle",
   "version": "3.0.1",
   "description": "GLL parser-combinator library",
-  "keywords": [ "parser", "packrat", "gll", "coffee-script" ],
+  "keywords": [ "parser", "packrat", "gll" ],
   "author": "Robey Pointer <robeypointer@gmail.com>",
   "homepage": "https://github.com/robey/packrattle",
   "repository": {
@@ -15,18 +15,20 @@
       "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
     }
   ],
-
   "scripts": {
-    "test": "./node_modules/.bin/plz --color -v test"
+    "clean": "rm -rf lib test/lib",
+    "distclean": "npm run clean && rm -rf node_modules npm-debug.log",
+    "prepublish": "babel --source-maps --out-dir lib src && babel --source-maps --out-dir test/lib test/src",
+    "test": "mocha -R spec --colors test/lib"
   },
   "dependencies": {
     "weakmap": "0.0.6"
   },
   "devDependencies": {
-    "coffee-script": "~1.7.0",
-    "mocha": "*",
-    "plz": "*",
-    "should": "*"
+    "babel": "latest",
+    "mocha": "latest",
+    "should": "latest",
+    "source-map-support": "latest"
   },
   "main": "./lib/packrattle",
   "files": [
