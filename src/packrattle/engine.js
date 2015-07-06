@@ -72,7 +72,7 @@ class Engine {
       const { state, results } = this.workQueue.get();
 
       this.ticks++;
-      if (this.debugger) this.debugger(`${rpad(this.ticks, 4)}. ${state.parser.inspect()} @ ${state.toString()}`)
+      if (this.debugger) this.debugger(`${rpad(this.ticks, 4)}. [${state.parser.id}]${state.parser.inspect()} @ ${state.toString()}`)
 
       state.parser.matcher(state, results, ...(state.parser.children || []));
     }

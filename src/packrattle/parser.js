@@ -27,7 +27,7 @@ function newParser(name, options = {}, matcher) {
 
   if (options.wrap) {
     options.children = [ options.wrap ];
-    options.describe = list => list.join();
+    options.describe = list => name + ":" + list.join();
     delete options.wrap;
   }
 
