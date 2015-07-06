@@ -27,6 +27,15 @@ describe("Parser.onMatch", () => {
     (() => p.run("hello")).should.throw(/utter failure/);
   });
 
+  it("onFail", () => {
+    const p = pr.string("hello").onFail("Try a greeting.");
+    (() => p.run("cat")).should.throw("Try a greeting.");
+    p.execute("hellon").value.should.eql("hello");
+  });
+
+
+  // ----- monad tests
+
   const a = "foo";
   const m = pr("foo");
   const f = s => pr(s + "bar");
@@ -41,25 +50,25 @@ describe("Parser.onMatch", () => {
   }
 
   it("satisfies monad left identity", () => {
-    const p1 = pr.succeed(a).onMatch(f);
+    const p1 = pr.succeed(a).map(f);
     const p2 = f(a);
     shouldBeIdentical(p1, p2, "foobar");
   });
 
   it("satisfies monad right identity", () => {
-    const p1 = m.onMatch(pr.succeed);
+    const p1 = m.map(pr.succeed);
     const p2 = m;
     shouldBeIdentical(p1, p2, "foo");
   });
 
   it("satisfies monad associativity", () => {
-    const p1 = m.onMatch(f).onMatch(g);
-    const p2 = m.onMatch(s => f(s).onMatch(g));
+    const p1 = m.map(f).map(g);
+    const p2 = m.map(s => f(s).map(g));
     shouldBeIdentical(p1, p2, "foofoobarfoobarbaz");
   });
 
   it("fails if a nested parser fails", () => {
-    const p = m.onMatch(() => pr.reject.onFail("no foo"));
+    const p = m.map(() => pr.reject.onFail("no foo"));
     const rv = p.execute("foo");
     rv.ok.should.equal(false);
     rv.value.should.equal("no foo");
