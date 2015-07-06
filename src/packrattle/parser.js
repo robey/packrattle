@@ -39,9 +39,9 @@ function newParser(name, options = {}, matcher) {
  * internal use: not intended to be created by users (use `newParser` above).
  */
 class Parser {
-  constructor(name, nested, describe, matcher) {
+  constructor(name, children, describe, matcher) {
     this.name = name;
-    this.nested = nested;
+    this.children = children;
     this.describe = describe;
     this.matcher = matcher;
     this.id = ParserId;
@@ -58,7 +58,12 @@ class Parser {
     if (this.recursing) return "...";
     if (typeof this.describe == "string") return this.describe;
     this.recursing = true;
-    const list = this.children.map(p => resolve(p).inspect());
+    const list = (this.children || []).map(p => {
+      const resolved = resolve(p);
+      let s = resolved.inspect();
+      if (resolved.children && resolved.children.length > 1) s = "(" + s + ")";
+      return s;
+    });
     this.recursing = false;
     this.describe = this.describe(list);
     return this.describe;
