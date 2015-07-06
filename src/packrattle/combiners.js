@@ -1,6 +1,7 @@
 "use strict";
 
 const parser = require("./parser");
+const util = require("util");
 
 /*
  * chain together parsers p1 & p2 such that if p1 matches, p2 is executed on
@@ -12,11 +13,11 @@ function chain(p1, p2, combiner) {
     children: [ p1, p2 ],
     describe: (list) => `${list[0]} then ${list[1]}`,
   }, (state, results) => {
-    state.schedule(p1, state).then(match1 => {
+    state.schedule(p1).then(match1 => {
       if (!match1.ok) {
         results.add(match1);
       } else {
-        state.schedule(p2, match1.state).then(match2 => {
+        match1.state.schedule(p2).then(match2 => {
           if (!match2.ok) {
             // no backtracking if the left match was commit()'d.
             if (match1.commit) match2.abort = true;
@@ -32,5 +33,28 @@ function chain(p1, p2, combiner) {
   });
 }
 
+/*
+ * try each of these parsers, in order (starting from the same position),
+ * looking for the first match.
+ */
+function alt(...parsers) {
+  return parser.newParser("alt", {
+    children: parsers,
+    describe: list => list.join(" or ")
+  }, (state, results) => {
+    let aborting = false;
+    parsers.forEach(p => {
+      console.log("schedule: " + p.toString());
+      state.schedule(p).then(match => {
+        console.log("run: " + p.toString() + " got " + match.toString());
+        if (aborting) return;
+        if (match.abort) aborting = true;
+        results.add(match);
+      });
+    });
+  });
+}
 
+
+exports.alt = alt;
 exports.chain = chain;
