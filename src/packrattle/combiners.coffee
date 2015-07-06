@@ -15,18 +15,6 @@ NoMatch = parser_state.NoMatch
 # functions that transform or combine other Parsers.
 #
 
-# a parser that can fail to match, and returns a default response if not
-# present (usually the empty string).
-optional = (p, defaultValue="") ->
-  p = implicit(p)
-  parser.newParser "optional",
-    nested: [ p ]
-    describer: (ps) -> "optional(#{ps.join()})"
-    matcher: (state, cont) ->
-      p = resolve(p)
-      p.parse state, (rv) ->
-        if rv.ok or rv.abort then return cont(rv)
-        cont(new Match(state.advance(0), defaultValue, rv.commit))
 
 # check that this parser matches, but don't advance the string. (perl calls
 # this a zero-width lookahead.)
@@ -64,48 +52,8 @@ not_ = (p) ->
       p.parse state, (rv) =>
         if rv.ok then @fail(state, cont) else cont(new Match(state.advance(0), "", rv.commit))
 
-# throw away the match.
-drop = (p) ->
-  p = implicit(p)
-  parser.newParser "drop",
-    nested: [ p ]
-    describer: (ps) -> "drop(#{ps.join()})"
-    matcher: (state, cont) ->
-      p = resolve(p)
-      p.parse state, (rv) ->
-        if rv.ok then cont(new Match(rv.state, null, rv.commit)) else cont(rv)
 
-# chain together p1 & p2 such that if p1 matches, p2 is executed. if both
-# match, 'combiner' is called with the two matched objects, to create a
-# single match result.
-chain = (p1, p2, combiner) ->
-  parser.newParser "chain",
-    nested: [ p1, p2 ]
-    describer: (ps) -> "#{ps[0]} then #{ps[1]}"
-    matcher: (state, cont) ->
-      p1 = resolve(p1)
-      p1.parse state, (rv1) ->
-        if not rv1.ok then return cont(rv1)
-        p2 = resolve(p2)
-        p2.parse rv1.state, (rv2) ->
-          if not rv2.ok
-            # no backtracking if the left match was commit()'d.
-            if rv1.commit then rv2.abort = true
-            return cont(rv2)
-          cont(new Match(rv2.state.backfill(rv1.state), combiner(rv1.match, rv2.match), rv2.commit or rv1.commit))
 
-seq = (parsers...) ->
-  parsers = (implicit(p) for p in parsers)
-  p0 = parsers.shift()
-  if parsers.length == 0 then return defer(p0).onMatch (m) ->
-    if m? then [ m ] else []
-  chain p0, seq(parsers...), (rv1, rv2) ->
-    if rv1?
-      rv = rv2[...]
-      rv.unshift(rv1)
-    else
-      rv = rv2
-    rv
 
 # chain together a sequence of parsers. before each parser is checked, the
 # 'ignore' parser is optionally matched and thrown away. this is typicially
@@ -118,22 +66,7 @@ seqIgnore = (ignore, parsers...) ->
     newseq.push p
   seq(newseq...)
 
-# try each of these parsers, in order (starting from the same position),
-# looking for the first match.
-alt = (parsers...) ->
-  parsers = (implicit(p) for p in parsers)
-  parser.newParser "alt",
-    nested: parsers
-    describer: (ps) -> "(" + ps.join(" or ") + ")"
-    matcher: (state, cont) ->
-      parsers = (resolve(p) for p in parsers)
-      aborting = false
-      for p in parsers then do (p) ->
-        state.addJob (=> "alt: #{state}, #{p}"), ->
-          if aborting then return
-          p.parse state, (rv) ->
-            if rv.abort then aborting = true
-            return cont(rv)
+
 
 # from 'min' to 'max' (inclusive) repetitions of a parser, returned as an
 # array. 'max' may be omitted to mean infinity.
