@@ -28,20 +28,15 @@ class Engine {
     this.lazyCache = {};
   }
 
-  process(parser, state, results) {
-    // first: `parser` could be a function or need to be converted implicitly from another type.
-    parser = resolve(parser, this.cache);
+  resolve(parser) {
+    return resolve(parser, this.cache);
+  }
 
+  process(state, results) {
     this.ticks++;
-    const newState = state.next(parser);
-    if (this.debugger) this.debugger(`${rpad(this.ticks, 4)}. ${parser.toString()} @ ${newState.toString()}`)
+    if (this.debugger) this.debugger(`${rpad(this.ticks, 4)}. ${state.parser.toString()} @ ${state.toString()}`)
 
-    if (this.debugGraph) {
-      this.debugGraph.addNode(newState.id, parser, newState.span());
-      this.debugGraph.addEdge(state.id, newState.id);
-    }
-
-    parser.matcher(newState, results);
+    state.parser.matcher(state, results);
   }
 
   /*
@@ -50,7 +45,7 @@ class Engine {
    * (if this parser/state has already run or been scheduled, the existing
    * PromiseSet will be returned.)
    */
-  schedule(parser, state) {
+  schedule(oldState, state) {
     // skip if we've already done or scheduled this one.
     if (this.cache[state.id]) return this.cache[state.id];
 
@@ -59,7 +54,12 @@ class Engine {
     });
     this.cache[state.id] = results;
 
-    this.workQueue.put({ parser, state, results }, state.depth);
+    if (this.debugGraph) {
+      this.debugGraph.addNode(state.id, state.parser, state.span());
+      this.debugGraph.addEdge(oldState.id, state.id);
+    }
+
+    this.workQueue.put({ state, results }, state.depth);
     return results;
   }
 
@@ -69,7 +69,7 @@ class Engine {
     const successes = [];
     const failures = [];
 
-    this.schedule(parser, state).then(match => {
+    this.schedule(state, state.next(parser)).then(match => {
       if (match.ok) {
         if (this.debugGraph) this.debugGraph.addEdge(match.state.id, "success");
         successes.push(match);
@@ -81,8 +81,8 @@ class Engine {
 
     // start the engine!
     while (!this.workQueue.isEmpty && successes.length == 0) {
-      const { parser, state, results } = this.workQueue.get();
-      this.process(parser, state, results);
+      const { state, results } = this.workQueue.get();
+      this.process(state, results);
     }
 
     // message with 'abort' set has highest priority. secondary sort by index.

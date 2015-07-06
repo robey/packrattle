@@ -32,16 +32,20 @@ describe("Engine", () => {
       rv.value[1][0].should.eql("hello");
     });
 
-    // it "only once", ->
-    //   count = 0
-    //   p = pr.seq ":", ->
-    //     count++
-    //     pr.regex(/\w+/).onMatch (m) -> m[0].toUpperCase()
-    //   parse(p, ":hello").should.eql [ [ ":", "HELLO" ], 6 ]
-    //   count.should.equal(1)
-    //   parse(p, ":goodbye").should.eql [ [ ":", "GOODBYE" ], 8 ]
-    //   count.should.equal(1)
-    //
+    it("only once", () => {
+      let count = 0;
+      const lazy = () => {
+        count++;
+        return pr.regex(/\w+/);
+      };
+      const p1 = pr.chain(":", lazy, (a, b) => [ a, b[0].toUpperCase() ]);
+      const p2 = pr.chain(":h", lazy, (a, b) => [ a, b[0].toUpperCase() ]);
+      const p = pr.alt(pr.chain(p1, "9", (a, b) => b), p2);
+
+      p.run(":hello", { debugger: console.log }).should.eql([ ":h", "ELLO" ]);
+      count.should.equal(1);
+    });
+
     // it "supports drop for lazy parsers", ->
     //   p = pr.drop(-> "abc")
     //   parse(p, "abc").should.eql [ null, 3]

@@ -94,12 +94,12 @@ class ParserState {
   }
 
   toString() {
-    return `ParserState(startpos=${this.startpos}, pos=${this.pos}, depth=${this.depth}, parserId=${this.parser.id})`;
+    return `ParserState[${this.startpos} -> ${this.pos}](depth=${this.depth}, parser.id=${this.parser.id})`;
   }
 
   /*
    * return a new ParserState with the position advanced `n` places.
-   * the previous position is saved as `oldpos`.
+   * `startpos` is unchanged.
    */
   advance(n) {
     const rv = new ParserState();
@@ -167,8 +167,8 @@ class ParserState {
    * schedule another parser to run, and return the ResultSet that will
    * eventually contain the result.
    */
-  schedule(parser, state) {
-    return this.engine.schedule(parser, state);
+  schedule(parser) {
+    return this.engine.schedule(this, this.next(this.engine.resolve(parser)));
   }
 
   success(value) {
@@ -211,7 +211,14 @@ class Match {
   }
 
   toString() {
-    return `Match(${this.ok}, state=${this.state}, value=${util.inspect(this.value)}, commit=${this.commit}, abort=${this.abort})`;
+    const fields = [
+      this.ok ? "yes" : "no",
+      "state=" + this.state,
+      "value=" + util.inspect(this.value)
+    ];
+    if (this.commit) fields.push("commit");
+    if (this.abort) fields.push("abort");
+    return "Match(" + fields.join(", ") + ")";
   }
 }
 
