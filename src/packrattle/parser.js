@@ -1,5 +1,6 @@
 "use strict";
 
+const combiners = require("./combiners");
 const engine = require("./engine");
 const resolve = require("./resolve");
 const util = require("util");
@@ -102,6 +103,12 @@ class Parser {
     }
     return rv.value;
   }
+
+  // ----- convenience methods for accessing the combinators
+
+  then(p) { return combiners.chain(this, p, (a, b) => [ a, b ]); }
+
+  or(...parsers) { return combiners.alt(this, ...parsers); }
 }
 
 
