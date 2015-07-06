@@ -53,6 +53,41 @@ function alt(...parsers) {
   });
 }
 
+function seq(...parsers) {
+  const rv = [];
+  let commit = false;
+
+  return parser.newParser("seq", {
+    children: parsers,
+    describe: list => list.join(" then ")
+  }, (state, results, ...parsers) => {
+    function next(state) {
+      if (parsers.length == 0) return results.add(commit ? state.commitSuccess(rv) : state.success(rv));
+      const p = parsers.shift();
+      state.schedule(p).then(match => {
+        // no backtracking if we commit()'d in this chain.
+        if (!match.ok) return results.add(commit ? match.toAbort() : match);
+        if (match.commit) commit = true;
+        if (match.value) rv.push(match.value);
+        next(state.merge(match.state));
+      });
+    }
+
+    next(state);
+  });
+}
+
+// throw away the match.
+function drop(p) {
+  return parser.newParser("drop", { wrap: p }, (state, results, p) => {
+    state.schedule(p).then(match => {
+      results.add(match.ok ? match.withValue(null) : match);
+    });
+  });
+}
+
 
 exports.alt = alt;
 exports.chain = chain;
+exports.drop = drop;
+exports.seq = seq;

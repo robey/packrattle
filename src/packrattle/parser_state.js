@@ -132,13 +132,8 @@ class ParserState {
     rv.depth = this.depth;
     rv.parser = this.parser;
     rv.engine = this.engine;
-    if (this.startpos < other.startpos) {
-      rv.startpos = this.startpos;
-      rv.pos = other.pos;
-    } else {
-      rv.startpos = other.startpos;
-      rv.pos = this.pos;
-    }
+    rv.startpos = Math.min(this.startpos, other.startpos);
+    rv.pos = Math.max(this.pos, other.pos);
     return rv;
   }
 
@@ -230,6 +225,13 @@ class Match {
   toError(message) {
     const rv = new Match(false, this.state, this);
     rv.value = message;
+    return rv;
+  }
+
+  toAbort() {
+    const rv = new Match(this.ok, this.state, this);
+    rv.abort = true;
+    rv.commit = false;
     return rv;
   }
 }

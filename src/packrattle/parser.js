@@ -145,6 +145,8 @@ class Parser {
   then(p) { return combiners.chain(this, p, (a, b) => [ a, b ]); }
 
   or(...parsers) { return combiners.alt(this, ...parsers); }
+
+  drop() { return combiners.drop(this); }
 }
 
 

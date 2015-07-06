@@ -14,9 +14,19 @@ describe("combiners", () => {
   });
 
   it("parser.then", () => {
-    const p = pr("abc").then(pr("123"));
-    (() => p.run("123")).should.throw(/'abc'/);
-    p.run("abc123").should.eql([ "abc", "123" ]);
+    const p = pr.string("abc").then(pr.string("123"));
+    let rv = p.execute("abc123");
+    rv.ok.should.eql(true);
+    rv.state.pos.should.equal(6);
+    rv.value.should.eql([ "abc", "123" ]);
+    rv = p.execute("abcd");
+    rv.ok.should.eql(false);
+    rv.state.pos.should.equal(3);
+    rv.value.should.match(/123/);
+    rv = p.execute("123")
+    rv.ok.should.eql(false);
+    rv.state.pos.should.equal(0);
+    rv.value.should.match(/abc/);
   });
 
   it("alt", () => {
