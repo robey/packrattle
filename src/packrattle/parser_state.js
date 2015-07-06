@@ -220,6 +220,18 @@ class Match {
     if (this.abort) fields.push("abort");
     return "Match(" + fields.join(", ") + ")";
   }
+
+  withValue(value) {
+    const rv = new Match(this.ok, this.state, this);
+    rv.value = value;
+    return rv;
+  }
+
+  toError(message) {
+    const rv = new Match(false, this.state, this);
+    rv.value = message;
+    return rv;
+  }
 }
 
 

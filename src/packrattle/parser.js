@@ -104,6 +104,42 @@ class Parser {
     return rv.value;
   }
 
+  // ----- transforms
+
+  // transforms the result of a parser if it succeeds.
+  // f(value, span)
+  onMatch(f) {
+    return newParser("onMatch", { wrap: this }, (state, results) => {
+      state.schedule(this).then(match => {
+        if (!match.ok) return results.add(match);
+        if (typeof f != "function") return results.add(match.withValue(f));
+
+        try {
+          const rv = f(match.value, match.state.span());
+          if (rv instanceof Parser) {
+            match.state.schedule(rv).then(m => results.add(m));
+          } else {
+            results.add(match.withValue(rv));
+          }
+        } catch (error) {
+          results.add(match.toError(error.toString()));
+        }
+      });
+    });
+  }
+
+  map(f) { return this.onMatch(f); }
+
+  // transforms the error message of a parser
+  onFail(newMessage) {
+    return newParser("onFail", { wrap: this }, (state, results) => {
+      state.schedule(this).then(match => {
+        results.add((match.ok || match.abort) ? match : match.toError(newMessage));
+      });
+    });
+  }
+
+
   // ----- convenience methods for accessing the combinators
 
   then(p) { return combiners.chain(this, p, (a, b) => [ a, b ]); }
