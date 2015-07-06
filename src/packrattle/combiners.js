@@ -13,11 +13,11 @@ function chain(p1, p2, combiner) {
     children: [ p1, p2 ],
     describe: (list) => `${list[0]} then ${list[1]}`,
   }, (state, results) => {
-    state.schedule(p1).then(match1 => {
+    state.schedule(state.parser.children[0]).then(match1 => {
       if (!match1.ok) {
         results.add(match1);
       } else {
-        match1.state.schedule(p2).then(match2 => {
+        match1.state.schedule(state.parser.children[1]).then(match2 => {
           if (!match2.ok) {
             // no backtracking if the left match was commit()'d.
             if (match1.commit) match2.abort = true;
@@ -43,10 +43,8 @@ function alt(...parsers) {
     describe: list => list.join(" or ")
   }, (state, results) => {
     let aborting = false;
-    parsers.forEach(p => {
-      console.log("schedule: " + p.toString());
+    state.parser.children.forEach(p => {
       state.schedule(p).then(match => {
-        console.log("run: " + p.toString() + " got " + match.toString());
         if (aborting) return;
         if (match.abort) aborting = true;
         results.add(match);

@@ -3,7 +3,6 @@
 const parser_state = require("./parser_state");
 const priority_queue = require("./priority_queue");
 const promise_set = require("./promise_set");
-const resolve = require("./resolve");
 
 /*
  * an Engine processes a string through a tree of parsers, tracking state
@@ -28,13 +27,9 @@ class Engine {
     this.lazyCache = {};
   }
 
-  resolve(parser) {
-    return resolve(parser, this.cache);
-  }
-
   process(state, results) {
     this.ticks++;
-    if (this.debugger) this.debugger(`${rpad(this.ticks, 4)}. ${state.parser.toString()} @ ${state.toString()}`)
+    if (this.debugger) this.debugger(`${rpad(this.ticks, 4)}. ${state.parser.inspect()} @ ${state.toString()}`)
 
     state.parser.matcher(state, results);
   }

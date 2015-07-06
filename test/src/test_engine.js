@@ -40,9 +40,13 @@ describe("Engine", () => {
       };
       const p1 = pr.chain(":", lazy, (a, b) => [ a, b[0].toUpperCase() ]);
       const p2 = pr.chain(":h", lazy, (a, b) => [ a, b[0].toUpperCase() ]);
-      const p = pr.alt(pr.chain(p1, "9", (a, b) => b), p2);
+      const p = pr.alt(pr.chain(p1, "?", (a, b) => b), p2);
 
-      p.run(":hello", { debugger: console.log }).should.eql([ ":h", "ELLO" ]);
+      p.run(":hello").should.eql([ ":h", "ELLO" ]);
+      count.should.equal(1);
+      p.run(":g?").should.eql("?");
+      count.should.equal(1);
+      p.run(":howdy").should.eql([ ":h", "OWDY" ]);
       count.should.equal(1);
     });
 

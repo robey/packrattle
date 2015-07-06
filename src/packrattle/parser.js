@@ -2,6 +2,7 @@
 
 const engine = require("./engine");
 const resolve = require("./resolve");
+const util = require("util");
 
 let ParserId = 1;
 
@@ -48,6 +49,8 @@ class Parser {
     ParserId += 1;
     // detect and avoid loops when displaying debug strings:
     this.recursing = false;
+    // set when all lazy and implicit parsers have been resolved:
+    this.resolved = false;
   }
 
   toString() {
@@ -58,18 +61,27 @@ class Parser {
     if (this.recursing) return "...";
     if (typeof this.describe == "string") return this.describe;
     this.recursing = true;
+    this.resolve();
     const list = (this.children || []).map(p => {
-      const resolved = resolve(p);
-      let s = resolved.inspect();
-      if (resolved.children && resolved.children.length > 1) s = "(" + s + ")";
-      return s;
+      return (p.children && p.children.length > 1) ? ("(" + p.inspect() + ")") : p.inspect();
     });
     this.recursing = false;
     this.describe = this.describe(list);
     return this.describe;
   }
 
+  resolve(cache = null) {
+    if (this.resolved) return;
+    this.resolved = true;
+    if (!this.children) return;
+
+    if (!cache) cache = {};
+    this.children = this.children.map(p => resolve(p, cache));
+    this.children.forEach(p => p.resolve(cache));
+  }
+
   execute(text, options = {}) {
+    this.resolve();
     return new engine.Engine(text, options).execute(this);
   }
 

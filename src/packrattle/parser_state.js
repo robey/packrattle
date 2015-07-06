@@ -168,7 +168,7 @@ class ParserState {
    * eventually contain the result.
    */
   schedule(parser) {
-    return this.engine.schedule(this, this.next(this.engine.resolve(parser)));
+    return this.engine.schedule(this, this.next(parser));
   }
 
   success(value) {
