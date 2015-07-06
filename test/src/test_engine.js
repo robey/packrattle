@@ -54,4 +54,20 @@ describe("Engine", () => {
     //   p = pr.drop(-> "abc")
     //   parse(p, "abc").should.eql [ null, 3]
   });
+
+  it("only executes a parser once per string/position", () => {
+    let count = 0;
+
+    const dupe = pr("dupe").onMatch(x => {
+      count++;
+      return x;
+    });
+    const p = pr.alt(
+      pr.chain(dupe, "1", (a, b) => b),
+      pr.chain(dupe, "2", (a, b) => b)
+    );
+
+    p.run("dupe2").should.eql("2");
+    count.should.eql(1);
+  });
 });
