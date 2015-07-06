@@ -12,12 +12,12 @@ function chain(p1, p2, combiner) {
   return parser.newParser("chain", {
     children: [ p1, p2 ],
     describe: (list) => `${list[0]} then ${list[1]}`,
-  }, (state, results) => {
-    state.schedule(state.parser.children[0]).then(match1 => {
+  }, (state, results, p1, p2) => {
+    state.schedule(p1).then(match1 => {
       if (!match1.ok) {
         results.add(match1);
       } else {
-        match1.state.schedule(state.parser.children[1]).then(match2 => {
+        match1.state.schedule(p2).then(match2 => {
           if (!match2.ok) {
             // no backtracking if the left match was commit()'d.
             if (match1.commit) match2.abort = true;
@@ -41,9 +41,9 @@ function alt(...parsers) {
   return parser.newParser("alt", {
     children: parsers,
     describe: list => list.join(" or ")
-  }, (state, results) => {
+  }, (state, results, ...parsers) => {
     let aborting = false;
-    state.parser.children.forEach(p => {
+    parsers.forEach(p => {
       state.schedule(p).then(match => {
         if (aborting) return;
         if (match.abort) aborting = true;

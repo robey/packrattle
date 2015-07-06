@@ -27,13 +27,6 @@ class Engine {
     this.lazyCache = {};
   }
 
-  process(state, results) {
-    this.ticks++;
-    if (this.debugger) this.debugger(`${rpad(this.ticks, 4)}. ${state.parser.inspect()} @ ${state.toString()}`)
-
-    state.parser.matcher(state, results);
-  }
-
   /*
    * schedule a parser to be executed at a given state.
    * returns a PromiseSet which should eventually hold the result.
@@ -77,7 +70,11 @@ class Engine {
     // start the engine!
     while (!this.workQueue.isEmpty && successes.length == 0) {
       const { state, results } = this.workQueue.get();
-      this.process(state, results);
+
+      this.ticks++;
+      if (this.debugger) this.debugger(`${rpad(this.ticks, 4)}. ${state.parser.inspect()} @ ${state.toString()}`)
+
+      state.parser.matcher(state, results, ...(state.parser.children || []));
     }
 
     // message with 'abort' set has highest priority. secondary sort by index.
