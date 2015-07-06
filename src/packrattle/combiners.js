@@ -54,13 +54,13 @@ function alt(...parsers) {
 }
 
 function seq(...parsers) {
-  const rv = [];
-  let commit = false;
-
   return parser.newParser("seq", {
     children: parsers,
     describe: list => list.join(" then ")
   }, (state, results, ...parsers) => {
+    const rv = [];
+    let commit = false;
+
     function next(state) {
       if (parsers.length == 0) return results.add(commit ? state.commitSuccess(rv) : state.success(rv));
       const p = parsers.shift();
@@ -68,7 +68,7 @@ function seq(...parsers) {
         // no backtracking if we commit()'d in this chain.
         if (!match.ok) return results.add(commit ? match.toAbort() : match);
         if (match.commit) commit = true;
-        if (match.value) rv.push(match.value);
+        if (match.value != null) rv.push(match.value);
         next(state.merge(match.state));
       });
     }
@@ -86,8 +86,23 @@ function drop(p) {
   });
 }
 
+// a parser that can fail to match, and returns a default response if not
+// present (usually the empty string).
+function optional(p, defaultValue="") {
+  return parser.newParser("optional", { wrap: p }, (state, results, p) => {
+    state.schedule(p).then(match => {
+      results.add(
+        match.ok || match.abort ?
+        match :
+        (match.commit ? state.commitSuccess(defaultValue) : state.success(defaultValue))
+      );
+    });
+  });
+}
+
 
 exports.alt = alt;
 exports.chain = chain;
 exports.drop = drop;
+exports.optional = optional;
 exports.seq = seq;

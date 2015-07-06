@@ -18,9 +18,12 @@ describe("Engine", () => {
       p.run("wut999").should.eql("wut:999");
     });
 
-    // it "strings together a chained sequence", ->
-    //   p = [ "abc", pr.drop(/\d+/), "xyz" ]
-    //   parse(p, "abc11xyz").should.eql [ [ "abc", "xyz" ], 8 ]
+    it("strings together a chained sequence", () => {
+      const p = [ "abc", pr.drop(/\d+/), "xyz" ];
+      const m = pr(p).execute("abc11xyz");
+      m.value.should.eql([ "abc", "xyz" ]);
+      m.state.pos.should.eql(8);
+    });
   });
 
   describe("lazily resolves", () => {
@@ -50,9 +53,12 @@ describe("Engine", () => {
       count.should.equal(1);
     });
 
-    // it "supports drop for lazy parsers", ->
-    //   p = pr.drop(-> "abc")
-    //   parse(p, "abc").should.eql [ null, 3]
+    it("supports drop for lazy parsers", () => {
+      const p = pr.drop(() => "abc");
+      const m = p.execute("abc");
+      (m.value == null).should.eql(true);
+      m.state.pos.should.eql(3);
+    });
   });
 
   it("only executes a parser once per string/position", () => {

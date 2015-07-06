@@ -27,13 +27,14 @@ module.exports = exports = function resolve(parser, cache = null) {
   }
 
   // avoid 'require' loops.
+  const combiners = require("./combiners");
   const Parser = require("./parser").Parser;
   const simple = require("./simple");
 
   // implicits:
   if (typeof parser == "string") parser = simple.string(parser);
   if (typeof parser == "object" && parser.constructor.name == "RegExp") parser = simple.regex(parser);
-  // if (Array.isArray(p)) p = seq...
+  if (Array.isArray(parser)) parser = combiners.seq(...parser);
 
   if (!(parser instanceof Parser)) throw new Error("Unable to resolve parser: " + parser);
   return parser;

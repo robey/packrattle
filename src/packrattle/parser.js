@@ -147,6 +147,8 @@ class Parser {
   or(...parsers) { return combiners.alt(this, ...parsers); }
 
   drop() { return combiners.drop(this); }
+
+  optional(defaultValue = "") { return combiners.optional(this, defaultValue); }
 }
 
 

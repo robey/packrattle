@@ -18,30 +18,42 @@ describe("Parser.seq", () => {
     rv.value.should.eql([ "abc", "xyz" ]);
   });
 
-  // it "can lazily chain a sequence", ->
-  //   hits = 0
-  //   p = pr.seq(
-  //     -> (hits += 1; pr.string("abc")),
-  //     -> (hits += 1; pr.string("123").drop()),
-  //     -> (hits += 1; pr.string("xyz"))
-  //   )
-  //   hits.should.equal(0)
-  //   rv = pr.parse(p, "abc123xyz")
-  //   hits.should.equal(3)
-  //   rv.state.pos().should.equal(9)
-  //   rv.match.should.eql([ "abc", "xyz" ])
-  //
-  // it "can sequence optional elements", ->
-  //   p = [ "abc", pr.optional(/\d+/), "xyz" ]
-  //   rv = pr.parse(p, "abcxyz")
-  //   rv.state.pos().should.equal(6)
-  //   rv.match.should.eql([ "abc", "", "xyz" ])
-  //   rv = pr.parse(p, "abc99xyz")
-  //   rv.state.pos().should.equal(8)
-  //   rv.match[0].should.eql("abc")
-  //   rv.match[1][0].should.eql("99")
-  //   rv.match[2].should.eql("xyz")
-  //
+  it("can lazily chain a sequence", () => {
+    let hits = 0;
+    const p = pr.seq(
+      () => {
+        hits += 1;
+        return pr.string("abc");
+      },
+      () => {
+        hits += 1;
+        return pr.string("123").drop();
+      },
+      () => {
+        hits += 1;
+        return pr.string("xyz");
+      }
+    );
+
+    hits.should.equal(0);
+    const rv = p.execute("abc123xyz");
+    hits.should.equal(3);
+    rv.state.pos.should.equal(9);
+    rv.value.should.eql([ "abc", "xyz" ]);
+  });
+
+  it("can sequence optional elements", () => {
+    const p = pr([ "abc", pr.optional(/\d+/), "xyz" ]);
+    let rv = p.execute("abcxyz");
+    rv.state.pos.should.equal(6);
+    rv.value.should.eql([ "abc", "", "xyz" ]);
+    rv = p.execute("abc99xyz");
+    rv.state.pos.should.equal(8);
+    rv.value[0].should.eql("abc");
+    rv.value[1][0].should.eql("99");
+    rv.value[2].should.eql("xyz");
+  });
+
   // it "skips a dropped element at the end", ->
   //   p = [ "abc", pr.optional(/\d+/).drop(), pr.optional(/\w+/).drop() ]
   //   rv = pr.parse(p, "abcj")
