@@ -54,15 +54,16 @@ describe("Parser.seq", () => {
     rv.value[2].should.eql("xyz");
   });
 
-  // it "skips a dropped element at the end", ->
-  //   p = [ "abc", pr.optional(/\d+/).drop(), pr.optional(/\w+/).drop() ]
-  //   rv = pr.parse(p, "abcj")
-  //   rv.state.pos().should.equal(4)
-  //   rv.match.should.eql([ "abc" ])
-  //   rv = pr.parse(p, "abc99")
-  //   rv.state.pos().should.equal(5)
-  //   rv.match.should.eql([ "abc" ])
-  //
+  it("skips a dropped element at the end", () => {
+    const p = pr([ "abc", pr.optional(/\d+/).drop(), pr.optional(/\w+/).drop() ]);
+    let rv = p.execute("abcj");
+    rv.state.pos.should.equal(4);
+    rv.value.should.eql([ "abc" ]);
+    rv = p.execute("abc99");
+    rv.state.pos.should.equal(5);
+    rv.value.should.eql([ "abc" ]);
+  });
+
   // it "skips whitespace inside seqIgnore()", ->
   //   p = pr.seqIgnore(/\s+/, "abc", "xyz", "ghk")
   //   rv = pr.parse(p, "abcxyzghk")
