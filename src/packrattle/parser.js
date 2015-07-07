@@ -139,6 +139,19 @@ class Parser {
     });
   }
 
+  // only succeed if f(value, state) returns true.
+  matchIf(f) {
+    return newParser("matchIf", { wrap: this }, (state, results) => {
+      state.schedule(this).then(match => {
+        if (match.ok && !f(match.value, match.state)) {
+          results.add(state.failure("Expected " + this.inspect()));
+        } else {
+          results.add(match);
+        }
+      });
+    });
+  }
+
 
   // ----- convenience methods for accessing the combinators
 
