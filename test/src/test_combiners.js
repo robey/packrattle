@@ -42,4 +42,40 @@ describe("combiners", () => {
     p.run("hello").should.eql("hello");
     p.run("goodbye").should.eql("goodbye");
   });
+
+  // seq tests are in test_seq.js.
+
+  it("drop", () => {
+    const p = pr.drop("abc");
+    let m = p.execute("abc");
+    m.state.pos.should.eql(3);
+    (m.value == null).should.eql(true);
+  });
+
+  it("parser.drop", () => {
+    const p = pr("abc").drop();
+    let m = p.execute("abc");
+    m.state.pos.should.eql(3);
+    (m.value == null).should.eql(true);
+  });
+
+  it("optional", () => {
+    const p = pr.optional(/\d+/, "?");
+    let m = p.execute("34.");
+    m.state.pos.should.eql(2);
+    m.value[0].should.eql("34");
+    m = p.execute("no");
+    m.state.pos.should.eql(0);
+    m.value.should.eql("?");
+  });
+
+  it("parser.optional", () => {
+    const p = pr(/\d+/).optional("?");
+    let m = p.execute("34.");
+    m.state.pos.should.eql(2);
+    m.value[0].should.eql("34");
+    m = p.execute("no");
+    m.state.pos.should.eql(0);
+    m.value.should.eql("?");
+  });
 });
