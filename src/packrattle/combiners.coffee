@@ -16,17 +16,6 @@ NoMatch = parser_state.NoMatch
 #
 
 
-# check that this parser matches, but don't advance the string. (perl calls
-# this a zero-width lookahead.)
-check = (p) ->
-  p = implicit(p)
-  parser.newParser "check",
-    wrap: p
-    matcher: (state, cont) ->
-      p = resolve(p)
-      p.parse state, (rv) ->
-        if not rv.ok then return cont(rv)
-        cont(new Match(state.advance(0), rv.match, rv.commit))
 
 # if the parser matches up to here, refuse to backtrack to previous
 # alternatives.

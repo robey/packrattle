@@ -162,6 +162,8 @@ class Parser {
   drop() { return combiners.drop(this); }
 
   optional(defaultValue = "") { return combiners.optional(this, defaultValue); }
+
+  check() { return combiners.check(this); }
 }
 
 

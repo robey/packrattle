@@ -29,6 +29,8 @@ describe("combiners", () => {
     rv.value.should.match(/abc/);
   });
 
+  // seq tests are in test_seq.js.
+
   it("alt", () => {
     const p = pr.alt("hello", "goodbye");
     (() => p.run("cat")).should.throw(/'hello'/);
@@ -42,8 +44,6 @@ describe("combiners", () => {
     p.run("hello").should.eql("hello");
     p.run("goodbye").should.eql("goodbye");
   });
-
-  // seq tests are in test_seq.js.
 
   it("drop", () => {
     const p = pr.drop("abc");
@@ -89,5 +89,30 @@ describe("combiners", () => {
     rv.ok.should.eql(true);
     rv.value[1].should.eql({ start: 3, end: 3 });
     rv.value[2][0].should.eql("d");
+  });
+
+  it("check", () => {
+    const p = pr.check("hello");
+    const m = p.execute("hello");
+    m.ok.should.eql(true);
+    m.state.pos.should.eql(0);
+    m.value.should.eql("hello");
+  });
+
+  it("parser.check", () => {
+    const p = pr("hello").check();
+    const m = p.execute("hello");
+    m.ok.should.eql(true);
+    m.state.pos.should.eql(0);
+    m.value.should.eql("hello");
+  });
+
+  it("check within a sequence", () => {
+    const p = pr([ "hello", pr.check("there"), "th" ]);
+    const m = p.execute("hellothere");
+    m.ok.should.eql(true);
+    m.state.pos.should.eql(7);
+    m.value.should.eql([ "hello", "there", "th" ]);
+    (() => p.run("helloth")).should.throw(/there/);
   });
 });

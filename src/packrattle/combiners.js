@@ -34,25 +34,9 @@ function chain(p1, p2, combiner) {
 }
 
 /*
- * try each of these parsers, in order (starting from the same position),
- * looking for the first match.
+ * chain together a series of parsers as in 'chain'. the match value is an
+ * array of non-null match values from the inner parsers.
  */
-function alt(...parsers) {
-  return parser.newParser("alt", {
-    children: parsers,
-    describe: list => list.join(" or ")
-  }, (state, results, ...parsers) => {
-    let aborting = false;
-    parsers.forEach(p => {
-      state.schedule(p).then(match => {
-        if (aborting) return;
-        if (match.abort) aborting = true;
-        results.add(match);
-      });
-    });
-  });
-}
-
 function seq(...parsers) {
   return parser.newParser("seq", {
     children: parsers,
@@ -77,7 +61,29 @@ function seq(...parsers) {
   });
 }
 
-// throw away the match.
+/*
+ * try each of these parsers, in order (starting from the same position),
+ * looking for the first match.
+ */
+function alt(...parsers) {
+  return parser.newParser("alt", {
+    children: parsers,
+    describe: list => list.join(" or ")
+  }, (state, results, ...parsers) => {
+    let aborting = false;
+    parsers.forEach(p => {
+      state.schedule(p).then(match => {
+        if (aborting) return;
+        if (match.abort) aborting = true;
+        results.add(match);
+      });
+    });
+  });
+}
+
+/*
+ * throw away the match value, equivalent to `onMatch(null)`.
+ */
 function drop(p) {
   return parser.newParser("drop", { wrap: p }, (state, results, p) => {
     state.schedule(p).then(match => {
@@ -86,8 +92,10 @@ function drop(p) {
   });
 }
 
-// a parser that can fail to match, and returns a default response if not
-// present (usually the empty string).
+/*
+ * allow a parser to fail, and instead return a default value (the empty string
+ * if no other value is provided).
+ */
 function optional(p, defaultValue="") {
   return parser.newParser("optional", { wrap: p }, (state, results, p) => {
     state.schedule(p).then(match => {
@@ -100,9 +108,22 @@ function optional(p, defaultValue="") {
   });
 }
 
+/*
+ * check that this parser matches, but don't advance our position in the
+ * string. (perl calls this a zero-width lookahead.)
+ */
+function check(p) {
+  return parser.newParser("check", { wrap: p }, (state, results, p) => {
+    state.schedule(p).then(match => {
+      results.add(match.ok ? match.withState(state) : match);
+    });
+  });
+}
+
 
 exports.alt = alt;
 exports.chain = chain;
+exports.check = check;
 exports.drop = drop;
 exports.optional = optional;
 exports.seq = seq;

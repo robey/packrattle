@@ -216,6 +216,10 @@ class Match {
     return "Match(" + fields.join(", ") + ")";
   }
 
+  withState(state) {
+    return new Match(this.ok, state, this);
+  }
+  
   withValue(value) {
     const rv = new Match(this.ok, this.state, this);
     rv.value = value;

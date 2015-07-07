@@ -41,22 +41,6 @@ parser_state = require './parser_state'
   # ----- transformations and combinations:
 
 
-  # only succeed if f(match) returns true.
-  matchIf: (f) ->
-    newParser "matchIf",
-      wrap: @
-      matcher: (state, cont) =>
-        @parse state, (rv) =>
-          if not rv.ok then return cont(rv)
-          if not f(rv.match) then return cont(new NoMatch(state, "Expected " + @description(), rv.commit))
-          cont(rv)
-
-  describe: (message) ->
-    @describer = -> message
-    @onFail "Expected #{message}"
-
-
-  check: -> combiners.check(@)
 
   commit: -> combiners.commit(@)
 
