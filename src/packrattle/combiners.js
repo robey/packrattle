@@ -50,7 +50,7 @@ function seq(...parsers) {
       const p = parsers.shift();
       state.schedule(p).then(match => {
         // no backtracking if we commit()'d in this chain.
-        if (!match.ok) return results.add(commit ? match.toAbort() : match);
+        if (!match.ok) return results.add(commit ? match.setAbort() : match);
         if (match.commit) commit = true;
         if (match.value != null) rv.push(match.value);
         next(state.merge(match.state));
@@ -120,10 +120,35 @@ function check(p) {
   });
 }
 
+/*
+ * if this parser matches, "commit" to this path and refuse to backtrack to
+ * previous alternatives.
+ */
+function commit(p) {
+  return parser.newParser("commit", { wrap: p }, (state, results, p) => {
+    state.schedule(p).then(match => {
+      results.add(match.ok ? match.setCommit() : match);
+    });
+  });
+}
+
+/*
+ * succeed (with an empty match) if the inner parser fails; otherwise fail.
+ */
+function not(p) {
+  return parser.newParser("not", { wrap: p }, (state, results, p) => {
+    state.schedule(p).then(match => {
+      results.add(match.ok ? state.failure() : (match.commit ? state.commitSuccess("") : state.success("")));
+    });
+  });
+}
+
 
 exports.alt = alt;
 exports.chain = chain;
 exports.check = check;
+exports.commit = commit;
 exports.drop = drop;
+exports.not = not;
 exports.optional = optional;
 exports.seq = seq;

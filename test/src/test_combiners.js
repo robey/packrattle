@@ -115,4 +115,20 @@ describe("combiners", () => {
     m.value.should.eql([ "hello", "there", "th" ]);
     (() => p.run("helloth")).should.throw(/there/);
   });
+
+  it("not", () => {
+    const p = pr.not("hello");
+    const m = p.execute("cat");
+    m.state.pos.should.eql(0);
+    m.value.should.eql("");
+    (() => p.run("hello")).should.throw(/hello/);
+  });
+
+  it("parser.not", () => {
+    const p = pr.string("hello").not();
+    const m = p.execute("cat");
+    m.state.pos.should.eql(0);
+    m.value.should.eql("");
+    (() => p.run("hello")).should.throw(/hello/);
+  });
 });
