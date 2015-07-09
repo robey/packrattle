@@ -3,6 +3,7 @@
 const parser_state = require("./parser_state");
 const priority_queue = require("./priority_queue");
 const promise_set = require("./promise_set");
+const util = require("util");
 
 /*
  * an Engine processes a string through a tree of parsers, tracking state
@@ -22,9 +23,6 @@ class Engine {
 
     // how many parsers have we run?
     this.ticks = 0;
-
-    // cache of function -> parser (rebuilt for each execution)
-    this.lazyCache = {};
   }
 
   /*
@@ -57,11 +55,14 @@ class Engine {
     const successes = [];
     const failures = [];
 
+    if (this.debugger) this.debugger(`Try ${util.inspect(this.text)} in ${parser.inspect()}`);
     this.schedule(state, state.next(parser)).then(match => {
       if (match.ok) {
+        if (this.debugger) this.debugger(`-> SUCCESS: ${match}`);
         if (this.debugGraph) this.debugGraph.addEdge(match.state.id, "success");
         successes.push(match);
       } else {
+        if (this.debugger) this.debugger(`-> FAILURE: ${match}`);
         if (this.debugGraph) this.debugGraph.addEdge(match.state.id, "failure");
         failures.push(match);
       }

@@ -134,7 +134,7 @@ class Parser {
   onFail(newMessage) {
     return newParser("onFail", { wrap: this }, (state, results) => {
       state.schedule(this).then(match => {
-        results.add((match.ok || match.abort) ? match : match.toError(newMessage));
+        results.add(match.ok ? match : match.toError(newMessage));
       });
     });
   }
@@ -166,7 +166,7 @@ class Parser {
   check() { return combiners.check(this); }
 
   commit() { return combiners.commit(this); }
-  
+
   not() { return combiners.not(this); }
 }
 

@@ -43,6 +43,7 @@ class Match {
   toError(message) {
     const rv = new Match(false, this.state, this);
     rv.value = message;
+    rv.abort = this.commit || this.abort;
     return rv;
   }
 

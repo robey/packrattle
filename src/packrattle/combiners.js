@@ -20,8 +20,7 @@ function chain(p1, p2, combiner) {
         match1.state.schedule(p2).then(match2 => {
           if (!match2.ok) {
             // no backtracking if the left match was commit()'d.
-            if (match1.commit) match2.abort = true;
-            results.add(match2);
+            results.add(match1.commit ? match2.setAbort() : match2);
           } else {
             const newState = match2.state.merge(match1.state);
             const value = combiner(match1.value, match2.value);
@@ -96,7 +95,7 @@ function drop(p) {
  * allow a parser to fail, and instead return a default value (the empty string
  * if no other value is provided).
  */
-function optional(p, defaultValue="") {
+function optional(p, defaultValue = "") {
   return parser.newParser("optional", { wrap: p }, (state, results, p) => {
     state.schedule(p).then(match => {
       results.add(
@@ -138,7 +137,10 @@ function commit(p) {
 function not(p) {
   return parser.newParser("not", { wrap: p }, (state, results, p) => {
     state.schedule(p).then(match => {
-      results.add(match.ok ? state.failure() : (match.commit ? state.commitSuccess("") : state.success("")));
+      results.add(
+        match.ok ?
+        (match.commit ? state.abortFailure() : state.failure()) :
+        (match.commit ? state.commitSuccess("") : state.success("")));
     });
   });
 }
