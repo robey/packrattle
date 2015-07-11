@@ -70,4 +70,14 @@ describe("PriorityQueue", () => {
     q.put("c", 0);
     q.queue.map(x => x.item).should.eql([ "c", "b", "a" ]);
   });
+
+  it("skips items that fail their conditional", () => {
+    const q = new pr.PriorityQueue();
+    q.put("a", 3, () => false);
+    q.put("b", 2);
+    q.put("c", 6);
+    q.get().should.eql("c");
+    q.get().should.eql("b");
+    q.isEmpty.should.eql(true);
+  });
 });
