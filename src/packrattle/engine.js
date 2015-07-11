@@ -31,7 +31,7 @@ class Engine {
    * (if this parser/state has already run or been scheduled, the existing
    * PromiseSet will be returned.)
    */
-  schedule(oldState, state) {
+  schedule(oldState, state, condition) {
     // skip if we've already done or scheduled this one.
     if (this.cache[state.id]) return this.cache[state.id];
 
@@ -45,7 +45,7 @@ class Engine {
       this.debugGraph.addEdge(oldState.id, state.id);
     }
 
-    this.workQueue.put({ state, results }, state.depth);
+    this.workQueue.put({ state, results }, state.depth, condition);
     return results;
   }
 
@@ -78,9 +78,9 @@ class Engine {
       state.parser.matcher(state, results, ...(state.parser.children || []));
     }
 
-    // message with 'abort' set has highest priority. secondary sort by index.
+    // message with 'commit' set has highest priority. secondary sort by index.
     failures.sort((a, b) => {
-      return (a.abort != b.abort) ? (b.abort ? 1 : -1) : (b.state.depth - a.state.depth);
+      return (a.commit != b.commit) ? (b.commit ? 1 : -1) : (b.state.depth - a.state.depth);
     });
 
     if (this.debugger) {

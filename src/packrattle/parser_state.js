@@ -163,28 +163,18 @@ class ParserState {
    * schedule another parser to run, and return the ResultSet that will
    * eventually contain the result.
    */
-  schedule(parser) {
-    return this.engine.schedule(this, this.next(parser));
+  schedule(parser, condition) {
+    return this.engine.schedule(this, this.next(parser), condition);
   }
 
-  success(value) {
-    return new match.Match(true, this, { value });
+  success(value, commit = false) {
+    return new match.Match(true, this, { value, commit });
   }
 
-  commitSuccess(value) {
-    return new match.Match(true, this, { value, commit: true });
-  }
-
-  failure(value) {
+  failure(value, commit = false) {
     // use "Expected (current parser)" as the default failure message.
     if (!value && this.parser) value = "Expected " + this.parser.inspect();
-    return new match.Match(false, this, { value });
-  }
-
-  abortFailure(value) {
-    // use "Expected (current parser)" as the default failure message.
-    if (!value && this.parser) value = "Expected " + this.parser.inspect();
-    return new match.Match(false, this, { value, abort: true });
+    return new match.Match(false, this, { value, commit });
   }
 }
 

@@ -85,7 +85,7 @@ describe("Parser.commit", () => {
     );
     let rv = p.execute("bxma");
     rv.ok.should.equal(false);
-    rv = p.execute("bxmq", { debugger: console.log });
+    rv = p.execute("bxmq");
     rv.ok.should.equal(true);
   });
 

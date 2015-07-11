@@ -42,9 +42,6 @@ parser_state = require './parser_state'
 
 
 
-  commit: -> combiners.commit(@)
-
-  not_: -> combiners.not_(@)
 
   repeat: (minCount, maxCount) -> combiners.repeat(@, minCount, maxCount)
 

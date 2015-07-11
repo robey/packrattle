@@ -10,7 +10,6 @@ class Match {
     this.ok = ok;
     this.state = state;
     this.commit = options.commit;
-    this.abort = options.abort;
     // either a boxed result or an error message:
     this.value = options.value;
   }
@@ -26,7 +25,6 @@ class Match {
       "value=" + util.inspect(this.value)
     ];
     if (this.commit) fields.push("commit");
-    if (this.abort) fields.push("abort");
     return "Match(" + fields.join(", ") + ")";
   }
 
@@ -43,20 +41,12 @@ class Match {
   toError(message) {
     const rv = new Match(false, this.state, this);
     rv.value = message;
-    rv.abort = this.commit || this.abort;
     return rv;
   }
 
   setCommit() {
     const rv = new Match(this.ok, this.state, this);
     rv.commit = true;
-    return rv;
-  }
-
-  setAbort() {
-    const rv = new Match(this.ok, this.state, this);
-    rv.abort = true;
-    rv.commit = false;
     return rv;
   }
 }

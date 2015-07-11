@@ -20,11 +20,11 @@ function chain(p1, p2, combiner) {
         match1.state.schedule(p2).then(match2 => {
           if (!match2.ok) {
             // no backtracking if the left match was commit()'d.
-            results.add(match1.commit ? match2.setAbort() : match2);
+            results.add(match1.commit ? match2.setCommit() : match2);
           } else {
             const newState = match2.state.merge(match1.state);
             const value = combiner(match1.value, match2.value);
-            results.add(match1.commit || match2.commit ? newState.commitSuccess(value) : newState.success(value));
+            results.add(newState.success(value, match1.commit || match2.commit));
           }
         });
       }
@@ -45,11 +45,11 @@ function seq(...parsers) {
     let commit = false;
 
     function next(state) {
-      if (parsers.length == 0) return results.add(commit ? state.commitSuccess(rv) : state.success(rv));
+      if (parsers.length == 0) return results.add(state.success(rv, commit));
       const p = parsers.shift();
       state.schedule(p).then(match => {
         // no backtracking if we commit()'d in this chain.
-        if (!match.ok) return results.add(commit ? match.setAbort() : match);
+        if (!match.ok) return results.add(commit ? match.setCommit() : match);
         if (match.commit) commit = true;
         if (match.value != null) rv.push(match.value);
         next(state.merge(match.state));
@@ -71,9 +71,8 @@ function alt(...parsers) {
   }, (state, results, ...parsers) => {
     let aborting = false;
     parsers.forEach(p => {
-      state.schedule(p).then(match => {
-        if (aborting) return;
-        if (match.abort) aborting = true;
+      state.schedule(p, () => !aborting).then(match => {
+        if (match.commit && !match.ok) aborting = true;
         results.add(match);
       });
     });
@@ -99,9 +98,9 @@ function optional(p, defaultValue = "") {
   return parser.newParser("optional", { wrap: p }, (state, results, p) => {
     state.schedule(p).then(match => {
       results.add(
-        match.ok || match.abort ?
+        match.ok || match.commit ?
         match :
-        (match.commit ? state.commitSuccess(defaultValue) : state.success(defaultValue))
+        state.success(defaultValue)
       );
     });
   });
@@ -139,8 +138,8 @@ function not(p) {
     state.schedule(p).then(match => {
       results.add(
         match.ok ?
-        (match.commit ? state.abortFailure() : state.failure()) :
-        (match.commit ? state.commitSuccess("") : state.success("")));
+        state.failure(null, match.commit) :
+        state.success("", match.commit));
     });
   });
 }
