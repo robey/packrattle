@@ -61,6 +61,20 @@ function seq(...parsers) {
 }
 
 /*
+ * chain together a sequence of parsers. before each parser is checked, the
+ * 'ignore' parser is optionally matched and thrown away. this is typicially
+ * used for discarding whitespace in lexical parsing.
+ */
+function seqIgnore(ignore, ...parsers) {
+  const newseq = [];
+  parsers.forEach(p => {
+    newseq.push(drop(optional(ignore)));
+    newseq.push(p);
+  });
+  return seq(...newseq);
+}
+
+/*
  * try each of these parsers, in order (starting from the same position),
  * looking for the first match.
  */
@@ -153,3 +167,4 @@ exports.drop = drop;
 exports.not = not;
 exports.optional = optional;
 exports.seq = seq;
+exports.seqIgnore = seqIgnore;

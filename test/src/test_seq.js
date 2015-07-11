@@ -64,40 +64,58 @@ describe("Parser.seq", () => {
     rv.value.should.eql([ "abc" ]);
   });
 
-  // it "skips whitespace inside seqIgnore()", ->
-  //   p = pr.seqIgnore(/\s+/, "abc", "xyz", "ghk")
-  //   rv = pr.parse(p, "abcxyzghk")
-  //   rv.ok.should.equal(true)
-  //   rv.match.should.eql([ "abc", "xyz", "ghk" ])
-  //   rv = pr.parse(p, "   abc xyz\tghk")
-  //   rv.ok.should.equal(true)
-  //   rv.match.should.eql([ "abc", "xyz", "ghk" ])
-  //
-  // it "skips whitespace lazily", ->
-  //   hits = 0
-  //   p = pr.seqIgnore(
-  //     -> (hits += 1; /\s+/),
-  //     -> (hits += 1; pr.string("abc")),
-  //     -> (hits += 1; pr.string("xyz")),
-  //     -> (hits += 1; pr.string("ghk"))
-  //   )
-  //   hits.should.equal(0)
-  //   rv = pr.parse(p, "   abc xyz\tghk")
-  //   hits.should.equal(4)
-  //   rv.ok.should.equal(true)
-  //   rv.match.should.eql([ "abc", "xyz", "ghk" ])
-  //
-  // it "handles regexen in a sequence", ->
-  //   p = pr.seq(/\s*/, "if")
-  //   rv = pr.parse p, "   if"
-  //   rv.state.pos().should.equal(5)
-  //   rv.match[0][0].should.eql("   ")
-  //   rv.match[1].should.eql("if")
-  //   rv = pr.parse p, "if"
-  //   rv.state.pos().should.equal(2)
-  //   rv.match[0][0].should.eql("")
-  //   rv.match[1].should.eql("if")
-  //   rv = pr.parse p, ";  if"
-  //   rv.state.pos().should.equal(0)
-  //   rv.message.should.match(/if/)
+  it("skips whitespace inside seqIgnore()", () => {
+    const p = pr.seqIgnore(/\s+/, "abc", "xyz", "ghk");
+    let rv = p.execute("abcxyzghk");
+    rv.ok.should.equal(true);
+    rv.value.should.eql([ "abc", "xyz", "ghk" ]);
+    rv = p.execute("   abc xyz\tghk");
+    rv.ok.should.equal(true);
+    rv.value.should.eql([ "abc", "xyz", "ghk" ]);
+  });
+
+  it("skips whitespace lazily", () => {
+    let hits = 0;
+    const p = pr.seqIgnore(
+      () => {
+        hits += 1;
+        return /\s+/;
+      },
+      () => {
+        hits += 1;
+        return pr.string("abc");
+      },
+      () => {
+        hits += 1;
+        return pr.string("xyz");
+      },
+      () => {
+        hits += 1;
+        return pr.string("ghk");
+      }
+    );
+    hits.should.equal(0);
+    const rv = p.execute("   abc xyz\tghk");
+    hits.should.equal(4);
+    rv.ok.should.equal(true);
+    rv.value.should.eql([ "abc", "xyz", "ghk" ]);
+  });
+
+  it("handles regexen in a sequence", () => {
+    const p = pr.seq(/\s*/, "if");
+    let rv = p.execute("   if");
+    rv.ok.should.eql(true);
+    rv.state.pos.should.equal(5);
+    rv.value[0][0].should.eql("   ");
+    rv.value[1].should.eql("if");
+    rv = p.execute("if");
+    rv.ok.should.eql(true);
+    rv.state.pos.should.equal(2);
+    rv.value[0][0].should.eql("");
+    rv.value[1].should.eql("if");
+    rv = p.execute(";  if");
+    rv.ok.should.eql(false);
+    rv.state.pos.should.equal(0);
+    rv.value.should.match(/if/);
+  });
 });
