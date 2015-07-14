@@ -158,6 +158,85 @@ function not(p) {
   });
 }
 
+/*
+ * from 'min' to 'max' (inclusive) repetitions of a parser, returned as an
+ * array. 'max' may be omitted to mean infinity.
+ */
+function repeat(p, options = {}) {
+  const min = options.min || 0;
+  const max = options.max || Infinity;
+  return parser.newParser("repeat", {
+     children: [ p ],
+     describe: (list) => list.join() + (max == Infinity ? `{${min}+}` : `{${min}, ${max}}`)
+  }, (state, results, p) => {
+    let count = 0;
+    let list = [];
+
+    function next(match, startingState) {
+      if (!match.ok) {
+        // FIXME why?
+        if (match.commit) return results.add(match);
+        // intentionally use the "last good state" from our repeating parser.
+        return results.add(count >= min ?
+          state.merge(startingState).success(list, match.commit) :
+          state.failure());
+      }
+      count++;
+      if (match.value != null) list.push(match.value);
+      if (count < max) {
+        // if a parser matches nothing, we could go on forever...
+        if (match.state.pos == state.pos) {
+          throw new Error(`Repeating parser isn't making progress at position ${state.pos}: ${p}`);
+        }
+        match.state.schedule(p).then(m => next(m, match.state));
+      } else {
+        results.add(state.merge(match.state).success(list, match.commit));
+      }
+    }
+
+    state.schedule(p).then(m => next(m, state));
+  });
+}
+
+/*
+ * like 'repeat', but each element may be optionally preceded by 'ignore',
+ * which will be thrown away. this is usually used to remove leading
+ * whitespace.
+ */
+function repeatIgnore(p, ignore, options) {
+  return repeat(seq(optional(ignore).drop(), p).onMatch(x => x[0]), options);
+}
+
+/*
+ * like 'repeat', but the repeated elements are separated by 'separator',
+ * which is ignored.
+ */
+function repeatSeparated(p, separator = "", options) {
+  const min = options.min ? options.min - 1 : 0;
+  const max = options.max ? options.max - 1 : Infinity;
+  const p2 = seq(drop(separator), p).onMatch(x => x[0]);
+  return seq(p, repeat(p2, { min, max })).onMatch(x => {
+    return [ x[0] ].concat(x[1]);
+  });
+}
+
+/*
+ * convenience method for reducing the result of 'repeatSeparated', optionally
+ * keeping the separator results. if 'accumulator' exists, it will transform
+ * the initial result into an accumulator. if 'reducer' exists, it will be
+ * used to progressively attach separators and new results.
+ */
+function reduce(p, separator = "", options = {}) {
+  const first = options.first || (x => [ x ]);
+  const next = options.next || ((sum, sep, x) => sum.push(x));
+  const min = options.min ? options.min - 1 : 0;
+  const max = options.max ? options.max - 1 : Infinity;
+
+  return seq(p, repeat(seq(separator, p), { min, max })).onMatch(([ initial, remainder ]) => {
+    return [ first(initial) ].concat(remainder).reduce((sum, [ sep, item ]) => next(sum, sep, item));
+  });
+}
+
 
 exports.alt = alt;
 exports.chain = chain;
@@ -166,5 +245,9 @@ exports.commit = commit;
 exports.drop = drop;
 exports.not = not;
 exports.optional = optional;
+exports.reduce = reduce;
+exports.repeat = repeat;
+exports.repeatIgnore = repeatIgnore;
+exports.repeatSeparated = repeatSeparated;
 exports.seq = seq;
 exports.seqIgnore = seqIgnore;

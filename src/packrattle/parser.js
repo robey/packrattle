@@ -168,6 +168,10 @@ class Parser {
   commit() { return combiners.commit(this); }
 
   not() { return combiners.not(this); }
+
+  repeat(options) { return combiners.repeat(this, options); }
+
+  times(count) { return combiners.repeat(this, { min: count, max: count }); }
 }
 
 
