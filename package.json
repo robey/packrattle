@@ -9,12 +9,7 @@
     "type": "git",
     "url": "git://github.com/robey/packrattle.git"
   },
-  "licenses": [
-    {
-      "type": "Apache License 2.0",
-      "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
-    }
-  ],
+  "license": "Apache-2.0",
   "scripts": {
     "clean": "rm -rf lib test/lib",
     "distclean": "npm run clean && rm -rf node_modules npm-debug.log",
