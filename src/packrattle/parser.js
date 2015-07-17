@@ -71,6 +71,45 @@ class Parser {
     return this.describe;
   }
 
+  // create a dot graph of the parser nesting
+  toDot(maxLength = 40) {
+    const seen = {};
+    const nodes = [];
+    const edges = [];
+
+    function traverse(parser) {
+      seen[parser.id] = true;
+      nodes.push({ id: parser.id, name: parser.name, description: parser.inspect() });
+      (parser.children || []).forEach(p => {
+        edges.push({ from: parser.id, to: p.id });
+        if (!seen[p.id]) traverse(p);
+      });
+    }
+
+    this.resolve();
+    traverse(this);
+
+    const data = [
+      "digraph packrattle {",
+      "  node [fontname=Courier];"
+    ];
+    data.push("");
+    edges.forEach(e => {
+      data.push(`  "${e.from}" -> "${e.to}";`);
+    });
+    data.push("");
+    nodes.forEach(n => {
+      let description = n.description;
+      if (description.length > maxLength) description = description.slice(0, maxLength) + "...";
+      description = description.replace(/\\/g, "\\\\").replace(/"/g, "\\\"");
+      const name = n.name.replace(/\\/g, "\\\\").replace(/"/g, "\\\"");
+      const label = `[${n.id}] ${name}` + (name == description ? "" : "\\n" + description);
+      data.push(`  "${n.id}" [label="${label}"];`);
+    });
+    data.push("}");
+    return data.join("\n") + "\n";
+  }
+
   resolve(cache = null) {
     if (this.resolved) return;
     this.resolved = true;
