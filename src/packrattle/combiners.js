@@ -39,20 +39,18 @@ function chain(p1, p2, combiner) {
 function seq(...parsers) {
   return parser.newParser("seq", {
     children: parsers,
-    describe: list => list.join(" then ")
+    describe: list => "[ " + list.join(", ") + " ]"
   }, (state, results, ...parsers) => {
-    const rv = [];
     let commit = false;
 
-    function next(state) {
+    function next(state, rv = []) {
       if (parsers.length == 0) return results.add(state.success(rv, commit));
       const p = parsers.shift();
       state.schedule(p).then(match => {
         // no backtracking if we commit()'d in this chain.
         if (!match.ok) return results.add(commit ? match.setCommit() : match);
         if (match.commit) commit = true;
-        if (match.value != null) rv.push(match.value);
-        next(state.merge(match.state));
+        next(state.merge(match.state), match.value != null ? rv.concat([ match.value ]) : rv);
       });
     }
 
@@ -172,7 +170,7 @@ function repeat(p, options = {}) {
     let count = 0;
     let list = [];
 
-    function next(match, startingState) {
+    function next(match, startingState, list = [], count = 0) {
       if (!match.ok) {
         // FIXME why?
         if (match.commit) return results.add(match);
@@ -182,15 +180,15 @@ function repeat(p, options = {}) {
           state.failure());
       }
       count++;
-      if (match.value != null) list.push(match.value);
+      const newlist = match.value != null ? list.concat([ match.value ]) : list;
       if (count < max) {
         // if a parser matches nothing, we could go on forever...
         if (match.state.pos == state.pos) {
           throw new Error(`Repeating parser isn't making progress at position ${state.pos}: ${p}`);
         }
-        match.state.schedule(p).then(m => next(m, match.state));
+        match.state.schedule(p).then(m => next(m, match.state, newlist, count));
       } else {
-        results.add(state.merge(match.state).success(list, match.commit));
+        results.add(state.merge(match.state).success(newlist, match.commit));
       }
     }
 
@@ -211,7 +209,7 @@ function repeatIgnore(p, ignore, options) {
  * like 'repeat', but the repeated elements are separated by 'separator',
  * which is ignored.
  */
-function repeatSeparated(p, separator = "", options) {
+function repeatSeparated(p, separator = "", options = {}) {
   const min = options.min ? options.min - 1 : 0;
   const max = options.max ? options.max - 1 : Infinity;
   const p2 = seq(drop(separator), p).onMatch(x => x[0]);
