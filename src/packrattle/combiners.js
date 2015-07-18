@@ -43,18 +43,18 @@ function seq(...parsers) {
   }, (state, results, ...parsers) => {
     let commit = false;
 
-    function next(state, rv = []) {
-      if (parsers.length == 0) return results.add(state.success(rv, commit));
-      const p = parsers.shift();
+    function next(state, i, rv = []) {
+      if (i >= parsers.length) return results.add(state.success(rv, commit));
+      const p = parsers[i];
       state.schedule(p).then(match => {
         // no backtracking if we commit()'d in this chain.
         if (!match.ok) return results.add(commit ? match.setCommit() : match);
         if (match.commit) commit = true;
-        next(state.merge(match.state), match.value != null ? rv.concat([ match.value ]) : rv);
+        next(state.merge(match.state), i + 1, match.value != null ? rv.concat([ match.value ]) : rv);
       });
     }
 
-    next(state);
+    next(state, 0);
   });
 }
 
