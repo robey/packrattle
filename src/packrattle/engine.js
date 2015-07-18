@@ -1,5 +1,6 @@
 "use strict";
 
+const debug_graph = require("./debug_graph");
 const parser_state = require("./parser_state");
 const priority_queue = require("./priority_queue");
 const promise_set = require("./promise_set");
@@ -13,7 +14,10 @@ class Engine {
   constructor(text, options = {}) {
     this.text = text;
     this.debugger = options.debugger;
-    this.debugGraph = options.debugGraph;
+    if (options.dotfile) {
+      this.dotfile = options.dotfile;
+      this.debugGraph = options.debugGraph || new debug_graph.DebugGraph();
+    }
 
     // queue contains items of { parser: Parser, state: ParserState, results: PromiseSet }.
     this.workQueue = new priority_queue.PriorityQueue();
@@ -23,6 +27,9 @@ class Engine {
 
     // how many parsers have we run?
     this.ticks = 0;
+
+    // track the currently-executing state for debugging (so we can graph the flow on request)
+    this.currentState = null;
   }
 
   /*
@@ -31,7 +38,7 @@ class Engine {
    * (if this parser/state has already run or been scheduled, the existing
    * PromiseSet will be returned.)
    */
-  schedule(oldState, state, condition) {
+  schedule(state, condition) {
     // skip if we've already done or scheduled this one.
     if (this.cache[state.id]) return this.cache[state.id];
 
@@ -42,9 +49,10 @@ class Engine {
 
     if (this.debugGraph) {
       this.debugGraph.addNode(state.id, state.parser, state.span());
-      this.debugGraph.addEdge(oldState.id, state.id);
+      this.debugGraph.addEdge(this.currentState.id, state.id);
     }
 
+    if (this.debugger) this.debugger(`schedule: ${state.id} ${state.parser.inspect()}`)
     this.workQueue.put({ state, results }, state.depth, condition);
     return results;
   }
@@ -55,15 +63,17 @@ class Engine {
     const successes = [];
     const failures = [];
 
+    this.currentState = state;
     if (this.debugger) this.debugger(`Try ${util.inspect(this.text)} in ${parser.inspect()}`);
-    this.schedule(state, state.next(parser)).then(match => {
+    this.schedule(state.next(parser)).then(match => {
       if (match.ok) {
         if (this.debugger) this.debugger(`-> SUCCESS: ${match}`);
         if (this.debugGraph) this.debugGraph.addEdge(match.state.id, "success");
         successes.push(match);
       } else {
         if (this.debugger) this.debugger(`-> FAILURE: ${match}`);
-        if (this.debugGraph) this.debugGraph.addEdge(match.state.id, "failure");
+        if (this.debugGraph) this.debugGraph.markFailure(match.state.id);
+         //this.debugGraph.addEdge(match.state.id, "failure");
         failures.push(match);
       }
     });
@@ -73,10 +83,13 @@ class Engine {
       const { state, results } = this.workQueue.get();
 
       this.ticks++;
+      this.currentState = state;
       if (this.debugger) this.debugger(`${rpad(this.ticks, 4)}. [${state.parser.id}]${state.parser.inspect()} @ ${state.toString()}`)
 
       state.parser.matcher(state, results, ...(state.parser.children || []));
     }
+
+    this.currentState = null;
 
     // message with 'commit' set has highest priority. secondary sort by index.
     failures.sort((a, b) => {
@@ -92,6 +105,8 @@ class Engine {
         failures.forEach(x => this.debugger("    " + x.toString()));
       }
     }
+
+    if (this.dotfile) this.dotfile(this.debugGraph.toDot());
 
     return successes.length > 0 ? successes[0] : failures[0];
   }

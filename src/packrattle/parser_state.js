@@ -164,7 +164,7 @@ class ParserState {
    * eventually contain the result.
    */
   schedule(parser, condition) {
-    return this.engine.schedule(this, this.next(parser), condition);
+    return this.engine.schedule(this.next(parser), condition);
   }
 
   success(value, commit = false) {

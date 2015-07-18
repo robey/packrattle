@@ -104,7 +104,7 @@ class Parser {
       description = description.replace(/\\/g, "\\\\").replace(/"/g, "\\\"");
       const name = n.name.replace(/\\/g, "\\\\").replace(/"/g, "\\\"");
       const label = `[${n.id}] ${name}` + (name == description ? "" : "\\n" + description);
-      data.push(`  "${n.id}" [label="${label}"];`);
+      data.push(`  "${n.id}" [label="${label}", shape=rect];`);
     });
     data.push("}");
     return data.join("\n") + "\n";
