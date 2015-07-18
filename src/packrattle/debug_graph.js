@@ -1,7 +1,5 @@
 "use strict";
 
-const util = require("util");
-
 // pretend like js has a collections library.
 function exists(array, f) {
   for (let i = 0; i < array.length; i++) if (f(array[i])) return true;
@@ -73,7 +71,7 @@ class DebugGraph {
   }
 
   toDot(maxLength = 40) {
-    this.filterOut("xchain", "xxseq", "onMatch", "matchIf");
+    this.filterOut("onMatch", "matchIf");
 
     const data = [
       "digraph packrattle {",

@@ -17,7 +17,6 @@
     "test": "mocha -R spec --colors test/lib"
   },
   "dependencies": {
-    "weakmap": "0.0.6"
   },
   "devDependencies": {
     "babel": "latest",

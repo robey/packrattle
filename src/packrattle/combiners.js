@@ -1,7 +1,6 @@
 "use strict";
 
 const parser = require("./parser");
-const util = require("util");
 
 /*
  * chain together parsers p1 & p2 such that if p1 matches, p2 is executed on

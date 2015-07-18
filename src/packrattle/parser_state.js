@@ -1,7 +1,6 @@
 "use strict";
 
 const match = require("./match");
-const util = require("util");
 
 /*
  * given an absolute position within text, calculate the line # and the

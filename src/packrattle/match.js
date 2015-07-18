@@ -1,7 +1,5 @@
 "use strict";
 
-const util = require("util");
-
 /*
  * created by ParserState on demand.
  */
@@ -22,7 +20,7 @@ class Match {
     const fields = [
       this.ok ? "yes" : "no",
       "state=" + this.state,
-      "value=" + util.inspect(this.value)
+      "value='" + encodeURIComponent(this.value) + "'"
     ];
     if (this.commit) fields.push("commit");
     return "Match(" + fields.join(", ") + ")";

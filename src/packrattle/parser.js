@@ -3,7 +3,6 @@
 const combiners = require("./combiners");
 const engine = require("./engine");
 const resolve = require("./resolve");
-const util = require("util");
 
 let ParserId = 1;
 
@@ -108,6 +107,11 @@ class Parser {
     });
     data.push("}");
     return data.join("\n") + "\n";
+  }
+
+  // helper for debugging inside node
+  writeDotFile(filename, maxLength) {
+    require("fs").writeFileSync(filename, this.toDot(maxLength));
   }
 
   resolve(cache = null) {

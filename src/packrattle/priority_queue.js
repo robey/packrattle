@@ -1,7 +1,5 @@
 "use strict";
 
-const util = require("util");
-
 let top = 0;
 let total = 0;
 

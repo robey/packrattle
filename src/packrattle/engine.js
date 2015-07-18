@@ -4,7 +4,6 @@ const debug_graph = require("./debug_graph");
 const parser_state = require("./parser_state");
 const priority_queue = require("./priority_queue");
 const promise_set = require("./promise_set");
-const util = require("util");
 
 /*
  * an Engine processes a string through a tree of parsers, tracking state
@@ -15,7 +14,9 @@ class Engine {
     this.text = text;
     this.debugger = options.debugger;
     if (options.dotfile) {
-      this.dotfile = options.dotfile;
+      this.dotfile = typeof options.dotfile == "string" ?
+        data => require("fs").writeFileSync(options.dotfile, data) :
+        options.dotfile;
       this.debugGraph = options.debugGraph || new debug_graph.DebugGraph();
     }
 
@@ -64,7 +65,7 @@ class Engine {
     const failures = [];
 
     this.currentState = state;
-    if (this.debugger) this.debugger(`Try ${util.inspect(this.text)} in ${parser.inspect()}`);
+    if (this.debugger) this.debugger(`Try '${encodeURIComponent(this.text)}' in ${parser.inspect()}`);
     this.schedule(state.next(parser)).then(match => {
       if (match.ok) {
         if (this.debugger) this.debugger(`-> SUCCESS: ${match}`);
