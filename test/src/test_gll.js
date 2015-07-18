@@ -10,7 +10,6 @@ describe("Parser GLL flow", () => {
   it("balances parens", () => {
     const p = pr.alt(pr([ "(", () => p, ")" ]).onMatch(x => ":" + x[1]), "x", "");
     const pc = p.consume();
-    const makedot = data => require("fs").writeFileSync("flow.dot", data);
     pc.execute("(x)").value.should.eql(":x");
     pc.execute("((x))").value.should.eql("::x");
     pc.execute("((x)").ok.should.eql(false);
