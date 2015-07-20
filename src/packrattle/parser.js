@@ -6,12 +6,16 @@ const resolve = require("./resolve");
 
 let ParserId = 1;
 
-/* create a new Parser object:
+const __cache = {};
+
+/*
+ * create a new Parser object:
  * - name: type of parser, in one word ("alt", "optional", ...)
- * - children: list of nested parsers, if this is a combiner
- * - describe: `(children: Array(String)) => String`
- *   - returns a description of the parser for debugging, including children,
- *     like "x or y or z"
+ * - options:
+ *   - children: list of nested parsers, if this is a combiner
+ *   - describe: `(children: Array(String)) => String`
+ *     - returns a description of the parser for debugging, including children,
+ *       like "x or y or z"
  * - matcher: `(parser, state, results) => void`
  *   - parser: effectively `this`
  *   - state: `ParserState` current text and position
@@ -32,7 +36,10 @@ function newParser(name, options = {}, matcher) {
 
   if (!options.describe) options.describe = name;
 
-  return new Parser(name, options.children, options.describe, matcher);
+  const parser = new Parser(name, options.children, options.describe, matcher);
+  parser.cacheable = options.cacheable;
+  parser.extraCacheKey = options.extraCacheKey;
+  return parser;
 }
 
 
@@ -114,14 +121,47 @@ class Parser {
     require("fs").writeFileSync(filename, this.toDot(maxLength));
   }
 
-  resolve(cache = null) {
-    if (this.resolved) return;
+  resolve(functionCache = null) {
+    // we won't perfectly cache loops, but that's fine.
+    if (this.resolved) return this;
     this.resolved = true;
-    if (!this.children) return;
 
-    if (!cache) cache = {};
-    this.children = this.children.map(p => resolve(p, cache));
-    this.children.forEach(p => p.resolve(cache));
+    if (this.children) {
+      if (!functionCache) functionCache = {};
+      this.children = this.children.map(p => resolve(p, functionCache).resolve(functionCache));
+    }
+
+    // if this parser can be cached, do so. if one like it already exists, return that one and let this one vanish.
+    this._computeCacheKey();
+    if (this.cacheKey) {
+      if (__cache[this.cacheKey]) return __cache[this.cacheKey];
+      __cache[this.cacheKey] = this;
+    }
+    return this;
+  }
+
+  // computed during resolve phase.
+  _computeCacheKey() {
+    if (!this.cacheable) return null;
+    if (this.cacheKey) return this.cacheKey;
+
+    // if it's a simple parser (no children), it must have a simple string description to be cacheable.
+    if (!this.children || this.children.length == 0) {
+      if (!(typeof this.describe == "string")) return null;
+      this.cacheKey = this.name + ":" + encodeURIComponent(this.describe);
+      if (this.extraCacheKey) this.cacheKey += "&" + encodeURIComponent(this.extraCacheKey);
+      return this.cacheKey;
+    }
+
+    // all children must be cacheable (and already cached).
+    let ok = true;
+    this.children.forEach(p => {
+      if (!p.cacheKey) ok = false;
+    });
+    if (!ok) return null;
+    this.cacheKey = this.name + ":" + this.children.map(p => encodeURIComponent(p.cacheKey)).join("&");
+    if (this.extraCacheKey) this.cacheKey += "&" + encodeURIComponent(this.extraCacheKey);
+    return this.cacheKey;
   }
 
   execute(text, options = {}) {

@@ -8,9 +8,9 @@ let LazyId = 0;
  * - could be a lazy function that evaluates to a Parser
  * - could be a simple data type like regex that is "implicitly" a Parser
  *
- * if you'd like te cache the results of function evaluations, pass in `cache`.
+ * if you'd like te cache the results of function evaluations, pass an empty object as `functionCache`.
  */
-module.exports = exports = function resolve(parser, cache = null) {
+module.exports = exports = function resolve(parser, functionCache = null) {
   if (typeof parser == "function") {
     if (!parser[ID]) {
       // give every lazy parser an id so we can cache them.
@@ -18,11 +18,11 @@ module.exports = exports = function resolve(parser, cache = null) {
       parser[ID] = LazyId;
     }
     const id = parser[ID];
-    if (cache && cache[id]) {
-      parser = cache[id];
+    if (functionCache && functionCache[id]) {
+      parser = functionCache[id];
     } else {
       parser = parser();
-      if (cache) cache[id] = parser;
+      if (functionCache) functionCache[id] = parser;
     }
   }
 

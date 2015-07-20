@@ -37,6 +37,7 @@ function chain(p1, p2, combiner) {
  */
 function seq(...parsers) {
   return parser.newParser("seq", {
+    cacheable: true,
     children: parsers,
     describe: list => "[ " + list.join(", ") + " ]"
   }, (state, results, ...parsers) => {
@@ -77,6 +78,7 @@ function seqIgnore(ignore, ...parsers) {
  */
 function alt(...parsers) {
   return parser.newParser("alt", {
+    cacheable: true,
     children: parsers,
     describe: list => list.join(" or ")
   }, (state, results, ...parsers) => {
@@ -94,7 +96,7 @@ function alt(...parsers) {
  * throw away the match value, equivalent to `onMatch(null)`.
  */
 function drop(p) {
-  return parser.newParser("drop", { wrap: p }, (state, results, p) => {
+  return parser.newParser("drop", { wrap: p, cacheable: true }, (state, results, p) => {
     state.schedule(p).then(match => {
       results.add(match.ok ? match.withValue(null) : match);
     });
@@ -106,7 +108,11 @@ function drop(p) {
  * if no other value is provided).
  */
 function optional(p, defaultValue = "") {
-  return parser.newParser("optional", { wrap: p }, (state, results, p) => {
+  return parser.newParser("optional", {
+    wrap: p,
+    cacheable: (typeof defaultValue == "string"),
+    extraCacheKey: defaultValue
+  }, (state, results, p) => {
     state.schedule(p).then(match => {
       results.add(
         match.ok || match.commit ?
@@ -122,7 +128,7 @@ function optional(p, defaultValue = "") {
  * string. (perl calls this a zero-width lookahead.)
  */
 function check(p) {
-  return parser.newParser("check", { wrap: p }, (state, results, p) => {
+  return parser.newParser("check", { wrap: p, cacheable: true }, (state, results, p) => {
     state.schedule(p).then(match => {
       results.add(match.ok ? match.withState(state) : match);
     });
@@ -134,7 +140,7 @@ function check(p) {
  * previous alternatives.
  */
 function commit(p) {
-  return parser.newParser("commit", { wrap: p }, (state, results, p) => {
+  return parser.newParser("commit", { wrap: p, cacheable: true }, (state, results, p) => {
     state.schedule(p).then(match => {
       results.add(match.ok ? match.setCommit() : match);
     });
@@ -145,7 +151,7 @@ function commit(p) {
  * succeed (with an empty match) if the inner parser fails; otherwise fail.
  */
 function not(p) {
-  return parser.newParser("not", { wrap: p }, (state, results, p) => {
+  return parser.newParser("not", { wrap: p, cacheable: true }, (state, results, p) => {
     state.schedule(p).then(match => {
       results.add(
         match.ok ?
