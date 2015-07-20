@@ -3,7 +3,9 @@
 Packrattle's API consists of functions which make simple parsers (for example, to match a string) and combiners that let you attach parsers together (for example, one parser *or* another). All parsers are objects of type `Parser`, and have a set of useful methods described later.
 
 - [Simple parsers](#simple-parsers)
-- Combiners
+- [Combiners](#combiners)
+  - [Convenience methods](#convenience-methods)
+  - [Reduce](#reduce)
 - methods on `Parser`
 
 
