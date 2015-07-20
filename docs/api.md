@@ -27,6 +27,7 @@ Example:
 
 ```javascript
 var packrattle = require("packrattle");
+
 var hello = packrattle.string("hello");
 hello.run("hi");
 // Error: Expected 'hello'
@@ -122,10 +123,10 @@ For example, here is a parser that identifies strings like "3+50+2" and returns 
 
 ```javascript
 // match a sequence of digits and parse them as an int.
-const number = pr.regex(/\d+/).onMatch(m => parseInt(m[0], 10));
+const number = packrattle.regex(/\d+/).onMatch(m => parseInt(m[0], 10));
 
 // match numbers separated by "+", and add the numbers as we go.
-const expr = pr.reduce(number, "+", {
+const expr = packrattle.reduce(number, "+", {
   first: n => n,
   next: (total, separator, n) => total + n
 };

@@ -7,9 +7,9 @@ This is a simple GLL-based parser-combinator library for javascript. It lets you
 An example, from the unit tests:
 
 ```javascript
-var pr = require("packrattle");
+var packrattle = require("packrattle");
 
-var csv = pr.repeatSeparated(
+var csv = packrattle.repeatSeparated(
   pr(/([^,]*)/).onMatch(m => m[0]),
   /,/
 );
@@ -37,9 +37,9 @@ Being "GLL-based" means that a work queue is used to avoid recursion and to memo
 would need to be refactored a lot to work in most parser libraries. It can be expressed in packrattle as
 
 ```javascript
-var expr = pr.alt(
-  pr.seq(() => expr, "+", () => expr),
-  pr.regex(/\d+/).onMatch(m => m[0])
+var expr = packrattle.alt(
+  packrattle.seq(() => expr, "+", () => expr),
+  packrattle.regex(/\d+/).onMatch(m => m[0])
 );
 ```
 
@@ -61,6 +61,9 @@ Further reading
 - Vegard Øye has an excellent (highly-recommended) tutorial on how GLL parsers work, with an implementation in a lisp-like language: https://github.com/epsil/gll
 
 - Daniel Spiewak wrote a paper on GLL and his work upgrading scala's parser-combinator library to use it: http://www.cs.uwm.edu/~dspiewak/papers/generalized-parser-combinators.pdf
+
+
+
 
 
 
