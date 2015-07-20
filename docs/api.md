@@ -54,6 +54,26 @@ The real power is in combining the parsers. These are all global functions in th
 
 - `drop(p)` - If 'p' matches, return null as the match result, which will cause it to be omitted from the result of any sequence.
 
+Example:
+
+```javascript
+var packrattle = require("packrattle");
+
+// match either "true" _or_ "false".
+var bools = packrattle.alt("true", "false");
+bools.run("true");
+// "true"
+bools.run("false");
+// "false"
+
+// match as many "z" as possible.
+var sleepy = packrattle.repeat("z", { min: 1 });
+sleepy.run("zz");
+// [ 'z', 'z' ]
+sleepy.run("zzzzz");
+// [ 'z', 'z', 'z', 'z', 'z' ]
+```
+
 All of the combiners are also defined as methods on the parsers, so you can chain them with method calls. The method versions all take one fewer argument, because the first 'p' is implied.
 
 For example, these two lines are equivalent:
