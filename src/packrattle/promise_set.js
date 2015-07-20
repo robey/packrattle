@@ -27,7 +27,11 @@ class PromiseSet {
     } else {
       if (!this.values) this.values = [];
       if (this.value0 == value || (this.value0.equals && this.value0.equals(value))) return;
-      for (let v of this.values) if (v == value || (v.equals && v.equals(value))) return;
+      // babel bug: "for (let v of this.values)" causes it to try to refer to Symbol, which it fails to define.
+      for (let i = 0; i < this.values.length; i++) {
+        const v = this.values[i];
+        if (v == value || (v.equals && v.equals(value))) return;
+      }
       this.values.push(value);
     }
 

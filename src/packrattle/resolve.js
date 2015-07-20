@@ -1,6 +1,14 @@
 "use strict";
 
-const ID = Symbol("id");
+// detect missing Symbol :(
+let haveSymbol = true;
+try {
+  Symbol;
+} catch (error) {
+  haveSymbol = false;
+}
+
+const ID = haveSymbol ? Symbol("id") : "__packrattle_Symbol_id";
 let LazyId = 0;
 
 /*
