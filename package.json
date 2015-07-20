@@ -1,6 +1,6 @@
 {
   "name": "packrattle",
-  "version": "3.0.1",
+  "version": "4.0.0",
   "description": "GLL parser-combinator library",
   "keywords": [ "parser", "packrat", "gll" ],
   "author": "Robey Pointer <robeypointer@gmail.com>",
