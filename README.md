@@ -47,7 +47,7 @@ and it actually matches strings:
 
 ```javascript
 expr.run("3+10+200");
-=> [ [ '3', '+', '10' ], '+', '200' ]
+// [ [ '3', '+', '10' ], '+', '200' ]
 ```
 
 The nested functions (`() => expr`) on line 2 allow javascript to handle recursive definitions by delaying evaluation. The functions will only be called once (when first invoked) and then cached.
@@ -171,43 +171,6 @@ The `ParserState` object contains a few helper methods:
 - `toSquiggles()` - an array containing `line()` and a a string with little squiggle characters highlighting the span of `pos()` to `endpos()`
 
 
-Debugging
----------
-
-Ocassionally, the first draft of a parser may not work exactly the way you want it to. To help you debug, packrattle provides two methods for generating 'dot' graph data.
-
-The first is `toDot()`, which will generate a directed graph of the nesting of parsers. This is useful if you want to see how the sausage is made inside packrattle, as it assembles your parser objects into smaller bits. For example:
-
-```javascript
-var pr = require("packrattle");
-var fs = require("fs");
-
-var abc = pr.alt(/[aA]/, /[bB]/, /[cC]/);
-fs.writeFileSync("abc1.dot", abc.toDot());
-```
-
-will write a graph file named "abc.dot". Dot utilities will be able to generate an image like the one below.
-
-```sh
-$ dot -Tpng -oabc.png ./abc.dot
-```
-
-<img src="docs/abc1.png">
-
-The second method is to pass `debugGraph` as an option to the `parse` or `consume` methods. This tells packrattle to trace its progress through a string, and store the results in the `ParserState` object. On success or failure, we can then generate a 'dot' file of the trace.
-
-```javascript
-var pr = require("./lib/packrattle");
-var fs = require("fs");
-
-var abc = pr.alt(/[aA]/, /[bB]/, /[cC]/);
-var rv = pr.consume(abc, "b", { debugGraph: true });
-fs.writeFileSync("abc2.dot", rv.state.debugGraphToDot());
-```
-
-This (trivial) trace shows the failed match of "a" before succeeding at "b".
-
-<img src="docs/abc2.png">
 
 
 Author

@@ -134,3 +134,50 @@ const expr = packrattle.reduce(number, "+", {
 expr.run("3+50+2");
 // 55
 ```
+
+
+
+
+
+
+
+
+
+## Debugging
+
+Ocassionally, the first draft of a parser may not work exactly the way you want it to. To help you debug, packrattle provides two methods for generating 'dot' graph data.
+
+The first is `toDot()`, which will generate a directed graph of the nesting of parsers. This is useful if you want to see how the sausage is made inside packrattle, as it assembles your parser objects into smaller bits.
+
+- `toDot() => string` - returns "dot" data for this parser tree
+- `writeDotFile(filename)` - calls `toDot()` and writes the data into a file for you (in node.js)
+
+For example:
+
+```javascript
+var packrattle = require("packrattle");
+
+var abc = pr.alt(/[aA]/, /[bB]/, /[cC]/);
+abc.writeDotFile("abc1.dot");
+```
+
+will write a graph file named "abc1.dot". Dot utilities will be able to generate an image like the one below.
+
+```sh
+$ dot -Tpng -oabc.png ./abc.dot
+```
+
+<img src="docs/abc1.png">
+
+The second method is to pass `dotfile` as an option to the `execute` or `run` methods. This tells packrattle to trace its progress as it goes, and build a dot graph of the path it took. The `dotfile` option should be a filename to write the dot data into.
+
+```javascript
+var packrattle = require("./lib/packrattle");
+
+var abc = pr.alt(/[aA]/, /[bB]/, /[cC]/);
+var match = abc.run("b", { dotfile: "abc2.dot" });
+```
+
+This (trivial) trace shows the failed match of "a" before succeeding at "b". Note that it planned to try "c" next, but didn't bother once there was a successful match.
+
+<img src="docs/abc2.png">
