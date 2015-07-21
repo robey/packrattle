@@ -68,38 +68,6 @@ Further reading
 
 
 
-Transforms
-----------
-
-Parser objects have a few methods on them that will allow you to transform the match results. This is how you turn the parser output into an AST, or cause the parser to evaluate expressions as it parses.
-
-For example, this parser matches strings of digits and transforms them into a number:
-
-```javascript
-var number = pr.regex(/\d+/).onMatch(function (x) { return parseInt(x, 10); });
-```
-
-- `onMatch(f)` - If the parser is successful, call 'f' on the match result, using the return value of 'f' as the new match result.
-
-- `onFail(newMessage)` - Replace the error message for this parser when it fails to match.
-
-- `describe(message)` - Calls `onFail("Expected " + message)`, but also sets the parser's description for debugging purposes.
-
-- `matchIf(f)` - If the parser is successful, call 'f' on the match result: if it returns true, continue as normal, but if it returns false, fail to match.
-
-
-Onmatch
--------
-
-The `onMatch(f)` transform calls `f` as a function with two parameters:
-
-```javascript
-f(match, state)
-```
-
-The `match` parameter is the result of the matching parser. For simple parsers like `string` and `regex`, this will be the string literal or regex match object, respectively. For nested parsers with their own `onMatch` transforms, the parameter will be the object the nested parsers returned. For example, the `seq` combinator (below) returns an array of the sequence of matches. An expression parser might build up a tree of expression nodes.
-
-The `state` parameter is a `ParserState` object, described below, under "Executing". The `pos()/endpos()` pair of the state will mark the span of the string that this parser matched. This can be useful for tracking the original source of parsed text when building a large object.
 
 
 

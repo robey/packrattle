@@ -1,12 +1,15 @@
 # Packrattle API
 
-Packrattle's API consists of functions which make simple parsers (for example, to match a string) and combiners that let you attach parsers together (for example, one parser *or* another). All parsers are objects of type `Parser`, and have a set of useful methods described later.
+Packrattle's API consists of functions which make simple parsers (for example, to match a string) and combiners that let you attach parsers together (for example, one parser *or* another). All parsers are objects of type `Parser`, and have a set of useful methods for transforming and executing them.
 
 - [Simple parsers](#simple-parsers)
+- [Transforms](#transforms)
+  - [Map and filter](#map-and-filter)
 - [Combiners](#combiners)
   - [Convenience methods](#convenience-methods)
   - [Reduce](#reduce)
 - methods on `Parser`
+- [Debugging](#debugging)
 
 
 ## Simple parsers
@@ -34,6 +37,66 @@ hello.run("hi");
 hello.run("hello");
 // "hello"
 ```
+
+
+## Transforms
+
+Parser objects have a few methods on them that will allow you to transform the match results. This is how you turn the parser output into an AST, or cause the parser to evaluate expressions as it parses.
+
+For example, this parser matches strings of digits and transforms them into a number:
+
+```javascript
+var number = pr.regex(/\d+/).map(x => parseInt(x, 10));
+```
+
+- `map(f)` or `onMatch(f)` - If the parser is successful, call 'f' on the match result, using the return value of 'f' as the new match result.
+
+- `onFail(newMessage)` - Replace the error message for this parser when it fails to match.
+
+- `filter(f)` or `matchIf(f)` - If the parser is successful, call 'f' on the match result and state: if it returns true, continue as normal, but if it returns false, fail to match.
+
+ The type of 'f' is `(value, Span) => boolean`, where 'value' is the result of the parser, and `Span` is described below.
+
+
+### Map and filter
+
+Both `map` and `filter` (`onMatch` and `matchIf`) take a function 'f' and call it with two parameters: `f(value, span)`.
+
+- `value`: The result of the previous parser. For simple parsers like `string` and `regex`, this will be the string literal or regex match object, respectively. For nested parsers with their own `onMatch` transforms, the parameter will be the object the nested parsers returned. For example, the `seq` combinator (below) returns an array of the sequence of matches. An expression parser might build up a tree of expression nodes.
+
+- `span`: An object representing the span of text matched by this parser.
+
+Span objects have several fields for identifying the location of the beginning and end of the span. Offsets are always in slice format, so the starting offset always points to the first character of the span, while the ending offset always points to the position right after the last character of the span. To put it another way, `text.slice(start, end)` provides the matching text exactly.
+
+- `text` - the original text
+- `start` - starting offset within the text
+- `end` - ending offset within the text (plus one)
+- `startLine`: Line object for the line around `start`
+- `endLine`: Line object for the line around `end`
+
+Line objects have several fields:
+
+- `lineNumber` - counting from zero
+- `startOfLine` - text offset of the first character in this line
+- `endOfLine` - text offset of the first character after the line (usually the linefeed)
+- `xpos` - position within this line (counting from zero)
+
+As with spans, `startOfLine` is inclusive while `endOfLine` is exclusive, so `text.slice(startOfLine, endOfLine)` is the content of the line, not including a trailing linefeed.
+
+There are also a few helper functions on Span:
+
+- `toSquiggles()` - Returns an array of two strings: the first line of the span, and a string of spaces and squiggles (`~`) where the squiggles align with the span coverage.
+- `around(width)` - Returns a segment of the line containing `start`, with up to `width` characters to the left and right.
+
+For example, if the original text was "cats and dogs", and the span covers (start = 5, end = 8), then `toSquiggles()` returns:
+
+```javascript
+[
+  "cats and dogs",
+  "     ~~~"
+]
+```
+
 
 ## Combiners
 
@@ -83,6 +146,7 @@ For example, these two lines are equivalent:
 var comment = pr.seq(pr.commit(pr.string("#")), pr.regex(/[^\n]+\n/));
 var comment = pr.seq(pr.string("#").commit(), pr.regex(/[^\n]+\n/));
 ```
+
 
 ### Convenience methods
 
@@ -164,7 +228,7 @@ abc.writeDotFile("abc1.dot");
 will write a graph file named "abc1.dot". Dot utilities will be able to generate an image like the one below.
 
 ```sh
-$ dot -Tpng -oabc.png ./abc.dot
+$ dot -Tpng -oabc1.png ./abc1.dot
 ```
 
 <img src="./abc1.png">
