@@ -4,7 +4,7 @@ Packrattle's API consists of functions which make simple parsers (for example, t
 
 - [Simple parsers](#simple-parsers)
 - [Transforms](#transforms)
-  - [Map and filter](#map-and-filter)
+  - [Map and filter parameters](#map-and-filter-parameters)
 - [Combiners](#combiners)
   - [Convenience methods](#convenience-methods)
   - [Reduce](#reduce)
@@ -58,15 +58,15 @@ var number = pr.regex(/\d+/).map(x => parseInt(x, 10));
  The type of 'f' is `(value, Span) => boolean`, where 'value' is the result of the parser, and `Span` is described below.
 
 
-### Map and filter
+### Map and filter parameters
 
 Both `map` and `filter` (`onMatch` and `matchIf`) take a function 'f' and call it with two parameters: `f(value, span)`.
 
-- `value`: The result of the previous parser. For simple parsers like `string` and `regex`, this will be the string literal or regex match object, respectively. For nested parsers with their own `onMatch` transforms, the parameter will be the object the nested parsers returned. For example, the `seq` combinator (below) returns an array of the sequence of matches. An expression parser might build up a tree of expression nodes.
+- `value`: The result of the previous parser. For simple parsers like `string` and `regex`, this will be the string literal or regex match object, respectively. For nested parsers with their own `onMatch` transforms, the parameter will be the object returned by that parser. For example, the `seq` combinator (below) returns an array of the sequence of matches. An expression parser might build up a tree of expression nodes.
 
-- `span`: An object representing the span of text matched by this parser.
+- `span`: An immutable object representing the span of text matched by this parser.
 
-Span objects have several fields for identifying the location of the beginning and end of the span. Offsets are always in slice format, so the starting offset always points to the first character of the span, while the ending offset always points to the position right after the last character of the span. To put it another way, `text.slice(start, end)` provides the matching text exactly.
+Span objects have several fields for identifying the location of the beginning and end of the span. Offsets are always in slice format: inclusive on the left, exclusive on the right. (The starting offset always points to the first character of the span, while the ending offset always points to the position right after the last character of the span. To put it another way, `text.slice(start, end)` provides the matching text exactly.)
 
 - `text` - the original text
 - `start` - starting offset within the text
@@ -96,6 +96,20 @@ For example, if the original text was "cats and dogs", and the span covers (star
   "     ~~~"
 ]
 ```
+
+If you're parsing into a syntax tree, you may want to preserve the span so you can highlight errors later. For example:
+
+```javascript
+const number = packrattle.regex(/\d+/).map((match, span) => {
+  return { number: parseInt(match[0], 10), span: span };
+});
+
+// later:
+console.log("Everything went wrong here:");
+badMatch.span.toSquiggles().forEach(line => console.log(line));
+```
+
+The result of the parser for `number` will be an object with a `number` field set to the matched value, and a `span` that covers the matching text. You can refer to it later when it turns out that number was a bad seed.
 
 
 ## Combiners
@@ -231,7 +245,7 @@ will write a graph file named "abc1.dot". Dot utilities will be able to generate
 $ dot -Tpng -oabc1.png ./abc1.dot
 ```
 
-<img src="./abc1.png" width="50%">
+<img src="./abc1.png" width="40%">
 
 The second method is to pass `dotfile` as an option to the `execute` or `run` methods. This tells packrattle to trace its progress as it goes, and build a dot graph of the path it took. The `dotfile` option should be a filename to write the dot data into.
 
@@ -244,4 +258,4 @@ var match = abc.run("b", { dotfile: "abc2.dot" });
 
 This (trivial) trace shows the failed match of "a" before succeeding at "b". Note that it planned to try "c" next, but didn't bother once there was a successful match.
 
-<img src="./abc2.png" width="30%">
+<img src="./abc2.png" width="40%">
