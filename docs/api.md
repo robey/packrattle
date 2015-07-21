@@ -231,7 +231,7 @@ will write a graph file named "abc1.dot". Dot utilities will be able to generate
 $ dot -Tpng -oabc1.png ./abc1.dot
 ```
 
-<img src="./abc1.png">
+<img src="./abc1.png" width="50%">
 
 The second method is to pass `dotfile` as an option to the `execute` or `run` methods. This tells packrattle to trace its progress as it goes, and build a dot graph of the path it took. The `dotfile` option should be a filename to write the dot data into.
 
@@ -244,4 +244,4 @@ var match = abc.run("b", { dotfile: "abc2.dot" });
 
 This (trivial) trace shows the failed match of "a" before succeeding at "b". Note that it planned to try "c" next, but didn't bother once there was a successful match.
 
-<img src="./abc2.png">
+<img src="./abc2.png" width="30%">
