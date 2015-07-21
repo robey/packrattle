@@ -226,7 +226,7 @@ class Parser {
   matchIf(f) {
     return newParser("matchIf", { wrap: this }, (state, results) => {
       state.schedule(this).then(match => {
-        if (match.ok && !f(match.value, match.state)) {
+        if (match.ok && !f(match.value, match.state.span())) {
           results.add(state.failure("Expected " + this.inspect()));
         } else {
           results.add(match);
@@ -234,6 +234,8 @@ class Parser {
       });
     });
   }
+
+  filter(f) { return this.matchIf(f); }
 
 
   // ----- convenience methods for accessing the combinators
