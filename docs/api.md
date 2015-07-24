@@ -5,6 +5,8 @@ Packrattle's API consists of functions which make simple parsers (for example, t
 - [Simple parsers](#simple-parsers)
 - [Transforms](#transforms)
   - [Map and filter parameters](#map-and-filter-parameters)
+- [Executing](#executing)
+  - [Parser API](#parser-api)
 - [Combiners](#combiners)
   - [Convenience methods](#convenience-methods)
   - [Reduce](#reduce)
@@ -112,6 +114,150 @@ badMatch.span.toSquiggles().forEach(line => console.log(line));
 The result of the parser for `number` will be an object with a `number` field set to the matched value, and a `span` that covers the matching text. You can refer to it later when it turns out that number was a bad seed.
 
 
+## Executing
+
+The simplest way to execute a parser is to call the `run` method on it, with a string to parse:
+
+- `parser.run(string, options = {})`
+
+```javascript
+expr.run("3+20*5");
+// { add: { left: 3, right: { multiply: { left: 20, right: 5 } } } }
+```
+
+This attempts to match the entire string by calling `consume` (see below). If it succeeds, a 'match' object is returned. If it fails, an Error is thrown with a `state` field containing the parser state of the error, described below.
+
+You can also execute the parser manually:
+
+- `parser.execute(string, options = {})` - parses until it finds a match, without necessarily consuming the entire string
+
+In some ambiguous parsers, `execute` may seem to stop before consuming much of the string, because it operates "lazily" instead of "greedily".
+
+
+### Parser API
+
+Transforms:
+
+Combiners (convenience methods for the global combiners):
+
+- `then(...parsers)` -> `seq(this, ...parsers)`
+
+- `or(...parsers)` -> `alt(this, ...parsers)`
+
+- `drop()` -> `drop(this)`
+
+- `optional(defaultValue = "")` -> `optional(this, defaultValue)`
+
+- `check()` -> `check(this)`
+
+- `commit()` -> `commit(this)`
+
+- `not()` -> `not(this)`
+
+- `repeat(options)` -> `repeat(this, options)`
+
+- `times(count)` -> `repeat(this, { min: count, max: count })`
+
+Execution:
+
+execute(text, options = {})
+consume()
+run(text, options = {}) {
+
+Introspection:
+
+- `toString()` - Return a unique name like `Parser[35, seq]`.
+
+- `inspect()` - Return a more descriptive name, following combiners as far as possible, like `/\d+/ or "Infinity"`.
+
+- `toDot(maxLength = 40)` - Return a dot-format graph of the nested parsers, as described below in [Debugging](#debugging).
+  - `maxLength` - Maximum length of any label in the graph. Longer labels will be truncated.
+
+- `writeDotFile(filename, maxLength)` - In node.js, write `toDot()` into a file with the given name. (This method is just a convenience for the common case of wanting to quickly write out a dot file while debugging.)
+
+
+
+
+
+  // consume an entire text with this parser. convert failure into an exception.
+    const rv = this.consume().execute(text, options);
+    if (!rv.ok) {
+      const error = new Error(rv.value);
+      error.state = rv.state;
+      throw error;
+    }
+    return rv.value;
+  }
+
+  // ----- transforms
+
+  // transforms the result of a parser if it succeeds.
+  // f(value, span)
+  onMatch(f) {
+    return newParser("onMatch", { wrap: this }, (state, results) => {
+      state.schedule(this).then(match => {
+        if (!match.ok) return results.add(match);
+        if (typeof f != "function") return results.add(match.withValue(f));
+
+        try {
+          const rv = f(match.value, match.state.span());
+          if (rv instanceof Parser) {
+            match.state.schedule(rv).then(m => results.add(m));
+          } else {
+            results.add(match.withValue(rv));
+          }
+        } catch (error) {
+          results.add(match.toError(error.toString()));
+        }
+      });
+    });
+  }
+
+  map(f) { return this.onMatch(f); }
+
+  // transforms the error message of a parser
+  onFail(newMessage) {
+    return newParser("onFail", { wrap: this }, (state, results) => {
+      state.schedule(this).then(match => {
+        results.add(match.ok ? match : match.toError(newMessage));
+      });
+    });
+  }
+
+  // only succeed if f(value, state) returns true.
+  matchIf(f) {
+    return newParser("matchIf", { wrap: this }, (state, results) => {
+      state.schedule(this).then(match => {
+        if (match.ok && !f(match.value, match.state.span())) {
+          results.add(state.failure("Expected " + this.inspect()));
+        } else {
+          results.add(match);
+        }
+      });
+    });
+  }
+
+  filter(f) { return this.matchIf(f); }
+
+
+
+-
+
+Both 'parse' and 'consume' return a match object with these fields:
+
+- `ok` - true if the parser succeeded, false if not
+- `state` - a `ParserState` object with the current position (see below)
+- `match` - the match result (if `ok` is true)
+- `message` - a string error message (if `ok` is false)
+
+The `ParserState` object contains a few helper methods:
+
+- `pos()` - the index within the string of the successful match or last error
+- `endpos()` - the index within the string of the successful match (for errors, same as `pos()`)
+- `lineno()` - the current line number of `pos()`, assuming `\n` divides lines, counting from 0
+- `line()` - the text of the line around `pos()`, assuming `\n` divides lines
+- `toSquiggles()` - an array containing `line()` and a a string with little squiggle characters highlighting the span of `pos()` to `endpos()`
+
 ## Combiners
 
 The real power is in combining the parsers. These are all global functions in the packrattle module.
@@ -160,6 +306,12 @@ For example, these two lines are equivalent:
 var comment = pr.seq(pr.commit(pr.string("#")), pr.regex(/[^\n]+\n/));
 var comment = pr.seq(pr.string("#").commit(), pr.regex(/[^\n]+\n/));
 ```
+
+Two of the methods are renamed when they are called from a parser:
+
+- `p1.then(p2)` - equivalent to `seq(p1, p2)`
+
+- `p1.or(p2)` - equivalent to `alt(p1, p2)`
 
 
 ### Convenience methods
