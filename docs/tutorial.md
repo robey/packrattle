@@ -159,3 +159,11 @@ Hey, pretty good! But also, we don't care about the results of the whitespace. I
 ```
 
 Nice! Good job, everyone!
+
+In fact, we don't even need the `*` either. We just care about the numbers.
+
+```javascript
+> var multiply = packrattle([ number, whitespace, packrattle("*").drop(), whitespace, number ]);
+> multiply.run("3 * 4")
+[ 3, 4 ]
+```
