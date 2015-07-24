@@ -38,7 +38,7 @@ function regex(r) {
   const m = r.multiline ? "m" : "";
   const source = r.source[0] == "^" ? r.source : ("^" + r.source)
   const r2 = new RegExp(source, i + m);
-  return parser.newParser("regex", { cacheable: true, describe: r2.toString() }, (state, results) => {
+  return parser.newParser("regex", { cacheable: true, describe: r.toString() }, (state, results) => {
     const m = r2.exec(state.text.slice(state.pos));
     results.add(m ? state.advance(m[0].length).success(m) : state.failure());
   });
