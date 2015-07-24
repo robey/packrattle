@@ -55,6 +55,7 @@ Okay, that's a little bit cooler. `map` will call a function on a successful mat
 
 Let's go deeper.
 
+[[ Parser objects have a few methods on them that will allow you to transform the match results. This is how you turn the parser output into an AST, or cause the parser to evaluate expressions as it parses. ]]
 
 ## Multiplication
 
