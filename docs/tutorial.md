@@ -127,7 +127,35 @@ The packrattle module is also a function that will do these implicit conversions
 ```
 
 
+## Whitespace
 
-- whitespace
-- drop
-- optional
+It would be nice if we could add whitespace around the terms.
+
+```javascript
+> multiply.run("3 * 4")
+Error: Expected '*'
+```
+
+A good regex for whitespace might be `/[ \t]+/`, or "one or more space or tab characters". But we don't care if the whitespace is there or not -- it's optional. There's a parser for that.
+
+```javascript
+> var whitespace = packrattle(/[ \t]+/).optional();
+> var multiply = packrattle([ number, whitespace, "*", whitespace, number ]);
+> multiply.run("3 * 4")
+[ 3,
+  [ ' ', index: 0, input: ' * 4' ],
+  '*',
+  [ ' ', index: 0, input: ' 4' ],
+  4 ]
+```  
+
+Hey, pretty good! But also, we don't care about the results of the whitespace. If it's there, we just want to ignore it. So let's `drop` it.
+
+```javascript
+> var whitespace = packrattle(/[ \t]+/).optional().drop();
+> var multiply = packrattle([ number, whitespace, "*", whitespace, number ]);
+> multiply.run("3 * 4")
+[ 3, '*', 4 ]
+```
+
+Nice! Good job, everyone!
