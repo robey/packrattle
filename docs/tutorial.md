@@ -64,14 +64,15 @@ multiply ::= number "*" number
 
 which is BNF syntax for saying that a multiply operation is a number followed by a star, followed by another number. In packrattle, this is a "sequence" or `seq`.
 
-```
+```javascript
 > var multiply = packrattle.seq(number, packrattle.string("*"), number);
-undefined
 > multiply.run("3*4")
 [ 3, '*', 4 ]
 ```
 
-As you can see, `seq` takes a list of parsers and joins them together. The new combined parser only succeeds if each of the inner parsers succeeds in order.
+As you can see, `seq` takes a list of parsers and joins them together. We didn't have to explain how to parse numbers again, either; we can just use the parser we stored in `number`. Being able to combine the parsers by name this way will help as they get more complex.
+
+The new combined parser only succeeds if each of the inner parsers succeeds in order.
 
 ```javascript
 > multiply.run("3@4")
@@ -101,12 +102,30 @@ Expected '*'
 ```
 
 
-## Simplifying
+## Shortcuts
 
-You may have noticed that the "\*" parser
+You may have noticed that the "\*" parser used a new building block.
 
-- match numbers
-- map -> number
+```javascript
+packrattle.string("*")
+```
+
+The `string` parser is even simpler than `regex`: it matches only the exact string requested.
+
+Because strings, regular expressions, and sequences are used all the time, shortcuts are begrudgingly allowed. Any time packrattle expects a nested parser, it will accept a string, RegExp object, or array, and implicitly convert them. (An array becomes a sequence.) So we could have defined `multiply` as:
+
+```javascript
+> var multiply = packrattle.seq(number, "*", number);
+```
+
+The packrattle module is also a function that will do these implicit conversions for you, so we could also write it like this:
+
+```javascript
+> var multiply = packrattle([ number, "*", number ]);
+```
+
+
+
 - whitespace
 - drop
 - optional
