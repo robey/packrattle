@@ -240,7 +240,7 @@ class Parser {
 
   // ----- convenience methods for accessing the combinators
 
-  then(p) { return combiners.chain(this, p, (a, b) => [ a, b ]); }
+  then(...parsers) { return combiners.seq(this, ...parsers); }
 
   or(...parsers) { return combiners.alt(this, ...parsers); }
 
