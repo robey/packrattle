@@ -72,9 +72,9 @@ which is BNF syntax for saying that a multiply operation is a number followed by
 [ 3, '*', 4 ]
 ```
 
-As you can see, `seq` takes a list of parsers and joins them together. We didn't have to explain how to parse numbers again, either; we can just use the parser we stored in `number`. Being able to combine the parsers by name this way will help as they get more complex.
+As you can see, `seq` takes a list of parsers and joins them together. We didn't have to explain how to parse numbers again, either; we can just use the parser we stored in `number`. Being able to combine the parsers by name this way will help a lot as the parsers and combinations get more complex.
 
-The new combined parser returns an array of the match results, in order. But it only succeeds if each of the inner parsers succeeds.
+This new "sequenced" parser returns an array of the match results, in order. But it only succeeds if each of the inner parsers succeeds.
 
 ```javascript
 > multiply.run("3@4")
