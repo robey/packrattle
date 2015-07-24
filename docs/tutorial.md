@@ -43,7 +43,7 @@ Hm. So packrattle can hold a regular expression and then execute it against a st
 
 So if that was all it could do, we might as well pack up and go home. This vacation is over.
 
-Luckily this is just the beginning. We don't really want the match object from the regex. We want it to be parsed into a number, and we can get that by adding a transform to the parser.
+Luckily, this is just the beginning! We don't really want the match object from the regex. We want it to be parsed into a number, and we can get that by adding a transform to the parser.
 
 ```javascript
 > var number = packrattle.regex(/\d+/).map(match => parseInt(match[0], 10));
@@ -52,6 +52,8 @@ Luckily this is just the beginning. We don't really want the match object from t
 ```
 
 Okay, that's a little bit cooler. `map` will call a function on a successful match, letting us change the result. In this case, we take the matched string and parse it immediately into an int. Now `number` is sort of a glorified wrapper for `parseInt` that rejects anything but positive integers.
+
+Let's go deeper.
 
 
 ## Multiplication
@@ -72,7 +74,7 @@ which is BNF syntax for saying that a multiply operation is a number followed by
 
 As you can see, `seq` takes a list of parsers and joins them together. We didn't have to explain how to parse numbers again, either; we can just use the parser we stored in `number`. Being able to combine the parsers by name this way will help as they get more complex.
 
-The new combined parser only succeeds if each of the inner parsers succeeds in order.
+The new combined parser returns an array of the match results, in order. But it only succeeds if each of the inner parsers succeeds.
 
 ```javascript
 > multiply.run("3@4")
