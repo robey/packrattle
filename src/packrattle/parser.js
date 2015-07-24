@@ -181,7 +181,7 @@ class Parser {
     const rv = this.consume().execute(text, options);
     if (!rv.ok) {
       const error = new Error(rv.value);
-      error.state = rv.state;
+      error.span = rv.state.span();
       throw error;
     }
     return rv.value;

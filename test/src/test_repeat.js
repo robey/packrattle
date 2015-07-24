@@ -86,7 +86,8 @@ describe("Parser.repeat", () => {
       throw new Error("nope");
     } catch (error) {
       error.message.should.eql("Expected operand");
-      error.state.pos.should.eql(3);
+      error.span.start.should.eql(3);
+      error.span.end.should.eql(3);
     }
 
     try {
@@ -94,7 +95,8 @@ describe("Parser.repeat", () => {
       throw new Error("nope");
     } catch (error) {
       error.message.should.eql("Expected operand");
-      error.state.pos.should.eql(7);
+      error.span.start.should.eql(7);
+      error.span.end.should.eql(7);
     }
   });
 });
