@@ -99,6 +99,6 @@ describe("Parser.onMatch spans", () => {
       "     ~"
     ]);
     span.start.should.eql(5);
-    span.end.should.eql(5);
+    span.end.should.eql(6);
   });
 });

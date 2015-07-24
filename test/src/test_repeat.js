@@ -14,7 +14,7 @@ function matchSpan(m) {
 describe("Parser.repeat", () => {
   it("0 or more", () => {
     const p = pr.repeat("hi");
-    matchSpan(p.execute("h")).should.eql([ [], 0, 0 ]);
+    matchSpan(p.execute("h")).should.eql([ [], 0, 1 ]);
     matchSpan(p.execute("hi")).should.eql([ [ "hi" ], 0, 2 ]);
     matchSpan(p.execute("hiho")).should.eql([ [ "hi" ], 0, 2 ]);
     matchSpan(p.execute("hihihi")).should.eql([ [ "hi", "hi", "hi" ], 0, 6 ]);
@@ -87,7 +87,7 @@ describe("Parser.repeat", () => {
     } catch (error) {
       error.message.should.eql("Expected operand");
       error.span.start.should.eql(3);
-      error.span.end.should.eql(3);
+      error.span.end.should.eql(4);
     }
 
     try {
@@ -96,7 +96,7 @@ describe("Parser.repeat", () => {
     } catch (error) {
       error.message.should.eql("Expected operand");
       error.span.start.should.eql(7);
-      error.span.end.should.eql(7);
+      error.span.end.should.eql(8);
     }
   });
 });

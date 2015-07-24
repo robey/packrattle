@@ -87,7 +87,7 @@ describe("combiners", () => {
     ]);
     const rv = p.execute("bbbd");
     rv.ok.should.eql(true);
-    rv.value[1].should.eql({ start: 3, end: 3 });
+    rv.value[1].should.eql({ start: 3, end: 4 });
     rv.value[2][0].should.eql("d");
   });
 

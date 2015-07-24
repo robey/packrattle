@@ -31,6 +31,7 @@ class Span {
     this.text = text;
     this.start = start;
     this.end = end;
+    if (this.end == this.start) this.end++;
     this._startLine = null;
     this._endLine = null;
   }
