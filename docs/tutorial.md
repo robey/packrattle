@@ -1,6 +1,6 @@
 # Quick tutorial
 
-Let's build a parser that can take an expression like
+Let's build a parser that can model a basic 1970s pocket calculator. It should take an expression like
 
     3 * 10 + 7 * 11
 
@@ -29,9 +29,9 @@ Hm. So packrattle can hold a regular expression (regex) and then execute it agai
 [ '34', index: 0, input: '34' ]
 ```
 
-So if that was all it could do, we might as well pack up and go home. This vacation is over. Luckily this is just a building block.
+So if that was all it could do, we might as well pack up and go home. This vacation is over.
 
-We don't really want the match object from the regex. We want it to be parsed into a number.
+Luckily this is just a building block. We don't really want the match object from the regex. We want it to be parsed into a number.
 
 ```
 > var number = packrattle.regex(/\d+/).map(match => parseInt(match[0], 10));
@@ -39,7 +39,9 @@ We don't really want the match object from the regex. We want it to be parsed in
 34
 ```
 
-Okay, that's a little bit cooler. `map` will take a successful match and transform it. In this case, we take the matched string and parse it into an actual int.
+Okay, that's a little bit cooler. `map` will take a successful match and transform it. In this case, we take the matched string and parse it immediately into an int.
+
+
 
 
 - match numbers
