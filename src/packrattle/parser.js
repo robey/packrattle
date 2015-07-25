@@ -192,7 +192,7 @@ class Parser {
   // transforms the result of a parser if it succeeds.
   // f(value, span)
   onMatch(f) {
-    return newParser("onMatch", { wrap: this }, (state, results) => {
+    return newParser("map", { wrap: this }, (state, results) => {
       state.schedule(this).then(match => {
         if (!match.ok) return results.add(match);
         if (typeof f != "function") return results.add(match.withValue(f));
@@ -222,12 +222,12 @@ class Parser {
     });
   }
 
-  // only succeed if f(value, state) returns true.
-  matchIf(f) {
-    return newParser("matchIf", { wrap: this }, (state, results) => {
+  // only succeed if f(value, state) returns true. optional failure message.
+  matchIf(f, message) {
+    return newParser("filter", { wrap: this }, (state, results) => {
       state.schedule(this).then(match => {
         if (match.ok && !f(match.value, match.state.span())) {
-          results.add(state.failure("Expected " + this.inspect()));
+          results.add(state.failure(message));
         } else {
           results.add(match);
         }
@@ -235,7 +235,7 @@ class Parser {
     });
   }
 
-  filter(f) { return this.matchIf(f); }
+  filter(f, message) { return this.matchIf(f, message); }
 
 
   // ----- convenience methods for accessing the combinators
