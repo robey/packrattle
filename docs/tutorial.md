@@ -208,7 +208,20 @@ Packrattle will let us pass in a function wherever a parser is expected, to let 
 140
 ```
 
-If you're familiar with parsers, your head may have just spun around. The parser we just built is "left-recursive", meaning that the left side of the expression for `multiply` is `factor star factor`, and `factor` is `number | multiply`, so most parser engines will go navel-gazing immediately and never return. In these engines, you need to carefully arrange the parsers so that they can only recurse on the right side, like this:
+If you're familiar with parsers, your head may have just spun around. The parser we just built is "left-recursive", meaning that the left side of the expression for `multiply` is `factor`, but one option for `factor` is `multiply`, so most parser engines will go navel-gazing immediately and never return.
+
+```
+multiply ::= factor star factor
+factor ::= number | multiply
+
+...therefore...
+
+multiply ::= (number | multiply) star (number | multiply)
+multiply ::= (number | (number | multiply) star (number | multiply)) ...
+multiply ::= (number | (number | (number | multiply) star (number | multiply)) ...
+```
+
+Help! In these engines, you need to carefully arrange the parsers so that they can only recurse on the right side, like this:
 
 ```javascript
 > var multiply = packrattle([ number, star, factor ]).map(match => match[0] * match[1]);
