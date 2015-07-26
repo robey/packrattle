@@ -93,7 +93,7 @@ function alt(...parsers) {
 }
 
 /*
- * throw away the match value, equivalent to `onMatch(null)`.
+ * throw away the match value, equivalent to `map(null)`.
  */
 function drop(p) {
   return parser.newParser("drop", { wrap: p, cacheable: true }, (state, results, p) => {

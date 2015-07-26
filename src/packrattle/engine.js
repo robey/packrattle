@@ -92,7 +92,7 @@ class Engine {
 
     this.currentState = null;
 
-    // message with 'commit' set has highest priority. secondary sort by index.
+    // message with 'commit' set has highest priority. secondary sort by depth.
     failures.sort((a, b) => {
       return (a.commit != b.commit) ? (b.commit ? 1 : -1) : (b.state.depth - a.state.depth);
     });
