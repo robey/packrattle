@@ -43,7 +43,7 @@ Hm. So packrattle can hold a regular expression and then execute it against a st
 
 So if that was all it could do, we might as well pack up and go home. This vacation is over.
 
-Luckily, this is just the beginning! We don't really want the match object from the regex. We want it to be parsed into a number, and we can get that by adding a transform to the parser.
+Luckily, this is just the beginning! Parser objects have a few methods that allow us to transform the results. This is how a compiler can turn parser output into an AST, and how we can evaluate expressions as the parser works. For this parser, we want to turn the match object from the regex into a javascript `Number`, and we can get that by adding a transform with `map`.
 
 ```javascript
 > var number = packrattle.regex(/\d+/).map(match => parseInt(match[0], 10));
@@ -53,9 +53,8 @@ Luckily, this is just the beginning! We don't really want the match object from 
 
 Okay, that's a little bit cooler. `map` will call a function on a successful match, letting us change the result. In this case, we take the matched string and parse it immediately into an int. Now `number` is sort of a glorified wrapper for `parseInt` that rejects anything but positive integers.
 
-Let's go deeper.
+We need to go deeper.
 
-[[ Parser objects have a few methods on them that will allow you to transform the match results. This is how you turn the parser output into an AST, or cause the parser to evaluate expressions as it parses. ]]
 
 ## Multiplication
 

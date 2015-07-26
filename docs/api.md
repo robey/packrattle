@@ -3,15 +3,16 @@
 Packrattle's API consists of functions which make simple parsers (for example, to match a string) and combiners that let you attach parsers together (for example, one parser *or* another). All parsers are objects of type `Parser`, and have a set of useful methods for transforming and executing them.
 
 - [Simple parsers](#simple-parsers)
-- [Transforms](#transforms)
-  - [Map and filter parameters](#map-and-filter-parameters)
-- [Executing](#executing)
-  - [Parser API](#parser-api)
 - [Combiners](#combiners)
-  - [Convenience methods](#convenience-methods)
-  - [Reduce](#reduce)
-- methods on `Parser`
-- [Debugging](#debugging)
+  - [Convenience combiners](#convenience-combiners)
+- [Parser](#parser)
+  - [Transforms](#transforms)
+  - [Combiners](#combiners)
+  - [Execution](#execution)
+  - [Introspection](#introspection)
+- [Span](#span)
+- [Line](#line)
+- [Match](#match)
 
 
 ## Simple parsers
@@ -41,234 +42,19 @@ hello.run("hello");
 ```
 
 
-## Transforms
-
-Parser objects have a few methods on them that will allow you to transform the match results. This is how you turn the parser output into an AST, or cause the parser to evaluate expressions as it parses.
-
-For example, this parser matches strings of digits and transforms them into a number:
-
-```javascript
-var number = pr.regex(/\d+/).map(x => parseInt(x, 10));
-```
-
-- `map(f)` or `onMatch(f)` - If the parser is successful, call 'f' on the match result, using the return value of 'f' as the new match result.
-
-- `onFail(newMessage)` - Replace the error message for this parser when it fails to match.
-
-- `filter(f)` or `matchIf(f)` - If the parser is successful, call 'f' on the match result and state: if it returns true, continue as normal, but if it returns false, fail to match.
-
- The type of 'f' is `(value, Span) => boolean`, where 'value' is the result of the parser, and `Span` is described below.
-
-
-### Map and filter parameters
-
-Both `map` and `filter` (`onMatch` and `matchIf`) take a function 'f' and call it with two parameters: `f(value, span)`.
-
-- `value`: The result of the previous parser. For simple parsers like `string` and `regex`, this will be the string literal or regex match object, respectively. For nested parsers with their own `onMatch` transforms, the parameter will be the object returned by that parser. For example, the `seq` combinator (below) returns an array of the sequence of matches. An expression parser might build up a tree of expression nodes.
-
-- `span`: An immutable object representing the span of text matched by this parser.
-
-Span objects have several fields for identifying the location of the beginning and end of the span. Offsets are always in slice format: inclusive on the left, exclusive on the right. (The starting offset always points to the first character of the span, while the ending offset always points to the position right after the last character of the span. To put it another way, `text.slice(start, end)` provides the matching text exactly.)
-
-- `text` - the original text
-- `start` - starting offset within the text
-- `end` - ending offset within the text (plus one)
-- `startLine`: Line object for the line around `start`
-- `endLine`: Line object for the line around `end`
-
-Line objects have several fields:
-
-- `lineNumber` - counting from zero
-- `startOfLine` - text offset of the first character in this line
-- `endOfLine` - text offset of the first character after the line (usually the linefeed)
-- `xpos` - position within this line (counting from zero)
-
-As with spans, `startOfLine` is inclusive while `endOfLine` is exclusive, so `text.slice(startOfLine, endOfLine)` is the content of the line, not including a trailing linefeed.
-
-There are also a few helper functions on Span:
-
-- `toSquiggles()` - Returns an array of two strings: the first line of the span, and a string of spaces and squiggles (`~`) where the squiggles align with the span coverage.
-- `around(width)` - Returns a segment of the line containing `start`, with up to `width` characters to the left and right.
-
-For example, if the original text was "cats and dogs", and the span covers (start = 5, end = 8), then `toSquiggles()` returns:
-
-```javascript
-[
-  "cats and dogs",
-  "     ~~~"
-]
-```
-
-If you're parsing into a syntax tree, you may want to preserve the span so you can highlight errors later. For example:
-
-```javascript
-const number = packrattle.regex(/\d+/).map((match, span) => {
-  return { number: parseInt(match[0], 10), span: span };
-});
-
-// later:
-console.log("Everything went wrong here:");
-badMatch.span.toSquiggles().forEach(line => console.log(line));
-```
-
-The result of the parser for `number` will be an object with a `number` field set to the matched value, and a `span` that covers the matching text. You can refer to it later when it turns out that number was a bad seed.
-
-
-## Executing
-
-The simplest way to execute a parser is to call the `run` method on it, with a string to parse:
-
-- `parser.run(string, options = {})`
-
-```javascript
-expr.run("3+20*5");
-// { add: { left: 3, right: { multiply: { left: 20, right: 5 } } } }
-```
-
-This attempts to match the entire string by calling `consume` (see below). If it succeeds, a 'match' object is returned. If it fails, an Error is thrown with a `state` field containing the parser state of the error, described below.
-
-You can also execute the parser manually:
-
-- `parser.execute(string, options = {})` - parses until it finds a match, without necessarily consuming the entire string
-
-In some ambiguous parsers, `execute` may seem to stop before consuming much of the string, because it operates "lazily" instead of "greedily".
-
-
-### Parser API
-
-Transforms:
-
-Combiners (convenience methods for the global combiners):
-
-- `then(...parsers)` -> `seq(this, ...parsers)`
-
-- `or(...parsers)` -> `alt(this, ...parsers)`
-
-- `drop()` -> `drop(this)`
-
-- `optional(defaultValue = "")` -> `optional(this, defaultValue)`
-
-- `check()` -> `check(this)`
-
-- `commit()` -> `commit(this)`
-
-- `not()` -> `not(this)`
-
-- `repeat(options)` -> `repeat(this, options)`
-
-- `times(count)` -> `repeat(this, { min: count, max: count })`
-
-Execution:
-
-execute(text, options = {})
-consume()
-run(text, options = {}) {
-
-Introspection:
-
-- `toString()` - Return a unique name like `Parser[35, seq]`.
-
-- `inspect()` - Return a more descriptive name, following combiners as far as possible, like `/\d+/ or "Infinity"`.
-
-- `toDot(maxLength = 40)` - Return a dot-format graph of the nested parsers, as described below in [Debugging](#debugging).
-  - `maxLength` - Maximum length of any label in the graph. Longer labels will be truncated.
-
-- `writeDotFile(filename, maxLength)` - In node.js, write `toDot()` into a file with the given name. (This method is just a convenience for the common case of wanting to quickly write out a dot file while debugging.)
-
-
-
-
-
-  // consume an entire text with this parser. convert failure into an exception.
-    const rv = this.consume().execute(text, options);
-    if (!rv.ok) {
-      const error = new Error(rv.value);
-      error.state = rv.state;
-      throw error;
-    }
-    return rv.value;
-  }
-
-  // ----- transforms
-
-  // transforms the result of a parser if it succeeds.
-  // f(value, span)
-  onMatch(f) {
-    return newParser("onMatch", { wrap: this }, (state, results) => {
-      state.schedule(this).then(match => {
-        if (!match.ok) return results.add(match);
-        if (typeof f != "function") return results.add(match.withValue(f));
-
-        try {
-          const rv = f(match.value, match.state.span());
-          if (rv instanceof Parser) {
-            match.state.schedule(rv).then(m => results.add(m));
-          } else {
-            results.add(match.withValue(rv));
-          }
-        } catch (error) {
-          results.add(match.toError(error.toString()));
-        }
-      });
-    });
-  }
-
-  map(f) { return this.onMatch(f); }
-
-  // transforms the error message of a parser
-  onFail(newMessage) {
-    return newParser("onFail", { wrap: this }, (state, results) => {
-      state.schedule(this).then(match => {
-        results.add(match.ok ? match : match.toError(newMessage));
-      });
-    });
-  }
-
-  // only succeed if f(value, state) returns true.
-  matchIf(f) {
-    return newParser("matchIf", { wrap: this }, (state, results) => {
-      state.schedule(this).then(match => {
-        if (match.ok && !f(match.value, match.state.span())) {
-          results.add(state.failure("Expected " + this.inspect()));
-        } else {
-          results.add(match);
-        }
-      });
-    });
-  }
-
-  filter(f) { return this.matchIf(f); }
-
-
-
--
-
-Both 'parse' and 'consume' return a match object with these fields:
-
-- `ok` - true if the parser succeeded, false if not
-- `state` - a `ParserState` object with the current position (see below)
-- `match` - the match result (if `ok` is true)
-- `message` - a string error message (if `ok` is false)
-
-The `ParserState` object contains a few helper methods:
-
-- `pos()` - the index within the string of the successful match or last error
-- `endpos()` - the index within the string of the successful match (for errors, same as `pos()`)
-- `lineno()` - the current line number of `pos()`, assuming `\n` divides lines, counting from 0
-- `line()` - the text of the line around `pos()`, assuming `\n` divides lines
-- `toSquiggles()` - an array containing `line()` and a a string with little squiggle characters highlighting the span of `pos()` to `endpos()`
-
 ## Combiners
 
-The real power is in combining the parsers. These are all global functions in the packrattle module.
+The real power is in combining parsers together. These are all global functions in the packrattle module.
 
-- `seq(p1, p2, ...)` - Match all of the parsers in sequence. The match result will be an array of all of the non-null match results.
+- `chain(p1, p2, combiner)` - Match 'p1', and if that succeeds, match 'p2' after it. If both succeed, call 'combiner' with the two match results, as `combiner(value1, value2)`, to get the new combined match result.
 
-- `alt(p1, p2, ...)` - If 'p1' matches, return that as the result; otherwise, try 'p2', and so on, until finding a match. If none of the parsers match, fail. This is the "or" operation.
+- `seq(...parsers)` - Match all of the parsers in sequence. The match result will be an array of all of the non-null match results. This is equivalent to a sequence of 'chain' calls that use 'combiner' to build up an array.
+
+- `alt(...parsers)` - Try each of the parsers as a possible match at the current position. They are effectively tried in parallel. If none of the parsers match, fail. This is the "or" operation.
+
+- `drop(p)` - If 'p' matches, return null as the match result, which will cause it to be omitted from the result of any sequence.
 
 - `optional(p, defaultValue = "")` - Match 'p' or return the default value (usually the empty string), succeeding either way.
-
-- `repeat(p, options = { min: 0, max: Infinity })` - Match 'p' multiple times (often written as "`p*`"), at least `min` times but no more than `max` times. The match result will be an array of all the non-null 'p' results. (Note that it's trivial to match zero times, so often you want to set `min` to at least 1.)
 
 - `check(p)` - Verify that 'p' matches, but don't advance the parser's position. Perl calls this a "zero-width lookahead".
 
@@ -276,7 +62,7 @@ The real power is in combining the parsers. These are all global functions in th
 
 - `not(p)` - Turn a successful match of 'p' into a failure, or a failure into a success (with an empty string as the match result).
 
-- `drop(p)` - If 'p' matches, return null as the match result, which will cause it to be omitted from the result of any sequence.
+- `repeat(p, options = { min: 0, max: Infinity })` - Match 'p' multiple times (often written as "`p*`"), at least `min` times but no more than `max` times. The match result will be an array of all the non-null 'p' results. (Note that it's trivial to match zero times, so often you want to set `min` to at least 1.)
 
 Example:
 
@@ -298,62 +84,23 @@ sleepy.run("zzzzz");
 // [ 'z', 'z', 'z', 'z', 'z' ]
 ```
 
-All of the combiners are also defined as methods on the parsers, so you can chain them with method calls. The method versions all take one fewer argument, because the first 'p' is implied.
+### Convenience combiners
 
-For example, these two lines are equivalent:
+These are easily implemented using the transforms and combiners above, but are commonly used, so they just come with the library, as global functions.
 
-```javascript
-var comment = pr.seq(pr.commit(pr.string("#")), pr.regex(/[^\n]+\n/));
-var comment = pr.seq(pr.string("#").commit(), pr.regex(/[^\n]+\n/));
-```
+- `seqIgnore(ignore, ...parsers)` - Match all of the parsers in sequence, like 'seq', but before each parser, match and discard an optional 'ignore'. This is handy for discarding whitespace between elements.
 
-Two of the methods are renamed when they are called from a parser:
+- `repeatIgnore(p, ignore, options)` - Match 'p' mulitple times, like 'repeat', but each 'p' may optionally be preceded by 'ignore', which will be dropped. This is handy for discarding whitespace between repeating elements.
 
-- `p1.then(p2)` - equivalent to `seq(p1, p2)`
+- `repeatSeparated(p, separator = "", options = { min: 1, max: Infinity })` - Match 'p' multiple times, separated by 'separator', which is not optional but is dropped.
 
-- `p1.or(p2)` - equivalent to `alt(p1, p2)`
-
-
-### Convenience methods
-
-These are trivially implemented using the transforms and combiners above, but are commonly used, so they just come with the library, as global functions.
-
-- `seqIgnore(ignore, p1, p2, ...)` - Like `seq`, but make an attempt to match 'ignore' before each parser, throwing away the result if it matches and ignoring if it doesn't. This is typically used to discard whitespace between parsers in a sequence.
-
-- `repeatIgnore(ignore, p, options = { min: 0, max: Infinity })` - Similar to 'seqIgnore', attempts to match 'ignore' before each iteration of 'p', throwing away the result.
-
-- `repeatSeparated(p, separator = "", options = { min: 1, max: Infinity })` - Like 'repeatIgnore', but there must be at least one match of 'p', the separator is not optional, and the separator is only matched (and discarded) between items.
-
-- `chain(p1, p2, combiner)` - Match p1 followed by p2, just like 'seq'. The values of p1 and p2 are passed to combiner as `combiner(value1, value2)` and the return value is the value of the chain. This is useful if you want a 'seq' but want to do something with the intermediate values other than put them into an array.
-
-
-### Reduce
-
-The reduce method is borrowed from scala's parser-combinator library, and is particularly useful for parsing expression trees.
-
-- `reduce(p, separator = "", options)`
-
-Options are:
-- `min` - minimum number of matches of 'p' allowed (default: 1)
-- `max` - maximun number of matches of 'p' allowed (default: Infinity)
-- `first` - one-argument function to transform the initial match value (default: `x => [ x ]`)
-- `next` - three-argument function to combine successive matches (default: `(sum, sep, x) => sum.push(x)`)
-
-Like 'repeatSeparated', it attempts to match at least one 'p', separated by 'separator'. In standard grammar, it matches:
-
-    p (separator p)*
-
-with an optional limit on the minimum or maximum number of 'p' there can be. Two functions are called to transform the match results:
-
-- `first(value)` is called with the first result of 'p' and can be used to transform the result, just like 'onMatch'. The default accumulator creates a new array with the match result as its only element.
-
-- `next(total, separator, value)` is called for each subsequent match of a separator and 'p'. The first parameter is the total result so far (or the result of the 'first' function). The second is the result of the separator, and the last is the result of the current 'p'. This function should return the new 'total' that will be passed in on future matches.
+- `reduce(p, separator = "", options = { min: 1, max: Infinity, first: x => [ x ], next: (sum, sep, x) => sum.push(x) })` - Match 'p' multiple times, separated by a non-optional 'separator', like 'repeatSeparated'. For the first 'p', map the result through 'first' to create an accumulator. For subsequent 'p', call `next(sum, sep, x)` with the accumulator, the result of 'separator', and the result of 'p'. The result of 'next' will be the new accumulator. When the match is exhausted, the accumulator is returned.
 
 For example, here is a parser that identifies strings like "3+50+2" and returns the match result 55:
 
 ```javascript
 // match a sequence of digits and parse them as an int.
-const number = packrattle.regex(/\d+/).onMatch(m => parseInt(m[0], 10));
+const number = packrattle.regex(/\d+/).map(match => parseInt(match[0], 10));
 
 // match numbers separated by "+", and add the numbers as we go.
 const expr = packrattle.reduce(number, "+", {
@@ -364,6 +111,148 @@ const expr = packrattle.reduce(number, "+", {
 expr.run("3+50+2");
 // 55
 ```
+
+
+## Parser
+
+### Transforms
+
+- `map(f)` (or `onMatch(f)`) - If the parser is successful, call `f(match, span)`, using the return value as the new match result. If 'f' isn't a function, it's used as the return value itself.
+
+- `onFail(newMessage)` - Replace the error message for this parser when it fails to match.
+
+- `filter(f, message = null)` (or `matchIf(f, message)`) - If the parser is successful, call `f(match, span)`. If 'f' returns true, continue as normal, but if it returns false, fail to match. `message` is optional, but if it's present and the match fails, it will be used as the failure description.
+
+- `consume()` - Return a parser that will only succeed if it consumes the entire string. This is equivalent to `seq(this, end).map(match => match[0])` but is included here because it's used frequently.
+
+For both `map` and `filter`, the function `f` is called with the current match result from the previous (nested) parser, and a [Span](#span) object (described below), representing the span of text covered by the match.
+
+For example, this parser matches strings of digits and transforms them into a number:
+
+```javascript
+var number = pr.regex(/\d+/).map(x => parseInt(x, 10));
+```
+
+### Combiners
+
+These are convenience methods for the global [combiners](#combiners).
+
+- `then(...parsers)` -> `seq(this, ...parsers)`
+
+- `or(...parsers)` -> `alt(this, ...parsers)`
+
+- `drop()` -> `drop(this)`
+
+- `optional(defaultValue = "")` -> `optional(this, defaultValue)`
+
+- `check()` -> `check(this)`
+
+- `commit()` -> `commit(this)`
+
+- `not()` -> `not(this)`
+
+- `repeat(options)` -> `repeat(this, options)`
+
+- `times(count)` -> `repeat(this, { min: count, max: count })`
+
+### Execution
+
+Note that `execute` is "lazy" and may stop before the entire string is consumed. `run` is "greedy", so any success has consumed the entire string, and any failures have been converted to a thrown `Error`.
+
+- `execute(text, options = {})` - Parse 'text' until a match is found or there are no more alternatives. Return a [Match](#match) object representing the first success, or (if there were no successes), the failure that made the most progress. Usually you want to call `run()` instead.
+
+- `run(text, options = {})` - Treat the parser as if `consume()` was invoked, then parse 'text' until a match is found or there are no more alternatives. On success, return the parse result. On failure, throw an `Error` representing the failure that made the most progress. The error will have a [`span`](#span) attribute covering the failure.
+
+Options:
+
+- `debugger` - A function to call for debugging. The function should take a string (the line to log). `console.log` would work, for example.
+
+- `dotfile` - A string representing a filename, or a function that takes a string. A "dot" graph will be generated of the parser's progress, and the final text content will be sent to this function. If it's a filename, the dot content will be written to a file with that name (in node only).
+
+Example:
+
+```javascript
+expr.run("3+20*5");
+// { add: { left: 3, right: { multiply: { left: 20, right: 5 } } } }
+```
+
+### Introspection
+
+- `toString()` - Return a unique name like `Parser[35, seq]`.
+
+- `inspect()` - Return a more descriptive name, following combiners as far as possible, like `/\d+/ or "Infinity"`.
+
+- `toDot(maxLength = 40)` - Return a dot-format graph of the nested parsers, as described below in [Debugging](#debugging).
+  - `maxLength` - Maximum length of any label in the graph. Longer labels will be truncated.
+
+- `writeDotFile(filename, maxLength)` - In node.js, write `toDot()` into a file with the given name. (This method is just a convenience for the common case of wanting to quickly write out a dot file while debugging.)
+
+
+## Span
+
+A Span object represents a segment of the original text, with start and end offsets. Like `slice()`, the start offset is inclusive (points to the first character of the span), and the end offset is exclusive (points one position past the last character of the span).
+
+Spans are immutable. You may store them in a data structure around during parsing, and after the parser is complete.
+
+Attributes:
+
+- `text` - the original text
+- `start` - starting offset within the text
+- `end` - ending offset within the text (plus one)
+- `startLine`: [Line](#line) object for the line around `start`
+- `endLine`: [Line](#line) object for the line around `end`
+
+Methods:
+
+- `toSquiggles()` - Return an array of two strings: the first line of the span, and a string of spaces and squiggles (`~`) where the squiggles align with the span coverage.
+- `around(width)` - Return a segment of the line containing `start`, with up to `width` characters to the left and right. The segment will be surrounded with brackets (`[]`) and the surrounding characters will never cross a line boundary. (This method is intended as a debugging aid.)
+
+For example, if the original text was "cats and dogs", and the span covers (start = 5, end = 8), then `toSquiggles()` returns:
+
+```javascript
+[
+  "cats and dogs",
+  "     ~~~"
+]
+```
+
+and `around(2)` returns:
+
+```javascript
+"s [and] d"
+```
+
+
+## Line
+
+As with [Span](#span), offsets within Line are inclusive at the start, and exclusive at the end, so `text.slice(startOfLine, endOfLine)` is the content of the line, not including a trailing linefeed.
+
+Lines are immutable. You may store them in a data structure around during parsing, and after the parser is complete.
+
+- `lineNumber` - counting from zero
+- `startOfLine` - text offset of the first character in this line
+- `endOfLine` - text offset of the first character after the line (usually the linefeed)
+- `xpos` - position within this line (counting from zero)
+
+
+## Match
+
+A Match object represents a successful or failed match, and is returned by `[Parser](Parser).execute`. It's usually only interesting for creating new combiners.
+
+- `ok` - true if the parse was successful; false if it failed
+- `state` - the ParserState object used to get the span (`state.span()`)
+- `commit` - true if the parser went through a `commit()`
+- `value` - either the parser's result, or an error message (if `ok` is false)
+
+
+
+
+
+
+
+
+
+
 
 
 
