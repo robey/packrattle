@@ -94,7 +94,11 @@ These are easily implemented using the transforms and combiners above, but are c
 
 - `repeatSeparated(p, separator = "", options = { min: 1, max: Infinity })` - Match 'p' multiple times, separated by 'separator', which is not optional but is dropped.
 
-- `reduce(p, separator = "", options = { min: 1, max: Infinity, first: x => [ x ], next: (sum, sep, x) => sum.push(x) })` - Match 'p' multiple times, separated by a non-optional 'separator', like 'repeatSeparated'. For the first 'p', map the result through 'first' to create an accumulator. For subsequent 'p', call `next(sum, sep, x)` with the accumulator, the result of 'separator', and the result of 'p'. The result of 'next' will be the new accumulator. When the match is exhausted, the accumulator is returned.
+- `reduce(p, separator = "", options = {})` - Match 'p' multiple times, separated by a non-optional 'separator', like 'repeatSeparated'. When the match is exhausted, the result of the last `next` call is returned. If there was only one match with no separators, the result of `first` is returned. Options:
+  - `min` (default: 1) - Minumum number of 'p' to match.
+  - `max` (default: Infinity) - Maximum number of 'p' to match.
+  - `first` (default: `value => [ value ]`) - Transform the first result of 'p' (like 'map'). The default accumulator creates a new array with the match result as its only element.
+  - `next` (default: `(total, separator, value) => total.push(value)`) - Transform each subsequent match of 'separator' followed by 'p'. The first parameter is the total result so far (or the result of the 'first' function). The second is the result of the separator, and the last is the result of the current 'p'. This function should return the new 'total' that will be passed in on future matches.
 
 For example, here is a parser that identifies strings like "3+50+2" and returns the match result 55:
 
