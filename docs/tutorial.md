@@ -1,4 +1,10 @@
-# Quick tutorial
+# Let's build a calculator
+
+- 1. [Parsing a number](#parsing-a-number) - regex, run, map
+- 2. [Multiplication](#multiplication) - seq, Error, span
+- 3. [Shortcuts](#shortcuts) - string, implicit conversions
+- 4. [Whitespace](#whitespace) - optional, drop
+- 5. [More than two numbers](#more-than-two-numbers) - deferred resolution
 
 Let's build a parser that can model a basic 1970s pocket calculator. It should take an expression like
 
@@ -160,10 +166,96 @@ Hey, pretty good! But also, we don't care about the results of the whitespace. I
 
 Nice! Good job, everyone!
 
-In fact, we don't even need the `*` either. We just care about the numbers.
+In fact, we don't even need the `*` either. We just care about the numbers. Let's pull it out into its own parser, to make it easier to read, and make `multiply` actually do the math.
 
 ```javascript
-> var multiply = packrattle([ number, whitespace, packrattle("*").drop(), whitespace, number ]);
+> var star = packrattle([ whitespace, "*", whitespace ]).drop();
+> var multiply = packrattle([ number, star, number ]).map(match => match[0] * match[1]);
 > multiply.run("3 * 4")
-[ 3, 4 ]
+12
 ```
+
+
+## More than two numbers
+
+We're at a crossroads now. What if we want to compute _three_ numbers multiplied?
+
+    4 * 5 * 7
+
+One way to handle this is through recursion. Each side of a multiplication could itself be another multiplication. We'll call that a "factor".
+
+```javascript
+> var factor = number.or(multiply);
+```
+
+But, uh... `factor` refers to `multiply`, and our new definition of `multiply` is going to need to refer to `factor`. How can that work? It's a loop!
+
+Packrattle will let us pass in a function wherever a parser is expected, to let us "defer" resolving the parsers until they're all defined. The first time we execute a parser, it walks the tree, looking for functions and calling them, to build up the real tree, which may contain loops. So we can use functions to create this loop: `factor` will be either a number or a (deferred reference to) `multiply`.
+
+```javascript
+> var factor = number.or(() => multiply);
+> var star = packrattle([ whitespace, "*", whitespace ]).drop();
+> var multiply = packrattle([ factor, star, factor ]).map(match => match[0] * match[1]);
+> multiply.run("3 * 4")
+12
+> multiply.run("4 * 5 * 7")
+140
+```
+
+If you're familiar with parsers, your head may have just spun around. The parser we just built is "left-recursive", meaning that the left side of the expression for `multiply` is `factor star factor`, and `factor` is `number | multiply`, so most parser engines will go navel-gazing immediately and never return. In these engines, you need to carefully arrange the parsers so that they can only recurse on the right side, like this:
+
+```javascript
+> var multiply = packrattle([ number, star, factor ]).map(match => match[0] * match[1]);
+> multiply.run("4 * 5 * 7")
+140
+```
+
+You don't need to do this in a GLL engine because it effectively walks branches in parallel, memoizing loops. If this interests you, there are some papers listed at the end of packrattle's README.
+
+
+
+----------
+
+
+If you're parsing into a syntax tree, you may want to preserve the span so you can highlight errors later. For example:
+
+```javascript
+const number = packrattle.regex(/\d+/).map((match, span) => {
+  return { number: parseInt(match[0], 10), span: span };
+});
+
+// later:
+console.log("Everything went wrong here:");
+badMatch.span.toSquiggles().forEach(line => console.log(line));
+```
+
+The result of the parser for `number` will be an object with a `number` field set to the matched value, and a `span` that covers the matching text. You can refer to it later when it turns out that number was a bad seed.
+
+
+
+- `value`: The result of the previous parser. For simple parsers like `string` and `regex`, this will be the string literal or regex match object, respectively. For nested parsers with their own `onMatch` transforms, the parameter will be the object returned by that parser. For example, the `seq` combinator (below) returns an array of the sequence of matches. An expression parser might build up a tree of expression nodes.
+
+
+-----
+
+### Reduce
+
+The reduce method is borrowed from scala's parser-combinator library, and is particularly useful for parsing expression trees.
+
+- `reduce(p, separator = "", options)`
+
+Options are:
+- `min` - minimum number of matches of 'p' allowed (default: 1)
+- `max` - maximun number of matches of 'p' allowed (default: Infinity)
+- `first` - one-argument function to transform the initial match value (default: `x => [ x ]`)
+- `next` - three-argument function to combine successive matches (default: `(sum, sep, x) => sum.push(x)`)
+
+Like 'repeatSeparated', it attempts to match at least one 'p', separated by 'separator'. In standard grammar, it matches:
+
+    p (separator p)*
+
+with an optional limit on the minimum or maximum number of 'p' there can be. Two functions are called to transform the match results:
+
+- `first(value)` is called with the first result of 'p' and can be used to transform the result, just like 'onMatch'. The default accumulator creates a new array with the match result as its only element.
+
+- `next(total, separator, value)` is called for each subsequent match of a separator and 'p'. The first parameter is the total result so far (or the result of the 'first' function). The second is the result of the separator, and the last is the result of the current 'p'. This function should return the new 'total' that will be passed in on future matches.

@@ -39,7 +39,7 @@ would need to be refactored a lot to work in most parser libraries. It can be ex
 ```javascript
 var expr = packrattle.alt(
   packrattle.seq(() => expr, "+", () => expr),
-  packrattle.regex(/\d+/).onMatch(m => m[0])
+  packrattle.regex(/\d+/).map(match => match[0])
 );
 ```
 
@@ -103,40 +103,6 @@ pr([ /\d+/, pr("!").drop() ])
 ```
 
 
-Executing
----------
-
-The simplest way to execute a parser is to call the `run` method on it, with a string to parse:
-
-```javascript
-expr.run("3+20*5")
-```
-
-This attempts to match the entire string by calling `consume` (see below). If it succeeds, the 'match' object is returned. If it fails, an Error is thrown with a `state` field containing the parser state of the error, described below.
-
-There are also two manual ways to execute a parser:
-
-- `pr.parse(parser, string, options = {})` - matches as much of the string as it can
-- `pr.consume(parser, string, options = {})` - matches the entire string, or fails
-
-Because packrattle will stop once it succeeds in matching, you usually want 'consume'. In some ambiguous parsers, 'parse' may seem to stop before consuming much of the string, because it operates "lazily" instead of "greedily".
-
-(`consume(p, s)` is just an alias for `parse(seq(p, end), s)`.)
-
-Both 'parse' and 'consume' return a match object with these fields:
-
-- `ok` - true if the parser succeeded, false if not
-- `state` - a `ParserState` object with the current position (see below)
-- `match` - the match result (if `ok` is true)
-- `message` - a string error message (if `ok` is false)
-
-The `ParserState` object contains a few helper methods:
-
-- `pos()` - the index within the string of the successful match or last error
-- `endpos()` - the index within the string of the successful match (for errors, same as `pos()`)
-- `lineno()` - the current line number of `pos()`, assuming `\n` divides lines, counting from 0
-- `line()` - the text of the line around `pos()`, assuming `\n` divides lines
-- `toSquiggles()` - an array containing `line()` and a a string with little squiggle characters highlighting the span of `pos()` to `endpos()`
 
 
 
