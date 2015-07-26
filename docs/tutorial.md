@@ -1,10 +1,10 @@
 # Let's build a calculator
 
-- 1. [Parsing a number](#parsing-a-number) - regex, run, map
-- 2. [Multiplication](#multiplication) - seq, Error, span
-- 3. [Shortcuts](#shortcuts) - string, implicit conversions
-- 4. [Whitespace](#whitespace) - optional, drop
-- 5. [More than two numbers](#more-than-two-numbers) - deferred resolution
+1. [Parsing a number](#parsing-a-number) - regex, run, map
+2. [Multiplication](#multiplication) - seq, Error, span
+3. [Shortcuts](#shortcuts) - string, implicit conversions
+4. [Whitespace](#whitespace) - optional, drop
+5. [More than two numbers](#more-than-two-numbers) - deferred resolution
 
 Let's build a parser that can model a basic 1970s pocket calculator. It should take an expression like
 
