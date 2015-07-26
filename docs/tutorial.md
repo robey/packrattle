@@ -4,7 +4,7 @@
 2. [Multiplication](#multiplication) - seq, Error, span
 3. [Shortcuts](#shortcuts) - string, implicit conversions
 4. [Whitespace](#whitespace) - optional, drop
-5. [More than two numbers](#more-than-two-numbers) - deferred resolution
+5. [More than two numbers](#more-than-two-numbers) - or, alt, deferred resolution
 
 Let's build a parser that can model a basic 1970s pocket calculator. It should take an expression like
 
@@ -186,6 +186,12 @@ One way to handle this is through recursion. Each side of a multiplication could
 
 ```javascript
 > var factor = number.or(multiply);
+```
+
+The `or` method makes a branch: `factor` will match either `number` or `multiply`, and return the value of whichever one matched. Another way of writing that is to use `alt` with a list of alternatives.
+
+```javascript
+> var factor = packrattle.alt(number, multiply);
 ```
 
 But, uh... `factor` refers to `multiply`, and our new definition of `multiply` is going to need to refer to `factor`. How can that work? It's a loop!
