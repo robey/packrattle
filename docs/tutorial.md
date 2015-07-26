@@ -5,6 +5,7 @@
 3. [Shortcuts](#shortcuts) - string, implicit conversions
 4. [Whitespace](#whitespace) - optional, drop
 5. [More than two numbers](#more-than-two-numbers) - or, alt, deferred resolution
+6. [Reduction](#reduction) - reduce
 
 Let's build a parser that can model a basic 1970s pocket calculator. It should take an expression like
 
