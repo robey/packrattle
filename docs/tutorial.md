@@ -10,16 +10,17 @@ parse it, and evaluate it, getting the answer:
 
 We'll start from the bottom up, building simple parsers and then combining them, and in the process, get a whirlwind tour of packrattle.
 
-1. [Parsing a number](#parsing-a-number) - regex, run, map
-2. [Multiplication](#multiplication) - seq, Error, span
-3. [Shortcuts](#shortcuts) - string, implicit conversions
-4. [Whitespace](#whitespace) - optional, drop
-5. [More than two numbers](#more-than-two-numbers) - or, alt, deferred resolution
-6. [Reduction](#reduction) - reduce
-7. [Division and Addition](#division-and-addition)
-8. [Bonus points: grouping](#bonus-points-grouping)
-9. [calc.js](#calcjs)
-10. [Debugging](#debugging)
+1. [Parsing a number](#parsing-a-number) - regex, run
+2. [Into a number](#into-a-number) - map
+3. [Multiplication](#multiplication) - seq, Error, span
+4. [Shortcuts](#shortcuts) - string, implicit conversions
+5. [Whitespace](#whitespace) - optional, drop
+6. [More than two numbers](#more-than-two-numbers) - or, alt, deferred resolution
+7. [Reduction](#reduction) - reduce
+8. [Division and Addition](#division-and-addition)
+9. [Bonus points: grouping](#bonus-points-grouping)
+10. [calc.js](#calcjs)
+11. [Debugging](#debugging) - writeDotFile
 
 
 ## Parsing a number
@@ -54,6 +55,9 @@ number.exec("34");
 
 So if that was all it could do, we might as well pack up and go home. This vacation is over.
 
+
+## Into a number
+
 Luckily, this is just the beginning! Parser objects have a few methods that allow us to transform the results. This is how a compiler can turn parser output into an AST, and how we can evaluate expressions as the parser works. For this parser, we want to turn the match object from the regex into a javascript `Number`, and we can get that by adding a transform with `map`.
 
 ```javascript
@@ -62,7 +66,21 @@ number.run("34");
 // 34
 ```
 
-Okay, that's a little bit cooler. `map` will call a function on a successful match, letting us change the result. In this case, we take the matched string and parse it immediately into an int. Now `number` is sort of a glorified wrapper for `parseInt` that rejects anything but positive integers.
+`map` is probably the most important tool in packrattle. It lets you change the return value of a parser. In this case, we're converting the regex match object into a plain number. When used with combiners (below), it lets us build up data structures like a syntax tree, or in our case, calculate an expression as we go.
+
+The transform function is given two parameters:
+- `match` - the current value
+- `span` - an immutable object representing the part of the string that matched
+
+We don't care much about the span here, but if we were building a compiler, we'd want to keep track of the span of successful matches so we can highlight the locations of errors later. For our `number` example, the span will necessarily cover the entire string:
+
+```javascript
+var number = packrattle.regex(/\d+/).map((match, span) => span);
+number.run("34").toString()
+// 'Span(0 -> 2)'
+```
+
+Okay, so that's cool. We can parse a number, turn it into a number, and track where it came from. But that isn't much of a calculator.
 
 We need to go deeper.
 
@@ -440,18 +458,3 @@ The second graph shows the path the parser engine took through our parser graph 
 
 
 ---
-
-
-If you're parsing into a syntax tree, you may want to preserve the span so you can highlight errors later. For example:
-
-```javascript
-const number = packrattle.regex(/\d+/).map((match, span) => {
-  return { number: parseInt(match[0], 10), span: span };
-});
-
-// later:
-console.log("Everything went wrong here:");
-badMatch.span.toSquiggles().forEach(line => console.log(line));
-```
-
-The result of the parser for `number` will be an object with a `number` field set to the matched value, and a `span` that covers the matching text. You can refer to it later when it turns out that number was a bad seed.
