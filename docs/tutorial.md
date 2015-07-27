@@ -17,6 +17,8 @@ We'll start from the bottom up, building simple parsers and then combining them,
 5. [More than two numbers](#more-than-two-numbers) - or, alt, deferred resolution
 6. [Reduction](#reduction) - reduce
 7. [Division and Addition](#division-and-addition)
+8. [Bonus points: grouping](#bonus-points--grouping)
+9. [calc.js](#calc-js)
 
 
 ## Parsing a number
@@ -269,6 +271,13 @@ multiply.run("4 * 5 * 7");
 
 It works similarly to `reduce` in functional programming. The first `number` is passed to `first` to allow us to wrap it if we want to. Then each following `star` and `number` are passed to `next` so we can roll them up. We called `drop()` on `star`, so it's `null` here, but if we didn't, it would be the result of the `"*"` parser.
 
+One nice thing reduction has over the previous method is that it's valid to have no multiplications at all, just a number, because we left `min` set to 1. If there's no `*`, the expression matches exactly once, calls `first`, and uses that as the return value.
+
+```javascript
+multiply.run("42");
+// 42
+```
+
 If we were building a parse tree for a compiler, we might do something like this, to build a nice tree:
 
 ```javascript
@@ -326,6 +335,57 @@ add.run("3 + 4 * 2");
 
 Hey, nice! This is starting to look easy!
 
+
+## Bonus points: grouping
+
+You know, that's a real fine calculator we've built here, but looking at that last expression, I can't help thinking. It would be really nice if we could ask it to add 3 and 4 _first_, and then multiply by 2. Normally we'd do that by grouping with parentheses, but I guess that's too hard...
+
+Nonsense!
+
+We're allowed to loop parsers back on each other -- we did that in our first attempt to multiply three numbers. So we should be allowed to change the element of a multiply from `number` to either a number or a grouped expression.
+
+```javascript
+var grouped = packrattle([
+  packrattle.drop("("),
+  whitespace,
+  () => add,
+  whitespace,
+  packrattle.drop(")")
+]).map(match => match[0]);
+
+var multiply = packrattle.reduce(number.or(grouped), multiplyOrDivide, {
+  first: n => n,
+  next: (total, operator, n) => {
+    switch (operator) {
+      case "*": return total * n;
+      case "/": return total / n;
+    }
+  }
+});
+
+// define "add" as before...
+
+add.run("3 + 4 * 2");
+// 11
+add.run("(3 + 4) * 2");
+// 14
+```
+
+Presto! Multiply now takes a number or a grouped expression, which is an add (deferred) surrounded by parentheses.
+
+
+## calc.js
+
+The complete parser we built is included in the short file <a href="./calc.js">calc.js</a> in the `docs/` folder, along with some extra code to take the expression passed on the command line, and print out either the result of the calculation, or an error message.
+
+```sh
+❯ ./docs/calc.js "(34 + 4) / 2"
+19
+❯ ./docs/calc.js "(34+4"
+Expected ')'
+(34+4
+     ~
+```
 
 ----------
 
