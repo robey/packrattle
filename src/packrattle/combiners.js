@@ -235,8 +235,15 @@ function reduce(p, separator = "", options = {}) {
   const min = options.min ? options.min - 1 : 0;
   const max = options.max ? options.max - 1 : Infinity;
 
-  return seq(p, repeat(seq(separator, p), { min, max })).onMatch(([ initial, remainder ]) => {
-    return [ first(initial) ].concat(remainder).reduce((sum, [ sep, item ]) => next(sum, sep, item));
+  return seq(p, repeat(seq(separator, p), { min, max })).map(([ initial, remainder ]) => {
+    return [ first(initial) ].concat(remainder).reduce((sum, [ sep, item ]) => {
+      // 'sep' may have been dropped.
+      if (item === undefined) {
+        item = sep;
+        sep = null;
+      }
+      return next(sum, sep, item);
+    });
   });
 }
 
