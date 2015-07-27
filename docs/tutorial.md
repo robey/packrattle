@@ -403,16 +403,14 @@ The first is `toDot()`, which will generate a directed graph of the nesting of p
 For example:
 
 ```javascript
-var packrattle = require("packrattle");
-
-var abc = pr.alt(/[aA]/, /[bB]/, /[cC]/);
+var abc = packrattle.alt(/[aA]/, /[bB]/, /[cC]/);
 abc.writeDotFile("abc1.dot");
 ```
 
-will write a graph file named "abc1.dot". Dot utilities will be able to generate an image like the one below.
+This will write a graph file named "abc1.dot". Dot utilities will be able to generate an image like the one below.
 
 ```sh
-$ dot -Tpng -oabc1.png ./abc1.dot
+$ dot -Tpng -o abc1.png ./abc1.dot
 ```
 
 <img src="./abc1.png" width="40%">
@@ -420,20 +418,28 @@ $ dot -Tpng -oabc1.png ./abc1.dot
 The second method is to pass `dotfile` as an option to the `execute` or `run` methods. This tells packrattle to trace its progress as it goes, and build a dot graph of the path it took. The `dotfile` option should be a filename to write the dot data into.
 
 ```javascript
-var packrattle = require("./lib/packrattle");
-
-var abc = pr.alt(/[aA]/, /[bB]/, /[cC]/);
+var abc = packrattle.alt(/[aA]/, /[bB]/, /[cC]/);
 var match = abc.run("b", { dotfile: "abc2.dot" });
 ```
 
-This (trivial) trace shows the failed match of "a" before succeeding at "b". Note that it planned to try "c" next, but didn't bother once there was a successful match.
+This (simple) trace shows the failed match of "a" before succeeding at "b". Note that it planned to try "c" next, but didn't bother once there was a successful match.
 
 <img src="./abc2.png" width="40%">
 
+Wanna see the dot graphs of the parser we built for the calculator? Of course you do.
+
+- [graph of the `add` parser](./calc.png)
+- [graph of an execution of `2 * 9`](./calc-expr.png)
+
+The first one looks a little intimidating at first, but we can recognize landmarks once we get over our initial shock. The number in brackets in each box is the "identifier" of the parser -- each one gets a unique number. Underneath is a text description, or as much as will reasonably fit.
+
+At the bottom, we can see that 5, 6, and 7 are our whitespace parser, which several other parsers refer to. And in the lower right, 10 is our grouping parser, with a reference back up to `add` at the top (26). Each reduction is built out of a `seq` and `repeat`, so you can see `multiply` at 17 and 18, and `add` at 24 and 25.
+
+The second graph shows the path the parser engine took through our parser graph as it ran. The important thing to notice is that it made very few false starts as it went. Whenever it made a wrong choice, it failed pretty quickly, so our parser is reasonably well structured. That's worth another pat on the back.
 
 
 
-
+---
 
 
 If you're parsing into a syntax tree, you may want to preserve the span so you can highlight errors later. For example:
@@ -449,7 +455,3 @@ badMatch.span.toSquiggles().forEach(line => console.log(line));
 ```
 
 The result of the parser for `number` will be an object with a `number` field set to the matched value, and a `span` that covers the matching text. You can refer to it later when it turns out that number was a bad seed.
-
-
-
-- `value`: The result of the previous parser. For simple parsers like `string` and `regex`, this will be the string literal or regex match object, respectively. For nested parsers with their own `onMatch` transforms, the parameter will be the object returned by that parser. For example, the `seq` combinator (below) returns an array of the sequence of matches. An expression parser might build up a tree of expression nodes.
