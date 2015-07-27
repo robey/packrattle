@@ -36,6 +36,10 @@ class Span {
     this._endLine = null;
   }
 
+  toString() {
+    return `Span(${this.start} -> ${this.end})`;
+  }
+
   get startLine() {
     if (this._startLine) return this._startLine;
     this._startLine = calculateLine(this.text, this.start);
