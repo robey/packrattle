@@ -71,7 +71,7 @@ class DebugGraph {
   }
 
   toDot(maxLength = 40) {
-    this.filterOut("onMatch", "matchIf");
+    this.filterOut("map", "filter", "drop", "optional");
 
     const data = [
       "digraph packrattle {",
