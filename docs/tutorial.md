@@ -1,12 +1,5 @@
 # Let's build a calculator
 
-1. [Parsing a number](#parsing-a-number) - regex, run, map
-2. [Multiplication](#multiplication) - seq, Error, span
-3. [Shortcuts](#shortcuts) - string, implicit conversions
-4. [Whitespace](#whitespace) - optional, drop
-5. [More than two numbers](#more-than-two-numbers) - or, alt, deferred resolution
-6. [Reduction](#reduction) - reduce
-
 Let's build a parser that can model a basic 1970s pocket calculator. It should take an expression like
 
     3 * 10 + 7 * 11
@@ -16,6 +9,14 @@ parse it, and evaluate it, getting the answer:
     107
 
 We'll start from the bottom up, building simple parsers and then combining them, and in the process, get a whirlwind tour of packrattle.
+
+1. [Parsing a number](#parsing-a-number) - regex, run, map
+2. [Multiplication](#multiplication) - seq, Error, span
+3. [Shortcuts](#shortcuts) - string, implicit conversions
+4. [Whitespace](#whitespace) - optional, drop
+5. [More than two numbers](#more-than-two-numbers) - or, alt, deferred resolution
+6. [Reduction](#reduction) - reduce
+7. [Division and Addition](#division-and-addition)
 
 
 ## Parsing a number
@@ -36,7 +37,7 @@ If you don't know regular expressions, `\d+` means "one or more digits". That's 
 `regex` is the packrattle function for creating a parser based on a regular expression (or "regex"). `number`, then, is a `Parser`, and to make a Parser tackle a string, you call `run`. `run` will either return a successful match, or throw an exception.
 
 ```javascript
-number.run("a")
+number.run("a");
 // Error: Expected /\d+/
 ```
 
@@ -44,7 +45,7 @@ Hm. So packrattle can hold a regular expression and then execute it against a st
 
 ```javascript
 var number = /\d+/;
-number.exec("34")
+number.exec("34");
 // [ '34', index: 0, input: '34' ]
 ```
 
@@ -54,7 +55,7 @@ Luckily, this is just the beginning! Parser objects have a few methods that allo
 
 ```javascript
 var number = packrattle.regex(/\d+/).map(match => parseInt(match[0], 10));
-number.run("34")
+number.run("34");
 // 34
 ```
 
@@ -75,16 +76,16 @@ which is BNF syntax for saying that a multiply operation is a number followed by
 
 ```javascript
 var multiply = packrattle.seq(number, packrattle.string("*"), number);
-multiply.run("3*4")
+multiply.run("3*4");
 // [ 3, '*', 4 ]
 ```
 
-As you can see, `seq` takes a list of parsers and joins them together. We didn't have to explain how to parse numbers again, either; we can just use the parser we stored in `number`. Being able to combine the parsers by name this way will help a lot as the parsers and combinations get more complex.
+As you can see, `seq` takes a list of parsers and joins them together. We didn't have to explain how to parse numbers again, either; we can use the parser we stored in `number`. Being able to combine the parsers by name this way will help a lot as the parsers and combinations get more complex.
 
 This new "sequenced" parser returns an array of the match results, in order. But it only succeeds if each of the inner parsers succeeds.
 
 ```javascript
-multiply.run("3@4")
+multiply.run("3@4");
 // Error: Expected '*'
 ```
 
@@ -139,7 +140,7 @@ var multiply = packrattle([ number, "*", number ]);
 It would be nice if we could add whitespace around the terms.
 
 ```javascript
-multiply.run("3 * 4")
+multiply.run("3 * 4");
 // Error: Expected '*'
 ```
 
@@ -148,7 +149,7 @@ A good regex for whitespace might be `/[ \t]+/`, or "one or more space or tab ch
 ```javascript
 var whitespace = packrattle(/[ \t]+/).optional();
 var multiply = packrattle([ number, whitespace, "*", whitespace, number ]);
-multiply.run("3 * 4")
+multiply.run("3 * 4");
 // [ 3,
 //   [ ' ', index: 0, input: ' * 4' ],
 //   '*',
@@ -156,23 +157,23 @@ multiply.run("3 * 4")
 //   4 ]
 ```  
 
-Hey, pretty good! But also, we don't care about the results of the whitespace. If it's there, we just want to ignore it. So let's `drop` it.
+Hey, pretty good! But also, we don't care about the results of the whitespace. If it's there, we want to ignore it. So let's `drop` it.
 
 ```javascript
 var whitespace = packrattle(/[ \t]+/).optional().drop();
 var multiply = packrattle([ number, whitespace, "*", whitespace, number ]);
-multiply.run("3 * 4")
+multiply.run("3 * 4");
 // [ 3, '*', 4 ]
 ```
 
 Nice! Good job, everyone!
 
-In fact, we don't even need the `*` either. We just care about the numbers. Let's pull it out into its own parser, to make it easier to read, and make `multiply` actually do the math.
+In fact, we don't even need the `*` either. We only care about the numbers. Let's pull it out into its own parser, to make it easier to read, and make `multiply` actually do the math.
 
 ```javascript
 var star = packrattle([ whitespace, "*", whitespace ]).drop();
 var multiply = packrattle([ number, star, number ]).map(match => match[0] * match[1]);
-multiply.run("3 * 4")
+multiply.run("3 * 4");
 // 12
 ```
 
@@ -203,13 +204,13 @@ Packrattle will let us pass in a function wherever a parser is expected, to let 
 var factor = number.or(() => multiply);
 var star = packrattle([ whitespace, "*", whitespace ]).drop();
 var multiply = packrattle([ factor, star, factor ]).map(match => match[0] * match[1]);
-multiply.run("3 * 4")
+multiply.run("3 * 4");
 // 12
-multiply.run("4 * 5 * 7")
+multiply.run("4 * 5 * 7");
 // 140
 ```
 
-If you're familiar with parsers, your head may have just spun around. The parser we just built is "left-recursive", meaning that the left side of the expression for `multiply` is `factor`, but one option for `factor` is `multiply`, so most parser engines will go navel-gazing immediately and never return.
+If you're familiar with parsers, your head may have just spun around. The parser we built is "left-recursive", meaning that the left side of the expression for `multiply` is `factor`, but one option for `factor` is `multiply`, so most parser engines will go navel-gazing immediately and never return.
 
 ```
 multiply ::= factor star factor
@@ -226,7 +227,7 @@ Help! In these engines, you need to carefully arrange the parsers so that they c
 
 ```javascript
 var multiply = packrattle([ number, star, factor ]).map(match => match[0] * match[1]);
-multiply.run("4 * 5 * 7")
+multiply.run("4 * 5 * 7");
 // 140
 ```
 
@@ -251,17 +252,18 @@ This is also what you'd do if you were building up an abstract syntax tree (AST)
 
 We can model this with left-recursion like we were doing above, but there's also a helper function for this case, called "reduce". It takes a node parser (`number` for us) and a separator parser (`star`), and matches as many interleaving sets as it can. (You can specify a minimum and maximum number of matches, but we're okay with as many as someone can type.)
 
+Here it is all together:
+
 ```javascript
 var number = packrattle.regex(/\d+/).map(match => parseInt(match[0], 10));
 var whitespace = packrattle(/[ \t]+/).optional().drop();
-var factor = number.or(() => multiply);
 var star = packrattle([ whitespace, "*", whitespace ]).drop();
 var multiply = packrattle.reduce(number, star, {
   first: n => n,
   next: (total, operator, n) => total * n
 });
 
-multiply.run("4 * 5 * 7")
+multiply.run("4 * 5 * 7");
 // 140
 ```
 
@@ -275,14 +277,59 @@ var multiply = packrattle.reduce(number, star, {
   next: (total, operator, n) => ({ multiply: [ total, { number: n } ] })
 });
 
-> multiply.run("4 * 5 * 7")
+multiply.run("4 * 5 * 7");
 // { multiply:
 //    [ { multiply: [ { number: 4 }, { number: 5 } ] },
 //      { number: 7 } ] }
 ```
 
 
+## Division and addition
+
+Division has the same precedence as multiplication, so we should probably handle them at the same time. No problem. Our "star" parser should change to allow either `*` or `/` (and not drop it!), and inside `reduce`, we can switch on the operator to decide which operation to do.
+
+```javascript
+var multiplyOrDivide = packrattle([ whitespace, packrattle.alt("*", "/"), whitespace ]).map(match => match[0]);
+var multiply = packrattle.reduce(number, multiplyOrDivide, {
+  first: n => n,
+  next: (total, operator, n) => {
+    switch (operator) {
+      case "*": return total * n;
+      case "/": return total / n;
+    }
+  }
+});
+
+multiply.run("4 * 5 / 2");
+// 10
+```
+
+The last piece of our nostalgic calculator is addition (and subtraction). Addition has lower precedence than multiplication, so either side of an addition may be a multiplication, but not vice versa. In other words, a multiply operates on numbers, but an addition operates on multiplies.
+
+```javascript
+var addOrSubtract = packrattle([ whitespace, packrattle.alt("+", "-"), whitespace ]).map(match => match[0]);
+var add = packrattle.reduce(multiply, addOrSubtract, {
+  first: n => n,
+  next: (total, operator, n) => {
+    switch (operator) {
+      case "+": return total + n;
+      case "-": return total - n;
+    }
+  }
+});
+
+add.run("3 * 4 + 2");
+// 14
+add.run("3 + 4 * 2");
+// 11
+```
+
+Hey, nice! This is starting to look easy!
+
+
 ----------
+
+- debugging
 
 
 If you're parsing into a syntax tree, you may want to preserve the span so you can highlight errors later. For example:
