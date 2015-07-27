@@ -17,8 +17,9 @@ We'll start from the bottom up, building simple parsers and then combining them,
 5. [More than two numbers](#more-than-two-numbers) - or, alt, deferred resolution
 6. [Reduction](#reduction) - reduce
 7. [Division and Addition](#division-and-addition)
-8. [Bonus points: grouping](#bonus-points--grouping)
-9. [calc.js](#calc-js)
+8. [Bonus points: grouping](#bonus-points-grouping)
+9. [calc.js](#calcjs)
+10. [Debugging](#debugging)
 
 
 ## Parsing a number
@@ -378,7 +379,7 @@ Presto! Multiply now takes a number or a grouped expression, which is an add (de
 
 The complete parser we built is included in the short file <a href="./calc.js">calc.js</a> in the `docs/` folder, along with some extra code to take the expression passed on the command line, and print out either the result of the calculation, or an error message.
 
-```sh
+```
 ❯ ./docs/calc.js "(34 + 4) / 2"
 19
 ❯ ./docs/calc.js "(34+4"
@@ -387,9 +388,52 @@ Expected ')'
      ~
 ```
 
-----------
+Pat yourself on the back and grab a beverage of your choice: We did it! Numbers can be added and subtracted, multiplied and divided! It's a great time to be alive.
 
-- debugging
+
+## Debugging
+
+Ocassionally, the first draft of a parser may not work exactly the way you want it to. To help you debug, packrattle provides two methods for generating ['dot' graph data](https://en.wikipedia.org/wiki/DOT_(graph_description_language)).
+
+The first is `toDot()`, which will generate a directed graph of the nesting of parsers. This is useful if you want to see how the sausage is made inside packrattle, as it assembles your parser objects into smaller bits.
+
+- `toDot() => string` - returns "dot" data for this parser tree
+- `writeDotFile(filename)` - calls `toDot()` and writes the data into a file for you (in node.js)
+
+For example:
+
+```javascript
+var packrattle = require("packrattle");
+
+var abc = pr.alt(/[aA]/, /[bB]/, /[cC]/);
+abc.writeDotFile("abc1.dot");
+```
+
+will write a graph file named "abc1.dot". Dot utilities will be able to generate an image like the one below.
+
+```sh
+$ dot -Tpng -oabc1.png ./abc1.dot
+```
+
+<img src="./abc1.png" width="40%">
+
+The second method is to pass `dotfile` as an option to the `execute` or `run` methods. This tells packrattle to trace its progress as it goes, and build a dot graph of the path it took. The `dotfile` option should be a filename to write the dot data into.
+
+```javascript
+var packrattle = require("./lib/packrattle");
+
+var abc = pr.alt(/[aA]/, /[bB]/, /[cC]/);
+var match = abc.run("b", { dotfile: "abc2.dot" });
+```
+
+This (trivial) trace shows the failed match of "a" before succeeding at "b". Note that it planned to try "c" next, but didn't bother once there was a successful match.
+
+<img src="./abc2.png" width="40%">
+
+
+
+
+
 
 
 If you're parsing into a syntax tree, you may want to preserve the span so you can highlight errors later. For example:
