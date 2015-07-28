@@ -18,7 +18,9 @@ csv.run("this,is,csv");
 // [ "this", "is", "csv" ]
 ```
 
----
+
+Docs
+----
 
 - [API documentation](./docs/api.md)
 - [Tutorial for making a small calculator](./docs/tutorial.md)
