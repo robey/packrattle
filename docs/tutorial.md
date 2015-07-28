@@ -357,7 +357,7 @@ Hey, nice! This is starting to look easy!
 
 ## Bonus points: grouping
 
-You know, that's a real fine calculator we've built here, but looking at that last expression, I can't help thinking. It would be really nice if we could ask it to add 3 and 4 _first_, and then multiply by 2. Normally we'd do that by grouping with parentheses, but I guess that's too hard...
+You know, that's a real fine calculator we've built here, but looking at that last expression, I can't help thinking that it would be really nice if we could ask it to add 3 and 4 _first_, and then multiply by 2. Normally we'd do that by grouping with parentheses, but I guess that's too hard...
 
 Nonsense!
 
