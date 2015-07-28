@@ -454,7 +454,3 @@ The first one looks a little intimidating at first, but we can recognize landmar
 At the bottom, we can see that 5, 6, and 7 are our whitespace parser, which several other parsers refer to. And in the lower right, 10 is our grouping parser, with a reference back up to `add` at the top (26). Each reduction is built out of a `seq` and `repeat`, so you can see `multiply` at 17 and 18, and `add` at 24 and 25.
 
 The second graph shows the path the parser engine took through our parser graph as it ran. The important thing to notice is that it made very few false starts as it went. Whenever it made a wrong choice, it failed pretty quickly, so our parser is reasonably well structured. That's worth another pat on the back.
-
-
-
----

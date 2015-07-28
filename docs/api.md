@@ -5,6 +5,7 @@ Packrattle's API consists of functions which make simple parsers (for example, t
 - [Simple parsers](#simple-parsers)
 - [Combiners](#combiners)
   - [Convenience combiners](#convenience-combiners)
+- [Implicit conversions](#implicit-conversions)
 - [Parser](#parser)
   - [Transforms](#transforms)
   - [Combiners](#combiners)
@@ -114,6 +115,35 @@ const expr = packrattle.reduce(number, "+", {
 
 expr.run("3+50+2");
 // 55
+```
+
+
+## Implicit conversions
+
+The packrattle module is itself a function that will turn non-parser objects into parsers, as a shortcut:
+
+- A string will be converted to `string(...)`.
+
+- A regex will be converted to `regex(...)`.
+
+- An array will be converted to `seq(...)`.
+
+- A function will be called (with no arguments), under the assumption that it returns a parser. Each function is called exactly once, and the result is cached. This can be used to make forward references if your parser is recursive.
+
+For example, these three lines are equivalent:
+
+```javascript
+const keywordIf = packrattle.string("if");
+const keywordIf = packrattle("if");
+const keywordIf = packrattle(() => "if");
+```
+
+These implicit conversions are applied for any nested parser that's used in a combinator. So, for example, these lines are also equivalent:
+
+```javascript
+const operator = packrattle.alt(packrattle.string("+"), packrattle.string("-"));
+const keywordIf = packrattle.alt("+", "-");
+const keywordIf = packrattle.alt(() => "+", "-");
 ```
 
 
@@ -247,60 +277,3 @@ A Match object represents a successful or failed match, and is returned by `[Par
 - `state` - the ParserState object used to get the span (`state.span()`)
 - `commit` - true if the parser went through a `commit()`
 - `value` - either the parser's result, or an error message (if `ok` is false)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-## Debugging
-
-Ocassionally, the first draft of a parser may not work exactly the way you want it to. To help you debug, packrattle provides two methods for generating 'dot' graph data.
-
-The first is `toDot()`, which will generate a directed graph of the nesting of parsers. This is useful if you want to see how the sausage is made inside packrattle, as it assembles your parser objects into smaller bits.
-
-- `toDot() => string` - returns "dot" data for this parser tree
-- `writeDotFile(filename)` - calls `toDot()` and writes the data into a file for you (in node.js)
-
-For example:
-
-```javascript
-var packrattle = require("packrattle");
-
-var abc = pr.alt(/[aA]/, /[bB]/, /[cC]/);
-abc.writeDotFile("abc1.dot");
-```
-
-will write a graph file named "abc1.dot". Dot utilities will be able to generate an image like the one below.
-
-```sh
-$ dot -Tpng -oabc1.png ./abc1.dot
-```
-
-<img src="./abc1.png" width="40%">
-
-The second method is to pass `dotfile` as an option to the `execute` or `run` methods. This tells packrattle to trace its progress as it goes, and build a dot graph of the path it took. The `dotfile` option should be a filename to write the dot data into.
-
-```javascript
-var packrattle = require("./lib/packrattle");
-
-var abc = pr.alt(/[aA]/, /[bB]/, /[cC]/);
-var match = abc.run("b", { dotfile: "abc2.dot" });
-```
-
-This (trivial) trace shows the failed match of "a" before succeeding at "b". Note that it planned to try "c" next, but didn't bother once there was a successful match.
-
-<img src="./abc2.png" width="40%">
