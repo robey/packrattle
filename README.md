@@ -10,13 +10,22 @@ An example, from the unit tests:
 var packrattle = require("packrattle");
 
 var csv = packrattle.repeatSeparated(
-  pr(/([^,]*)/).onMatch(m => m[0]),
+  packrattle.regex(/([^,]*)/).map(match => match[0]),
   /,/
 );
 
 csv.run("this,is,csv");
-=> [ "this", "is", "csv" ]
+// [ "this", "is", "csv" ]
 ```
+
+---
+
+- [API documentation](./docs/api.md)
+- [Tutorial for making a small calculator](./docs/tutorial.md)
+
+
+What?
+-----
 
 Parser-combinators start from a simple idea: A "parser" is a function that takes a string and a position within that string, and either fails to match, or succeeds, returning the matched value and moving the position forward. In other words, a parser does:
 
@@ -30,15 +39,15 @@ on failure.
 
 You can start with a few basic parsers which match a string or regular expression, and build more complex parsers out of functions that combine them: "a or b", "a then b", "repeat(a)", and so on.
 
-Being "GLL-based" means that a work queue is used to avoid recursion and to memoize (cache) intermediate results. This lets you parse almost any grammar, even if it's left recursive or ambiguous. For example, the grammar
+Being "GLL-based" means that a work queue and memoization is used to avoid loops and make backtracking fast. This lets you parse almost any grammar, even if it's left recursive or ambiguous. For example, the grammar
 
     expr ::= (expr "+" expr) | /\d+/
 
-would need to be refactored a lot to work in most parser libraries. It can be expressed in packrattle as
+would need to be restructured to work in most parser libraries. It can be expressed in packrattle as
 
 ```javascript
 var expr = packrattle.alt(
-  packrattle.seq(() => expr, "+", () => expr),
+  [ () => expr, "+", () => expr ],
   packrattle.regex(/\d+/).map(match => match[0])
 );
 ```
@@ -63,48 +72,10 @@ Further reading
 - Daniel Spiewak wrote a paper on GLL and his work upgrading scala's parser-combinator library to use it: http://www.cs.uwm.edu/~dspiewak/papers/generalized-parser-combinators.pdf
 
 
+License
+-------
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-Implicit conversion
--------------------
-
-Any function that takes a parser will also implicitly convert non-parser objects into parsers, to simplify your code:
-
-- A string will be converted to `string(...)`.
-
-- A regex will be converted to `regex(...)`.
-
-- An array will be converted to `seq(...)`.
-
-- A function will be called (with no arguments), under the assumption that it returns a parser. each function is called exactly once, and the result is cached. this can be used to make forward references, if your parser is recursive.
-
-The packrattle module object can be used as a function for converting objects into parsers, so:
-
-```javascript
-pr.seq(pr.regex(/\d+/), pr.string("!").drop())
-```
-
-can also be expressed as:
-
-```javascript
-pr([ /\d+/, pr("!").drop() ])
-```
-
-
-
-
+Apache 2 (open-source) license, included in 'LICENSE.txt'.
 
 
 Author
