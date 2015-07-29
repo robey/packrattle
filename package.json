@@ -26,7 +26,8 @@
   },
   "main": "./lib/packrattle",
   "files": [
-    "build.plz",
+    "LICENSE.txt",
+    "docs",
     "lib",
     "test"
   ]
