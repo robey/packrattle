@@ -24,7 +24,7 @@
     "should": "latest",
     "source-map-support": "latest"
   },
-  "main": "./lib/packrattle",
+  "main": "./lib",
   "files": [
     "LICENSE.txt",
     "docs",
