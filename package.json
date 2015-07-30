@@ -14,7 +14,7 @@
     "clean": "rm -rf lib test/lib",
     "distclean": "npm run clean && rm -rf node_modules npm-debug.log",
     "prepublish": "babel --source-maps --out-dir lib src && babel --source-maps --out-dir test/lib test/src",
-    "test": "mocha -R spec --colors test/lib"
+    "test": "mocha -R spec --colors --recursive test/lib"
   },
   "dependencies": {
   },
