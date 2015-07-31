@@ -101,4 +101,16 @@ describe("Parser.onMatch spans", () => {
     span.start.should.eql(5);
     span.end.should.eql(6);
   });
+
+  it("survives chains of maps", () => {
+    const p = pr.seq(/[a-z]+/, /\d+/)
+      .map((match, span) => match[0][0] + match[1][0])
+      .map((match, span) => match.toUpperCase() + span.end);
+    const rv = p.execute("what34");
+    rv.ok.should.eql(true);
+    rv.value.should.eql("WHAT346");
+    const span = rv.state.span();
+    span.start.should.eql(0);
+    span.end.should.eql(6);
+  });
 });
