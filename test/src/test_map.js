@@ -6,7 +6,7 @@ const util = require("util");
 require("should");
 require("source-map-support").install();
 
-describe("Parser.onMatch", () => {
+describe("Parser.map", () => {
   it("transforms a match", () => {
     const p = pr("hello").onMatch((value, state) => [ value.toUpperCase(), state.start, state.end ]);
     (() => p.run("cat")).should.throw(/hello/);

@@ -6,7 +6,7 @@ const util = require("util");
 require("should");
 require("source-map-support").install();
 
-describe("Parser.matchIf", () => {
+describe("Parser.filter", () => {
   it("matches with a condition", () => {
     const p = pr.regex(/\d+/).matchIf(match => parseInt(match[0], 10) % 2 == 0, "Expected an even number");
     (() => p.run("103")).should.throw(/even number/);
