@@ -1,8 +1,12 @@
 {
   "name": "packrattle",
-  "version": "4.0.0",
+  "version": "4.0.1",
   "description": "GLL parser-combinator library",
-  "keywords": [ "parser", "packrat", "gll" ],
+  "keywords": [
+    "parser",
+    "packrat",
+    "gll"
+  ],
   "author": "Robey Pointer <robeypointer@gmail.com>",
   "homepage": "https://github.com/robey/packrattle",
   "repository": {
@@ -16,8 +20,7 @@
     "prepublish": "babel --source-maps --out-dir lib src && babel --source-maps --out-dir test/lib test/src",
     "test": "mocha -R spec --colors --recursive test/lib"
   },
-  "dependencies": {
-  },
+  "dependencies": {},
   "devDependencies": {
     "babel": "latest",
     "mocha": "latest",
