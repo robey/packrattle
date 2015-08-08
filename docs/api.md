@@ -85,6 +85,7 @@ sleepy.run("zzzzz");
 // [ 'z', 'z', 'z', 'z', 'z' ]
 ```
 
+
 ### Convenience combiners
 
 These are easily implemented using the transforms and combiners above, but are commonly used, so they just come with the library, as global functions.
@@ -150,6 +151,8 @@ const keywordIf = packrattle.alt(() => "+", "-");
 ## Parser
 
 ### Transforms
+
+- `named(description)` - Set an explicit name for this parser. Packrattle generates default names by describing the parse tree in a way that is basically complete, but may be unwieldy for complex parsers. The name is used as the default error message on a failed match, as `Expected (name)`, so this method may be used to change `Expected /\d+/ or ')'` to `Expected expression`.
 
 - `map(f)` (or `onMatch(f)`) - If the parser is successful, call `f(match, span)`, using the return value as the new match result. If 'f' isn't a function, it's used as the return value itself.
 
