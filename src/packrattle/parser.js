@@ -129,7 +129,12 @@ class Parser {
 
     if (this.children) {
       if (!functionCache) functionCache = {};
-      this.children = this.children.map(p => resolve(p, functionCache).resolve(functionCache));
+      try {
+        this.children = this.children.map(p => resolve(p, functionCache).resolve(functionCache));
+      } catch (error) {
+        error.message += " (inside " + this.name + ")";
+        throw error;
+      }
     }
 
     // if this parser can be cached, do so. if one like it already exists, return that one and let this one vanish.
