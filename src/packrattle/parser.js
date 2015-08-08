@@ -3,6 +3,7 @@
 const combiners = require("./combiners");
 const engine = require("./engine");
 const resolve = require("./resolve");
+const strings = require("./strings");
 
 let ParserId = 1;
 
@@ -148,8 +149,8 @@ class Parser {
     // if it's a simple parser (no children), it must have a simple string description to be cacheable.
     if (!this.children || this.children.length == 0) {
       if (!(typeof this.describe == "string")) return null;
-      this.cacheKey = this.name + ":" + encodeURIComponent(this.describe);
-      if (this.extraCacheKey) this.cacheKey += "&" + encodeURIComponent(this.extraCacheKey);
+      this.cacheKey = this.name + ":" + strings.quote(this.describe);
+      if (this.extraCacheKey) this.cacheKey += "&" + strings.quote(this.extraCacheKey);
       return this.cacheKey;
     }
 
@@ -159,9 +160,13 @@ class Parser {
       if (!p.cacheKey) ok = false;
     });
     if (!ok) return null;
-    this.cacheKey = this.name + ":" + this.children.map(p => encodeURIComponent(p.cacheKey)).join("&");
-    if (this.extraCacheKey) this.cacheKey += "&" + encodeURIComponent(this.extraCacheKey);
+    this.cacheKey = this.name + ":" + this.children.map(p => strings.quote(p.cacheKey)).join("&");
+    if (this.extraCacheKey) this.cacheKey += "&" + strings.quote(this.extraCacheKey);
     return this.cacheKey;
+  }
+
+  named(description) {
+    return new Parser(this.name, this.children, description, this.matcher);
   }
 
   execute(text, options = {}) {

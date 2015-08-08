@@ -1,5 +1,7 @@
 "use strict";
 
+const strings = require("./strings");
+
 /*
  * created by ParserState on demand.
  */
@@ -20,7 +22,7 @@ class Match {
     const fields = [
       this.ok ? "yes" : "no",
       "state=" + this.state,
-      "value='" + encodeURIComponent(this.value) + "'"
+      "value='" + strings.quote(this.value) + "'"
     ];
     if (this.commit) fields.push("commit");
     return "Match(" + fields.join(", ") + ")";
