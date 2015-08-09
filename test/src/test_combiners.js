@@ -59,36 +59,57 @@ describe("combiners", () => {
     (m.value == null).should.eql(true);
   });
 
-  it("optional", () => {
-    const p = pr.optional(/\d+/, "?");
-    let m = p.execute("34.");
-    m.state.pos.should.eql(2);
-    m.value[0].should.eql("34");
-    m = p.execute("no");
-    m.state.pos.should.eql(0);
-    m.value.should.eql("?");
-  });
+  describe("optional", () => {
+    it("optional", () => {
+      const p = pr.optional(/\d+/, "?");
+      let m = p.execute("34.");
+      m.state.pos.should.eql(2);
+      m.value[0].should.eql("34");
+      m = p.execute("no");
+      m.state.pos.should.eql(0);
+      m.value.should.eql("?");
+    });
 
-  it("parser.optional", () => {
-    const p = pr(/\d+/).optional("?");
-    let m = p.execute("34.");
-    m.state.pos.should.eql(2);
-    m.value[0].should.eql("34");
-    m = p.execute("no");
-    m.state.pos.should.eql(0);
-    m.value.should.eql("?");
-  });
+    it("parser.optional", () => {
+      const p = pr(/\d+/).optional("?");
+      let m = p.execute("34.");
+      m.state.pos.should.eql(2);
+      m.value[0].should.eql("34");
+      m = p.execute("no");
+      m.state.pos.should.eql(0);
+      m.value.should.eql("?");
+    });
 
-  it("advances position correctly past an optional", () => {
-    const p = pr([
-      /[b]+/,
-      pr(/c/).optional().onMatch((m, span) => ({ start: span.start, end: span.end })),
-      pr(/[d]+/)
-    ]);
-    const rv = p.execute("bbbd");
-    rv.ok.should.eql(true);
-    rv.value[1].should.eql({ start: 3, end: 4 });
-    rv.value[2][0].should.eql("d");
+    it("advances position correctly past an optional", () => {
+      const p = pr([
+        /[b]+/,
+        pr(/c/).optional().map((m, span) => ({ start: span.start, end: span.end })),
+        pr(/[d]+/)
+      ]);
+      const rv = p.execute("bbbd");
+      rv.ok.should.eql(true);
+      rv.value[1].should.eql({ start: 3, end: 4 });
+      rv.value[2][0].should.eql("d");
+    });
+
+    it("tries both the success and failure sides", () => {
+      const p = pr([
+        pr.optional(/\d+/),
+        pr.alt(
+          "z",
+          "9y"
+        )
+      ]);
+      const rv1 = p.execute("33z");
+      rv1.ok.should.eql(true);
+      rv1.value[1].should.eql("z");
+      const rv2 = p.execute("9y");
+      rv2.ok.should.eql(true);
+      rv2.value[0].should.eql("9y");
+      // consumes either "49" or nothing:
+      const rv3 = p.execute("49y");
+      rv3.ok.should.eql(false);
+    });
   });
 
   it("check", () => {

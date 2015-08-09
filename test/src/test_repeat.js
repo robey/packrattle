@@ -14,24 +14,28 @@ function matchSpan(m) {
 describe("Parser.repeat", () => {
   it("0 or more", () => {
     const p = pr.repeat("hi");
-    matchSpan(p.execute("h")).should.eql([ [], 0, 1 ]);
-    matchSpan(p.execute("hi")).should.eql([ [ "hi" ], 0, 2 ]);
-    matchSpan(p.execute("hiho")).should.eql([ [ "hi" ], 0, 2 ]);
-    matchSpan(p.execute("hihihi")).should.eql([ [ "hi", "hi", "hi" ], 0, 6 ]);
+    matchSpan(p.consume().execute("")).should.eql([ [], 0, 1 ]);
+    matchSpan(p.consume().execute("hi")).should.eql([ [ "hi" ], 0, 2 ]);
+    matchSpan(p.consume().execute("hihihi")).should.eql([ [ "hi", "hi", "hi" ], 0, 6 ]);
   });
 
   it("2 or 3", () => {
     const p = pr.repeat("hi", { min: 2, max: 3 });
     (() => p.run("hi")).should.throw(/'hi'\{2, 3}/);
-    matchSpan(p.execute("hihi")).should.eql([ [ "hi", "hi" ], 0, 4 ]);
-    matchSpan(p.execute("hihihi")).should.eql([ [ "hi", "hi", "hi" ], 0, 6 ]);
-    matchSpan(p.execute("hihihihi")).should.eql([ [ "hi", "hi", "hi" ], 0, 6 ]);
+    matchSpan(p.consume().execute("hihi")).should.eql([ [ "hi", "hi" ], 0, 4 ]);
+    matchSpan(p.consume().execute("hihihi")).should.eql([ [ "hi", "hi", "hi" ], 0, 6 ]);
+    (() => p.run("hihihihi")).should.throw(/end/);
+  });
+
+  it("isn't always greedy", () => {
+    const p = pr([ pr.repeat("hi"), "hip" ]);
+    p.run("hihihip").should.eql([ [ "hi", "hi" ], "hip" ]);
   });
 
   it("nested", () => {
-    const p = pr.repeat([ "hi", pr.repeat("!") ]);
-    const rv = p.execute("hi!hi!!!hi?");
-    rv.state.pos.should.equal(10);
+    const p = pr([ pr.repeat([ "hi", pr.repeat("!") ]), /[x]+/ ]).map(match => match[0]);
+    const rv = p.consume().execute("hi!hi!!!hix");
+    rv.state.pos.should.equal(11);
     rv.value.should.eql([
       [ "hi", [ "!" ] ],
       [ "hi", [ "!", "!", "!" ] ],
@@ -40,8 +44,8 @@ describe("Parser.repeat", () => {
   });
 
   it("with whitespace ignoring", () => {
-    const p = pr.repeatIgnore("hi", /\s+/);
-    matchSpan(p.execute("hi  hihi ")).should.eql([ [ "hi", "hi", "hi" ], 0, 8 ]);
+    const p = pr([ pr.repeatIgnore("hi", /\s+/), "!" ]).map(match => match[0]);
+    matchSpan(p.execute("hi  hihi!")).should.eql([ [ "hi", "hi", "hi" ], 0, 9 ]);
   });
 
   it("and honors nested drops", () => {
@@ -61,13 +65,13 @@ describe("Parser.repeat", () => {
   });
 
   it("repeatSeparated too", () => {
-    const p = pr.repeatSeparated(pr(/\d+/).onMatch(m => m[0]), ",", { min: 1, max: 3 });
+    const p = pr.repeatSeparated(pr(/\d+/).map(m => m[0]), ",", { min: 1, max: 3 }).consume();
     matchSpan(p.execute("3")).should.eql([ [ "3" ], 0, 1 ]);
-    matchSpan(p.execute("3,")).should.eql([ [ "3" ], 0, 1 ]);
+    (() => p.run("3,")).should.throw(/end/);
     matchSpan(p.execute("3,4")).should.eql([ [ "3", "4" ], 0, 3 ]);
     matchSpan(p.execute("3,40")).should.eql([ [ "3", "40" ], 0, 4 ]);
     matchSpan(p.execute("3,40,5")).should.eql([ [ "3", "40", "5" ], 0, 6 ]);
-    matchSpan(p.execute("3,40,5,6")).should.eql([ [ "3", "40", "5" ], 0, 6 ]);
+    (() => p.run("3,40,5,6")).should.throw(/end/);
   });
 
   it("aborts if a repeating phrase aborts", () => {

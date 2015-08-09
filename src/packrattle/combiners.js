@@ -83,10 +83,30 @@ function alt(...parsers) {
     describe: list => list.join(" or ")
   }, (state, results, ...parsers) => {
     let aborting = false;
+    let count = 0;
+    const fails = [];
     parsers.forEach(p => {
       state.schedule(p, () => !aborting).then(match => {
-        if (match.commit && !match.ok) aborting = true;
-        results.add(match);
+        if (match.ok) {
+          results.add(match);
+        } else {
+          if (match.commit) {
+            // skip other alternatives; dump error buffer.
+            aborting = true;
+            fails.splice(0, fails.length);
+            return results.add(match);
+          }
+          fails.push(match);
+        }
+        // save up all the fails. if *all* of the alternatives fail, summarize it.
+        count++;
+        if (count == parsers.length) {
+          if (count == fails.length) {
+            results.add(state.failure());
+          } else {
+            fails.forEach(f => results.add(f));
+          }
+        }
       });
     });
   });
@@ -107,18 +127,16 @@ function drop(p) {
  * allow a parser to fail, and instead return a default value (the empty string
  * if no other value is provided).
  */
-function optional(p, defaultValue = "") {
+function optional(p, defaultValue) {
   return parser.newParser("optional", {
     wrap: p,
     cacheable: (typeof defaultValue == "string"),
     extraCacheKey: defaultValue
   }, (state, results, p) => {
     state.schedule(p).then(match => {
-      results.add(
-        match.ok || match.commit ?
-        match :
-        state.success(defaultValue)
-      );
+      results.add(match);
+      // unless we committed to p, always try the non-p case too.
+      if (!match.commit) results.add(state.success(defaultValue));
     });
   });
 }
@@ -177,7 +195,7 @@ function repeat(p, options = {}) {
 
     function next(match, startingState, list = [], count = 0) {
       if (!match.ok) {
-        // FIXME why?
+        // if we were committed, don't backtrack.
         if (match.commit) return results.add(match);
         // intentionally use the "last good state" from our repeating parser.
         return results.add(count >= min ?
@@ -186,14 +204,13 @@ function repeat(p, options = {}) {
       }
       count++;
       const newlist = match.value != null ? list.concat([ match.value ]) : list;
+      if (count >= min) results.add(state.merge(match.state).success(newlist, match.commit));
       if (count < max) {
         // if a parser matches nothing, we could go on forever...
         if (match.state.pos == state.pos) {
           throw new Error(`Repeating parser isn't making progress at position ${state.pos}: ${p}`);
         }
         match.state.schedule(p).then(m => next(m, match.state, newlist, count));
-      } else {
-        results.add(state.merge(match.state).success(newlist, match.commit));
       }
     }
 

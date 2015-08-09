@@ -46,7 +46,7 @@ describe("Parser.seq", () => {
     const p = pr([ "abc", pr.optional(/\d+/), "xyz" ]);
     let rv = p.execute("abcxyz");
     rv.state.pos.should.equal(6);
-    rv.value.should.eql([ "abc", "", "xyz" ]);
+    rv.value.should.eql([ "abc", "xyz" ]);
     rv = p.execute("abc99xyz");
     rv.state.pos.should.equal(8);
     rv.value[0].should.eql("abc");
