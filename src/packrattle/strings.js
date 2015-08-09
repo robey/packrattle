@@ -6,7 +6,8 @@ const BACKSLASH = "\\".charCodeAt(0);
 
 // quote a string so it can be displayed.
 function quote(s) {
-  return s.replace(/[^\u0020-\u007e]|\"|\'/g, c => {
+  if (s == null) return "null";
+  return s.toString().replace(/[^\u0020-\u007e]|\"|\'/g, c => {
     const n = c.charCodeAt(0);
     switch (n) {
       case DQUOTE: return "\\\"";
