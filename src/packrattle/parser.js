@@ -31,7 +31,7 @@ function newParser(name, options = {}, matcher) {
 
   if (options.wrap) {
     options.children = [ options.wrap ];
-    options.describe = list => name + ":" + list.join();
+    if (!options.describe) options.describe = list => name + ":" + list.join();
     delete options.wrap;
   }
 
@@ -170,10 +170,6 @@ class Parser {
     return this.cacheKey;
   }
 
-  named(description) {
-    return new Parser(this.name, this.children, description, this.matcher);
-  }
-
   execute(text, options = {}) {
     this.resolve();
     return new engine.Engine(text, options).execute(this);
@@ -201,7 +197,7 @@ class Parser {
 
   // transforms the result of a parser if it succeeds.
   // f(value, span)
-  onMatch(f) {
+  map(f) {
     return newParser("map", { wrap: this }, (state, results) => {
       state.schedule(this).then(match => {
         if (!match.ok) return results.add(match);
@@ -221,13 +217,22 @@ class Parser {
     });
   }
 
-  map(f) { return this.onMatch(f); }
+  onMatch(f) { return this.map(f); }
 
   // transforms the error message of a parser
   onFail(newMessage) {
     return newParser("onFail", { wrap: this }, (state, results) => {
       state.schedule(this).then(match => {
         results.add(match.ok ? match : match.toError(newMessage));
+      });
+    });
+  }
+
+  // transforms the error message of a parser, but only if it hasn't been already.
+  named(description) {
+    return newParser("onFail", { wrap: this, describe: description }, (state, results) => {
+      state.schedule(this).then(match => {
+        results.add(match.changeGeneratedMessage(description));
       });
     });
   }

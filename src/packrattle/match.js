@@ -12,6 +12,8 @@ class Match {
     this.commit = options.commit;
     // either a boxed result or an error message:
     this.value = options.value;
+    // is this an auto-generated error message?
+    this.generated = options.generated;
   }
 
   equals(other) {
@@ -39,6 +41,14 @@ class Match {
   }
 
   toError(message) {
+    const rv = new Match(false, this.state, this);
+    rv.value = message;
+    rv.generated = false;
+    return rv;
+  }
+
+  changeGeneratedMessage(message) {
+    if (!this.generated) return this;
     const rv = new Match(false, this.state, this);
     rv.value = message;
     return rv;
