@@ -156,7 +156,7 @@ const keywordIf = packrattle.alt(() => "+", "-");
 
 - `map(f)` (or `onMatch(f)`) - If the parser is successful, call `f(match, span)`, using the return value as the new match result. If 'f' isn't a function, it's used as the return value itself.
 
-- `onFail(newMessage)` - Replace the error message for this parser when it fails to match.
+- `onFail(newMessage)` - Replace the error message for this parser when it fails to match. If the parser is part of a set of alternatives, and all alternatives fail, this message is discarded in favor of a description of the entire branch of alternatives, so this method is generally only useful after a `commit()`. Use `named(description)` to give names to branches that will survive coalescing.
 
 - `filter(f, message = null)` (or `matchIf(f, message)`) - If the parser is successful, call `f(match, span)`. If 'f' returns true, continue as normal, but if it returns false, fail to match. `message` is optional, but if it's present and the match fails, it will be used as the failure description.
 
@@ -180,7 +180,7 @@ These are convenience methods for the global [combiners](#combiners).
 
 - `drop()` -> `drop(this)`
 
-- `optional(defaultValue = "")` -> `optional(this, defaultValue)`
+- `optional(defaultValue = null)` -> `optional(this, defaultValue)`
 
 - `check()` -> `check(this)`
 
