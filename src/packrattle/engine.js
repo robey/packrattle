@@ -14,6 +14,10 @@ class Engine {
   constructor(text, options = {}) {
     this.text = text;
     this.debugger = options.debugger;
+    if (typeof this.debugger == "string") {
+      const f = require("fs").openSync(this.debugger, "w");
+      this.debugger = (text) => require("fs").writeSync(f, text + "\n");
+    }
     if (options.dotfile) {
       this.dotfile = typeof options.dotfile == "string" ?
         data => require("fs").writeFileSync(options.dotfile, data) :
