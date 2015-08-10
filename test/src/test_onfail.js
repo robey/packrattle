@@ -9,7 +9,7 @@ require("source-map-support").install();
 describe("Parser.onFail", () => {
   it("overrides an inner failure", () => {
     const p = pr.alt(/\d+/, "hello").onFail("Expected number or greeting");
-    (() => p.run("a", { debugger: console.log })).should.throw(/number or greeting/);
+    (() => p.run("a")).should.throw(/number or greeting/);
   });
 
   it("combines across an alt", () => {
@@ -18,7 +18,7 @@ describe("Parser.onFail", () => {
       "hello"
     );
 
-    (() => p.run("a", { debugger: console.log })).should.throw(/number or 'hello'/);
+    (() => p.run("a")).should.throw(/number or 'hello'/);
   });
 
   it("picks up a new name across an alt", () => {
@@ -27,6 +27,6 @@ describe("Parser.onFail", () => {
       "hello"
     ).named("widget");
 
-    (() => p.run("a", { debugger: console.log })).should.throw(/widget/);
+    (() => p.run("a")).should.throw(/widget/);
   })
 });
