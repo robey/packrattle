@@ -232,7 +232,10 @@ class Parser {
   named(description) {
     return newParser("onFail", { wrap: this, describe: description }, (state, results) => {
       state.schedule(this).then(match => {
-        results.add(match.changeGeneratedMessage(description));
+        results.add(match.commit ?
+          match :
+          match.changeGeneratedMessage("Expected " + description)
+        );
       });
     });
   }
