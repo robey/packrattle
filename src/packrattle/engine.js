@@ -70,7 +70,7 @@ export default class Engine {
     const failures = [];
 
     this.currentState = state;
-    if (this.debugger) this.debugger(`Try '${strings.quote(this.text)}' in ${parser.inspect()}`);
+    if (this.debugger) this.debugger(`Try '${quote(this.text)}' in ${parser.inspect()}`);
     this.schedule(state.next(parser)).then(match => {
       if (match.ok) {
         if (this.debugger) this.debugger(`-> SUCCESS: ${match}`);
