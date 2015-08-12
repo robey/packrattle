@@ -1,3 +1,11 @@
+## 4.1.0  (12 aug 2015)
+
+- `optional` default value is now null, not the empty string.
+- added `named(description)` back to the API. a named parser will change the failure message if it's still the default ("Expected (description)").
+- failure messages will coalesce from alternatives, overriding narrower messages (including `named` and `onFail`) unless the branch was committed.
+- `alt`, `optional`, and `repeat` will now correctly try all branches. before, packrattle was giving up if the first attempted branch was successful, so it might win the battle while losing the war.
+- converted imports/exports to ES6 style (shouldn't be externally different).
+
 ## 4.0.1  (30 jul 2015)
 
 - fixed bugs in package.json that made it effectively unloadable
