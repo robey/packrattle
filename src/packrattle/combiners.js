@@ -1,14 +1,14 @@
 "use strict";
 
-const parser = require("./parser");
+import { newParser } from "./parser";
 
 /*
  * chain together parsers p1 & p2 such that if p1 matches, p2 is executed on
  * the following state. if both match, `combiner` is called with the two
  * matched objects, to create a single match result.
  */
-function chain(p1, p2, combiner) {
-  return parser.newParser("chain", {
+export function chain(p1, p2, combiner) {
+  return newParser("chain", {
     children: [ p1, p2 ],
     describe: (list) => `${list[0]} then ${list[1]}`,
   }, (state, results, p1, p2) => {
@@ -35,8 +35,8 @@ function chain(p1, p2, combiner) {
  * chain together a series of parsers as in 'chain'. the match value is an
  * array of non-null match values from the inner parsers.
  */
-function seq(...parsers) {
-  return parser.newParser("seq", {
+export function seq(...parsers) {
+  return newParser("seq", {
     cacheable: true,
     children: parsers,
     describe: list => "[ " + list.join(", ") + " ]"
@@ -63,7 +63,7 @@ function seq(...parsers) {
  * 'ignore' parser is optionally matched and thrown away. this is typicially
  * used for discarding whitespace in lexical parsing.
  */
-function seqIgnore(ignore, ...parsers) {
+export function seqIgnore(ignore, ...parsers) {
   const newseq = [];
   parsers.forEach(p => {
     newseq.push(drop(optional(ignore)));
@@ -76,8 +76,8 @@ function seqIgnore(ignore, ...parsers) {
  * try each of these parsers, in order (starting from the same position),
  * looking for the first match.
  */
-function alt(...parsers) {
-  return parser.newParser("alt", {
+export function alt(...parsers) {
+  return newParser("alt", {
     cacheable: true,
     children: parsers,
     describe: list => list.join(" or ")
@@ -115,8 +115,8 @@ function alt(...parsers) {
 /*
  * throw away the match value, equivalent to `map(null)`.
  */
-function drop(p) {
-  return parser.newParser("drop", { wrap: p, cacheable: true }, (state, results, p) => {
+export function drop(p) {
+  return newParser("drop", { wrap: p, cacheable: true }, (state, results, p) => {
     state.schedule(p).then(match => {
       results.add(match.ok ? match.withValue(null) : match);
     });
@@ -127,8 +127,8 @@ function drop(p) {
  * allow a parser to fail, and instead return a default value (the empty string
  * if no other value is provided).
  */
-function optional(p, defaultValue) {
-  return parser.newParser("optional", {
+export function optional(p, defaultValue) {
+  return newParser("optional", {
     wrap: p,
     cacheable: (typeof defaultValue == "string"),
     extraCacheKey: defaultValue
@@ -145,8 +145,8 @@ function optional(p, defaultValue) {
  * check that this parser matches, but don't advance our position in the
  * string. (perl calls this a zero-width lookahead.)
  */
-function check(p) {
-  return parser.newParser("check", { wrap: p, cacheable: true }, (state, results, p) => {
+export function check(p) {
+  return newParser("check", { wrap: p, cacheable: true }, (state, results, p) => {
     state.schedule(p).then(match => {
       results.add(match.ok ? match.withState(state) : match);
     });
@@ -157,8 +157,8 @@ function check(p) {
  * if this parser matches, "commit" to this path and refuse to backtrack to
  * previous alternatives.
  */
-function commit(p) {
-  return parser.newParser("commit", { wrap: p, cacheable: true }, (state, results, p) => {
+export function commit(p) {
+  return newParser("commit", { wrap: p, cacheable: true }, (state, results, p) => {
     state.schedule(p).then(match => {
       results.add(match.ok ? match.setCommit() : match);
     });
@@ -168,8 +168,8 @@ function commit(p) {
 /*
  * succeed (with an empty match) if the inner parser fails; otherwise fail.
  */
-function not(p) {
-  return parser.newParser("not", { wrap: p, cacheable: true }, (state, results, p) => {
+export function not(p) {
+  return newParser("not", { wrap: p, cacheable: true }, (state, results, p) => {
     state.schedule(p).then(match => {
       results.add(
         match.ok ?
@@ -183,10 +183,10 @@ function not(p) {
  * from 'min' to 'max' (inclusive) repetitions of a parser, returned as an
  * array. 'max' may be omitted to mean infinity.
  */
-function repeat(p, options = {}) {
+export function repeat(p, options = {}) {
   const min = options.min || 0;
   const max = options.max || Infinity;
-  return parser.newParser("repeat", {
+  return newParser("repeat", {
      children: [ p ],
      describe: (list) => list.join() + (max == Infinity ? `{${min}+}` : `{${min}, ${max}}`)
   }, (state, results, p) => {
@@ -223,19 +223,19 @@ function repeat(p, options = {}) {
  * which will be thrown away. this is usually used to remove leading
  * whitespace.
  */
-function repeatIgnore(p, ignore, options) {
-  return repeat(seq(optional(ignore).drop(), p).onMatch(x => x[0]), options);
+export function repeatIgnore(p, ignore, options) {
+  return repeat(seq(optional(ignore).drop(), p).map(x => x[0]), options);
 }
 
 /*
  * like 'repeat', but the repeated elements are separated by 'separator',
  * which is ignored.
  */
-function repeatSeparated(p, separator = "", options = {}) {
+export function repeatSeparated(p, separator = "", options = {}) {
   const min = options.min ? options.min - 1 : 0;
   const max = options.max ? options.max - 1 : Infinity;
-  const p2 = seq(drop(separator), p).onMatch(x => x[0]);
-  return seq(p, repeat(p2, { min, max })).onMatch(x => {
+  const p2 = seq(drop(separator), p).map(x => x[0]);
+  return seq(p, repeat(p2, { min, max })).map(x => {
     return [ x[0] ].concat(x[1]);
   });
 }
@@ -246,7 +246,7 @@ function repeatSeparated(p, separator = "", options = {}) {
  * the initial result into an accumulator. if 'reducer' exists, it will be
  * used to progressively attach separators and new results.
  */
-function reduce(p, separator = "", options = {}) {
+export function reduce(p, separator = "", options = {}) {
   const first = options.first || (x => [ x ]);
   const next = options.next || ((sum, sep, x) => sum.push(x));
   const min = options.min ? options.min - 1 : 0;
@@ -263,18 +263,3 @@ function reduce(p, separator = "", options = {}) {
     });
   });
 }
-
-
-exports.alt = alt;
-exports.chain = chain;
-exports.check = check;
-exports.commit = commit;
-exports.drop = drop;
-exports.not = not;
-exports.optional = optional;
-exports.reduce = reduce;
-exports.repeat = repeat;
-exports.repeatIgnore = repeatIgnore;
-exports.repeatSeparated = repeatSeparated;
-exports.seq = seq;
-exports.seqIgnore = seqIgnore;

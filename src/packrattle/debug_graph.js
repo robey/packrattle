@@ -10,7 +10,7 @@ function exists(array, f) {
  * debug the parser by plotting a directed graph of parse nodes as it works
  * on a string.
  */
-class DebugGraph {
+export default class DebugGraph {
   constructor() {
     this.nodes = {};
     this.edges = [];
@@ -102,6 +102,3 @@ class DebugGraph {
     return data.join("\n") + "\n";
   }
 }
-
-
-exports.DebugGraph = DebugGraph;

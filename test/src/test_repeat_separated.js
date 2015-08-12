@@ -1,7 +1,6 @@
 "use strict";
 
-const pr = require("../../lib");
-const util = require("util");
+import pr, { regex, repeatSeparated } from "../../lib";
 
 require("should");
 require("source-map-support").install();
@@ -15,7 +14,7 @@ describe("Parser.repeatSeparated", () => {
   });
 
   describe("comma-separated numbers", () => {
-    const p = pr.repeatSeparated(pr.regex(/\d+/).onMatch(x => x[0]), /\s*,\s*/);
+    const p = repeatSeparated(regex(/\d+/).onMatch(x => x[0]), /\s*,\s*/);
 
     it("matches one", () => {
       const rv = p.consume().execute("98");

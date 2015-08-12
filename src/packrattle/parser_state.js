@@ -1,6 +1,6 @@
 "use strict";
 
-const match = require("./match");
+import Match from "./match";
 
 /*
  * given an absolute position within text, calculate the line # and the
@@ -26,7 +26,7 @@ function calculateLine(text, pos) {
  * span of text corresponding to a matching segment of the string.
  * this is effectively immutable.
  */
-class Span {
+export class Span {
   constructor(text, start, end) {
     this.text = text;
     this.start = start;
@@ -93,7 +93,7 @@ class Span {
  * - parser: which parser is currently operating
  * - engine: link back to whatever engine executed me
  */
-class ParserState {
+export class ParserState {
   constructor() {
     // empty for speed. always use one of the methods or factories.
   }
@@ -172,7 +172,7 @@ class ParserState {
   }
 
   success(value, commit = false) {
-    return new match.Match(true, this, { value, commit });
+    return new Match(true, this, { value, commit });
   }
 
   failure(value, commit = false) {
@@ -182,12 +182,12 @@ class ParserState {
       value = "Expected " + this.parser.inspect();
       generated = true;
     }
-    return new match.Match(false, this, { value, commit, generated });
+    return new Match(false, this, { value, commit, generated });
   }
 }
 
 
-function newParserState(engine) {
+export function newParserState(engine) {
   const rv = new ParserState();
   rv.pos = 0;
   rv.startpos = 0;
@@ -196,8 +196,3 @@ function newParserState(engine) {
   rv.engine = engine;
   return rv;
 }
-
-
-exports.newParserState = newParserState;
-exports.ParserState = ParserState;
-exports.Span = Span;

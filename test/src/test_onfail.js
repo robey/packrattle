@@ -1,7 +1,6 @@
 "use strict";
 
-const pr = require("../../lib");
-const util = require("util");
+import pr from "../../lib";
 
 require("should");
 require("source-map-support").install();

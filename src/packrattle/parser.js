@@ -1,9 +1,9 @@
 "use strict";
 
-const combiners = require("./combiners");
-const engine = require("./engine");
-const resolve = require("./resolve");
-const strings = require("./strings");
+import { alt, chain, check, commit, drop, not, optional, repeat, seq } from "./combiners";
+import Engine from "./engine";
+import resolve from "./resolve";
+import { quote } from "./strings";
 
 let ParserId = 1;
 
@@ -154,8 +154,8 @@ class Parser {
     // if it's a simple parser (no children), it must have a simple string description to be cacheable.
     if (!this.children || this.children.length == 0) {
       if (!(typeof this.describe == "string")) return null;
-      this.cacheKey = this.name + ":" + strings.quote(this.describe);
-      if (this.extraCacheKey) this.cacheKey += "&" + strings.quote(this.extraCacheKey);
+      this.cacheKey = this.name + ":" + quote(this.describe);
+      if (this.extraCacheKey) this.cacheKey += "&" + quote(this.extraCacheKey);
       return this.cacheKey;
     }
 
@@ -165,21 +165,21 @@ class Parser {
       if (!p.cacheKey) ok = false;
     });
     if (!ok) return null;
-    this.cacheKey = this.name + ":" + this.children.map(p => strings.quote(p.cacheKey)).join("&");
-    if (this.extraCacheKey) this.cacheKey += "&" + strings.quote(this.extraCacheKey);
+    this.cacheKey = this.name + ":" + this.children.map(p => quote(p.cacheKey)).join("&");
+    if (this.extraCacheKey) this.cacheKey += "&" + quote(this.extraCacheKey);
     return this.cacheKey;
   }
 
   execute(text, options = {}) {
     this.resolve();
-    return new engine.Engine(text, options).execute(this);
+    return new Engine(text, options).execute(this);
   }
 
   // return a parser that asserts that the string ends after this parser.
   consume() {
+    // es6 still can't handle loops.
     const simple = require("./simple");
-    const combiners = require("./combiners");
-    return combiners.chain(this, simple.end, (a, b) => a);
+    return chain(this, simple.end, (a, b) => a);
   }
 
   // consume an entire text with this parser. convert failure into an exception.
@@ -258,23 +258,23 @@ class Parser {
 
   // ----- convenience methods for accessing the combinators
 
-  then(...parsers) { return combiners.seq(this, ...parsers); }
+  then(...parsers) { return seq(this, ...parsers); }
 
-  or(...parsers) { return combiners.alt(this, ...parsers); }
+  or(...parsers) { return alt(this, ...parsers); }
 
-  drop() { return combiners.drop(this); }
+  drop() { return drop(this); }
 
-  optional(defaultValue = "") { return combiners.optional(this, defaultValue); }
+  optional(defaultValue = "") { return optional(this, defaultValue); }
 
-  check() { return combiners.check(this); }
+  check() { return check(this); }
 
-  commit() { return combiners.commit(this); }
+  commit() { return commit(this); }
 
-  not() { return combiners.not(this); }
+  not() { return not(this); }
 
-  repeat(options) { return combiners.repeat(this, options); }
+  repeat(options) { return repeat(this, options); }
 
-  times(count) { return combiners.repeat(this, { min: count, max: count }); }
+  times(count) { return repeat(this, { min: count, max: count }); }
 }
 
 

@@ -1,11 +1,11 @@
 "use strict";
 
-const strings = require("./strings");
+import { quote } from "./strings";
 
 /*
  * created by ParserState on demand.
  */
-class Match {
+export default class Match {
   constructor(ok, state, options = {}) {
     this.ok = ok;
     this.state = state;
@@ -24,7 +24,7 @@ class Match {
     const fields = [
       this.ok ? "yes" : "no",
       "state=" + this.state,
-      "value='" + strings.quote(this.value) + "'"
+      "value='" + quote(this.value) + "'"
     ];
     if (this.commit) fields.push("commit");
     return "Match(" + fields.join(", ") + ")";
@@ -60,6 +60,3 @@ class Match {
     return rv;
   }
 }
-
-
-exports.Match = Match;

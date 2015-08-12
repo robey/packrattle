@@ -18,7 +18,7 @@ let LazyId = 0;
  *
  * if you'd like te cache the results of function evaluations, pass an empty object as `functionCache`.
  */
-module.exports = exports = function resolve(parser, functionCache = null) {
+export default function resolve(parser, functionCache = null) {
   if (typeof parser == "function") {
     if (!parser[ID]) {
       // give every lazy parser an id so we can cache them.

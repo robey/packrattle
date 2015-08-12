@@ -1,34 +1,33 @@
 "use strict";
 
-const pr = require("../../lib");
-const util = require("util");
+import pr, { string } from "../../lib";
 
 require("should");
 require("source-map-support").install();
 
 describe("Parser.map", () => {
   it("transforms a match", () => {
-    const p = pr("hello").onMatch((value, state) => [ value.toUpperCase(), state.start, state.end ]);
+    const p = pr("hello").map((value, state) => [ value.toUpperCase(), state.start, state.end ]);
     (() => p.run("cat")).should.throw(/hello/);
     p.execute("hellon").value.should.eql([ "HELLO", 0, 5 ]);
   });
 
   it("transforms a match into a constant", () => {
-    const p = pr("hello").onMatch("yes");
+    const p = pr("hello").map("yes");
     const rv = p.execute("hello");
     rv.value.should.eql("yes");
     rv.state.pos.should.equal(5);
   });
 
   it("transforms a match into a failure on exception", () => {
-    const p = pr("hello").onMatch(value => {
+    const p = pr("hello").map(value => {
       throw new Error("utter failure");
     });
     (() => p.run("hello")).should.throw(/utter failure/);
   });
 
   it("onFail", () => {
-    const p = pr.string("hello").onFail("Try a greeting.");
+    const p = string("hello").onFail("Try a greeting.");
     (() => p.run("cat")).should.throw("Try a greeting.");
     p.execute("hellon").value.should.eql("hello");
   });

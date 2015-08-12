@@ -11,7 +11,7 @@
  * whenever a new listener is attached, it will immediately receive all current
  * values. if a new value is added later, it will receive the new value later.
  */
-class PromiseSet {
+export default class PromiseSet {
   constructor(options = {}) {
     // optimize for the case of 1 value or 1 listener.
     this.value0 = null;
@@ -57,6 +57,3 @@ class PromiseSet {
     return this;
   }
 }
-
-
-exports.PromiseSet = PromiseSet;

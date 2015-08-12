@@ -1,16 +1,16 @@
 "use strict";
 
-const debug_graph = require("./debug_graph");
-const parser_state = require("./parser_state");
-const priority_queue = require("./priority_queue");
-const promise_set = require("./promise_set");
-const strings = require("./strings");
+import DebugGraph from "./debug_graph";
+import { newParserState } from "./parser_state";
+import PriorityQueue from "./priority_queue";
+import PromiseSet from "./promise_set";
+import { quote } from "./strings";
 
 /*
  * an Engine processes a string through a tree of parsers, tracking state
  * is it goes for debugging.
  */
-class Engine {
+export default class Engine {
   constructor(text, options = {}) {
     this.text = text;
     this.debugger = options.debugger;
@@ -22,11 +22,11 @@ class Engine {
       this.dotfile = typeof options.dotfile == "string" ?
         data => require("fs").writeFileSync(options.dotfile, data) :
         options.dotfile;
-      this.debugGraph = options.debugGraph || new debug_graph.DebugGraph();
+      this.debugGraph = options.debugGraph || new DebugGraph();
     }
 
     // queue contains items of { parser: Parser, state: ParserState, results: PromiseSet }.
-    this.workQueue = new priority_queue.PriorityQueue();
+    this.workQueue = new PriorityQueue();
 
     // cache of (parser, position) -> PromiseSet
     this.cache = {};
@@ -48,7 +48,7 @@ class Engine {
     // skip if we've already done or scheduled this one.
     if (this.cache[state.id]) return this.cache[state.id];
 
-    const results = new promise_set.PromiseSet({
+    const results = new PromiseSet({
       debugger: this.debugger ? (line) => this.debugger(`-> ${state.id} = ${line}`) : null
     });
     this.cache[state.id] = results;
@@ -65,7 +65,7 @@ class Engine {
 
   // execute a parser over a string.
   execute(parser) {
-    const state = parser_state.newParserState(this);
+    const state = newParserState(this);
     const successes = [];
     const failures = [];
 
@@ -124,6 +124,3 @@ function rpad(s, n) {
   while (s.length < n) s = " " + s;
   return s;
 }
-
-
-exports.Engine = Engine;

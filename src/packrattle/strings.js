@@ -5,7 +5,7 @@ const SQUOTE = "\'".charCodeAt(0);
 const BACKSLASH = "\\".charCodeAt(0);
 
 // quote a string so it can be displayed.
-function quote(s) {
+export function quote(s) {
   if (s == null) return "null";
   return s.toString().replace(/[^\u0020-\u007e]|\"|\'/g, c => {
     const n = c.charCodeAt(0);
@@ -19,5 +19,3 @@ function quote(s) {
     }
   });
 }
-
-exports.quote = quote;

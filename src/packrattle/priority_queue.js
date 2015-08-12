@@ -9,7 +9,7 @@ let total = 0;
  * for our internal array representation, the tail of the array is the head
  * of the queue.
  */
-class PriorityQueue {
+export default class PriorityQueue {
   constructor() {
     this.queue = [];
   }
@@ -77,6 +77,3 @@ class PriorityQueue {
     }
   }
 }
-
-
-exports.PriorityQueue = PriorityQueue;

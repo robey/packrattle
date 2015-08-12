@@ -1,34 +1,23 @@
-const resolve = require("./packrattle/resolve");
-module.exports = exports = resolve;
+import resolve from "./packrattle/resolve";
 
-const combiners = require("./packrattle/combiners");
-exports.alt = combiners.alt;
-exports.chain = combiners.chain;
-exports.check = combiners.check;
-exports.commit = combiners.commit;
-exports.drop = combiners.drop;
-exports.not = combiners.not;
-exports.optional = combiners.optional;
-exports.reduce = combiners.reduce;
-exports.repeat = combiners.repeat;
-exports.repeatIgnore = combiners.repeatIgnore;
-exports.repeatSeparated = combiners.repeatSeparated;
-exports.seq = combiners.seq;
-exports.seqIgnore = combiners.seqIgnore;
+resolve.build = resolve;
 
-const parser = require("./packrattle/parser");
-exports.newParser = parser.newParser;
+// for backward compatibility, put everything on the default exported function.
 
-const parser_state = require("./packrattle/parser_state");
-exports.ParserState = parser_state.ParserState;
-exports.Span = parser_state.Span;
+import * as combiners from "./packrattle/combiners";
+for (let k in combiners) resolve[k] = combiners[k];
 
-const priority_queue = require("./packrattle/priority_queue");
-exports.PriorityQueue = priority_queue.PriorityQueue;
+import * as parser from "./packrattle/parser";
+for (let k in parser) resolve[k] = parser[k];
 
-const simple = require("./packrattle/simple");
-exports.end = simple.end;
-exports.regex = simple.regex;
-exports.reject = simple.reject;
-exports.string = simple.string;
-exports.succeed = simple.succeed;
+import * as parser_state from "./packrattle/parser_state";
+for (let k in parser_state) resolve[k] = parser_state[k];
+
+import PriorityQueue from "./packrattle/priority_queue";
+resolve.PriorityQueue = PriorityQueue;
+
+import * as simple from "./packrattle/simple";
+for (let k in simple) resolve[k] = simple[k];
+
+// export "default"
+export { resolve as default };
