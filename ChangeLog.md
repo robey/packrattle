@@ -5,6 +5,8 @@
 - failure messages will coalesce from alternatives, overriding narrower messages (including `named` and `onFail`) unless the branch was committed.
 - `alt`, `optional`, and `repeat` will now correctly try all branches. before, packrattle was giving up if the first attempted branch was successful, so it might win the battle while losing the war.
 - converted imports/exports to ES6 style (shouldn't be externally different).
+- `debugger` in `run` and `execute` may be a string naming the file to dump the logs into.
+- debug log messages are quoted a lot less, using a custom C-style quoter instead of the overly aggressive URI quoter.
 
 ## 4.0.1  (30 jul 2015)
 
