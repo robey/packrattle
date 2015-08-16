@@ -82,6 +82,17 @@ export class Span {
     if (right >= line.length) right = text.length - 1;
     return text.slice(left, line.xpos) + "[" + (text[line.xpos] || "") + "]" + text.slice(line.xpos + 1, right + 1);
   }
+
+  /*
+   * return a span covering both this span and another.
+   */
+  merge(other) {
+    if (this.start < other.start) {
+      return new Span(this.text, this.start, other.end);
+    } else {
+      return new Span(this.text, other.start, this.end);
+    }
+  }
 }
 
 
