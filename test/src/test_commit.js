@@ -63,17 +63,6 @@ describe("Parser.commit", () => {
     rv.ok.should.equal(false);
   });
 
-  it("is remembered through an exception", () => {
-    const p = pr.alt(
-      pr([ pr("!").commit(), "x", "y" ]).onMatch(m => {
-        throw new Error("Y!");
-      }),
-      /.xyz/
-    );
-    const rv = p.execute("!xyz");
-    rv.ok.should.equal(false);
-  });
-
   it("doesn't persist through new alternatives", () => {
     const p = pr.alt(
       pr([ pr("b").commit(), "x", pr.alt(

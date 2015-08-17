@@ -76,4 +76,15 @@ describe("Engine", () => {
     p.run("dupe2").should.eql("2");
     count.should.eql(1);
   });
+
+  it("stops immediately on an exception", () => {
+    let canary = false;
+    const problematic = pr.alt(
+      pr("a").map(x => {
+        throw new Error("help!");
+      }),
+      pr(/[a-z]/).map(x => canary = true)
+    );
+    (() => problematic.run("a")).should.throw(/help/);
+  });
 });

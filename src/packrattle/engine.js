@@ -36,6 +36,9 @@ export default class Engine {
 
     // track the currently-executing state for debugging (so we can graph the flow on request)
     this.currentState = null;
+
+    // if any handler throws an exception, abort immediately.
+    this.currentException = null;
   }
 
   /*
@@ -49,7 +52,10 @@ export default class Engine {
     if (this.cache[state.id]) return this.cache[state.id];
 
     const results = new PromiseSet({
-      debugger: this.debugger ? (line) => this.debugger(`-> ${state.id} = ${line}`) : null
+      debugger: this.debugger ? (line) => this.debugger(`-> ${state.id} = ${line}`) : null,
+      exceptionHandler: error => {
+        this.currentException = error;
+      }
     });
     this.cache[state.id] = results;
 
@@ -85,7 +91,7 @@ export default class Engine {
     });
 
     // start the engine!
-    while (!this.workQueue.isEmpty && successes.length == 0) {
+    while (!this.workQueue.isEmpty && successes.length == 0 && !this.currentException) {
       const { state, results } = this.workQueue.get();
 
       this.ticks++;
@@ -94,6 +100,8 @@ export default class Engine {
 
       state.parser.matcher(state, results, ...(state.parser.children || []));
     }
+
+    if (this.currentException) throw this.currentException;
 
     this.currentState = null;
 

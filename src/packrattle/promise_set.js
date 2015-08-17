@@ -19,6 +19,7 @@ export default class PromiseSet {
     this.listener0 = null;
     this.listeners = null;
     this.debugger = options.debugger;
+    this.exceptionHandler = options.exceptionHandler;
   }
 
   add(value) {
@@ -44,15 +45,23 @@ export default class PromiseSet {
   }
 
   then(callback) {
+    const safeCallback = x => {
+      try {
+        callback(x);
+      } catch (error) {
+        if (this.exceptionHandler) this.exceptionHandler(error);
+      }
+    };
+
     if (!this.listener0) {
-      this.listener0 = callback;
+      this.listener0 = safeCallback;
     } else {
       if (!this.listeners) this.listeners = [];
-      this.listeners.push(callback);
+      this.listeners.push(safeCallback);
     }
 
-    if (this.value0) callback(this.value0);
-    if (this.values) this.values.forEach(callback);
+    if (this.value0) safeCallback(this.value0);
+    if (this.values) this.values.forEach(safeCallback);
 
     return this;
   }

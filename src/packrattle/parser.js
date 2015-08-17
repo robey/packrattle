@@ -203,15 +203,11 @@ class Parser {
         if (!match.ok) return results.add(match);
         if (typeof f != "function") return results.add(match.withValue(f));
 
-        try {
-          const rv = f(match.value, match.state.span());
-          if (rv instanceof Parser) {
-            match.state.schedule(rv).then(m => results.add(m));
-          } else {
-            results.add(match.withValue(rv));
-          }
-        } catch (error) {
-          results.add(match.toError(error.toString()));
+        const rv = f(match.value, match.state.span());
+        if (rv instanceof Parser) {
+          match.state.schedule(rv).then(m => results.add(m));
+        } else {
+          results.add(match.withValue(rv));
         }
       });
     });
