@@ -73,11 +73,11 @@ export default class Engine {
     if (this.debugger) this.debugger(`Try '${quote(this.text)}' in ${parser.inspect()}`);
     this.schedule(state.next(parser)).then(match => {
       if (match.ok) {
-        if (this.debugger) this.debugger(`-> SUCCESS: ${match}`);
+        if (this.debugger) this.debugger(`-> SUCCESS: ${match.inspect()}`);
         if (this.debugGraph) this.debugGraph.addEdge(match.state.id, "success");
         successes.push(match);
       } else {
-        if (this.debugger) this.debugger(`-> FAILURE: ${match}`);
+        if (this.debugger) this.debugger(`-> FAILURE: ${match.inspect()}`);
         if (this.debugGraph) this.debugGraph.markFailure(match.state.id);
          //this.debugGraph.addEdge(match.state.id, "failure");
         failures.push(match);
@@ -90,7 +90,7 @@ export default class Engine {
 
       this.ticks++;
       this.currentState = state;
-      if (this.debugger) this.debugger(`${rpad(this.ticks, 4)}. [${state.parser.id}]${state.parser.inspect()} @ ${state.toString()}`)
+      if (this.debugger) this.debugger(`${rpad(this.ticks, 4)}. [${state.parser.id}]${state.parser.inspect()} @ ${state.inspect()}`)
 
       state.parser.matcher(state, results, ...(state.parser.children || []));
     }
@@ -105,10 +105,10 @@ export default class Engine {
     if (this.debugger) {
       if (successes.length > 0) {
         this.debugger("### successes:");
-        successes.forEach(x => this.debugger("    " + x.toString()));
+        successes.forEach(x => this.debugger("    " + x.inspect()));
       } else {
         this.debugger("### failures:");
-        failures.forEach(x => this.debugger("    " + x.toString()));
+        failures.forEach(x => this.debugger("    " + x.inspect()));
       }
     }
 

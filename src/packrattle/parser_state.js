@@ -36,7 +36,7 @@ export class Span {
     this._endLine = null;
   }
 
-  toString() {
+  inspect() {
     return `Span(${this.start} -> ${this.end})`;
   }
 
@@ -109,7 +109,7 @@ export class ParserState {
     // empty for speed. always use one of the methods or factories.
   }
 
-  toString() {
+  inspect() {
     return `ParserState[${this.startpos} -> ${this.pos}](depth=${this.depth}, parser.id=${this.parser.id})`;
   }
 

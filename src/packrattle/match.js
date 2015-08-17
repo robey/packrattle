@@ -20,11 +20,11 @@ export default class Match {
     return this.ok == other.ok && this.state.pos == other.state.pos && this.value == other.value;
   }
 
-  toString() {
+  inspect() {
     const fields = [
       this.ok ? "yes" : "no",
-      "state=" + this.state,
-      "value='" + quote(this.value) + "'"
+      "state=" + this.state.inspect(),
+      "value='" + quote(this.value && this.value.inspect ? this.value.inspect() : this.value) + "'"
     ];
     if (this.commit) fields.push("commit");
     return "Match(" + fields.join(", ") + ")";

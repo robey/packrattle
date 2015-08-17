@@ -35,7 +35,7 @@ export default class PromiseSet {
       this.values.push(value);
     }
 
-    if (this.debugger) this.debugger(value.toString());
+    if (this.debugger) this.debugger(value.inspect ? value.inspect() : value.toString());
 
     if (this.listener0) this.listener0(value);
     if (this.listeners) this.listeners.forEach(f => f(value));
