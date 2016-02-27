@@ -62,7 +62,7 @@ export class Span {
     let endxpos = (this.endLine.lineNumber != this.startLine.lineNumber) ? this.startLine.endOfLine : this.endLine.xpos;
     if (endxpos == this.startLine.xpos) endxpos++;
 
-    let squiggles = ""
+    let squiggles = "";
     for (let i = 0; i < this.startLine.xpos; i++) squiggles += " ";
     for (let i = this.startLine.xpos; i < endxpos; i++) squiggles += "~";
     return [ this.text.slice(this.startLine.startOfLine, this.startLine.endOfLine), squiggles ];

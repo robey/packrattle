@@ -179,7 +179,7 @@ class Parser {
   consume() {
     // es6 still can't handle loops.
     const simple = require("./simple");
-    return chain(this, simple.end, (a, b) => a);
+    return chain(this, simple.end, (a, _b) => a);
   }
 
   // consume an entire text with this parser. convert failure into an exception.

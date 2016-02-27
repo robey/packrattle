@@ -13,9 +13,10 @@ export function quote(s) {
       case DQUOTE: return "\\\"";
       case SQUOTE: return "\\\'";
       case BACKSLASH: return "\\\\";
-      default:
+      default: {
         const escape = "000" + n.toString(16);
         return "\\u" + escape.slice(escape.length - 4);
+      }
     }
   });
 }

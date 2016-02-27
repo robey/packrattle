@@ -1,8 +1,5 @@
 "use strict";
 
-let top = 0;
-let total = 0;
-
 /*
  * a priority queue, which stores an item with an associated priority
  * (number). higher numbers are bumped up ahead of lower ones.
@@ -69,9 +66,8 @@ export default class PriorityQueue {
 
   // remove dead entries from the head of the queue.
   _trim() {
-    while (true) {
-      if (this.queue.length == 0) return;
-      const { item, priority, condition } = this.queue[this.queue.length - 1];
+    while (this.queue.length > 0) {
+      const { condition } = this.queue[this.queue.length - 1];
       if (!condition || condition()) return;
       this.queue.pop();
     }

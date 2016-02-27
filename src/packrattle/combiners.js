@@ -10,7 +10,7 @@ import { newParser } from "./parser";
 export function chain(p1, p2, combiner) {
   return newParser("chain", {
     children: [ p1, p2 ],
-    describe: (list) => `${list[0]} then ${list[1]}`,
+    describe: (list) => `${list[0]} then ${list[1]}`
   }, (state, results, p1, p2) => {
     state.schedule(p1).then(match1 => {
       if (!match1.ok) {
@@ -187,12 +187,9 @@ export function repeat(p, options = {}) {
   const min = options.min || 0;
   const max = options.max || Infinity;
   return newParser("repeat", {
-     children: [ p ],
-     describe: (list) => list.join() + (max == Infinity ? `{${min}+}` : `{${min}, ${max}}`)
+    children: [ p ],
+    describe: list => list.join() + (max == Infinity ? `{${min}+}` : `{${min}, ${max}}`)
   }, (state, results, p) => {
-    let count = 0;
-    let list = [];
-
     function next(match, startingState, list = [], count = 0) {
       if (!match.ok) {
         // if we were committed, don't backtrack.

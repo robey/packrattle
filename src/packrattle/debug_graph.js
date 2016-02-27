@@ -41,8 +41,6 @@ export default class DebugGraph {
 
   // filter out parsers with certain names
   filterOut(...names) {
-    const nodesToRemove = [];
-
     Object.keys(this.nodes).forEach(name => {
       const node = this.nodes[name];
       if (names.indexOf(node.parser.name) < 0) return;

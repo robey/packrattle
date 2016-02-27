@@ -36,7 +36,7 @@ export function string(s) {
 export function regex(r) {
   const i = r.ignoreCase ? "i" : "";
   const m = r.multiline ? "m" : "";
-  const source = r.source[0] == "^" ? r.source : ("^" + r.source)
+  const source = r.source[0] == "^" ? r.source : ("^" + r.source);
   const r2 = new RegExp(source, i + m);
   return newParser("regex", { cacheable: true, describe: r.toString() }, (state, results) => {
     const m = r2.exec(state.text.slice(state.pos));

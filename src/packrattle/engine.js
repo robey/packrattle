@@ -64,7 +64,7 @@ export default class Engine {
       this.debugGraph.addEdge(this.currentState.id, state.id);
     }
 
-    if (this.debugger) this.debugger(`schedule: ${state.id} ${state.parser.inspect()}`)
+    if (this.debugger) this.debugger(`schedule: ${state.id} ${state.parser.inspect()}`);
     this.workQueue.put({ state, results }, state.depth, condition);
     return results;
   }
@@ -96,7 +96,9 @@ export default class Engine {
 
       this.ticks++;
       this.currentState = state;
-      if (this.debugger) this.debugger(`${rpad(this.ticks, 4)}. [${state.parser.id}]${state.parser.inspect()} @ ${state.inspect()}`)
+      if (this.debugger) {
+        this.debugger(`${rpad(this.ticks, 4)}. [${state.parser.id}]${state.parser.inspect()} @ ${state.inspect()}`);
+      }
 
       state.parser.matcher(state, results, ...(state.parser.children || []));
     }
