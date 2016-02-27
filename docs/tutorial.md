@@ -252,7 +252,9 @@ multiply.run("4 * 5 * 7");
 // 140
 ```
 
-You don't need to do this in a GLL-based engine because it effectively walks branches in parallel, memoizing loops. If this interests you, there are some papers listed at the end of packrattle's README.
+You don't need to do this in a GLL-based engine like packrattle because it effectively walks branches in parallel, memoizing loops. If this interests you, there are some papers listed at the end of packrattle's README.
+
+But it's nice to know that you don't have to worry about it in packrattle -- it just works.
 
 
 ## Reduction
