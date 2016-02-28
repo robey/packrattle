@@ -98,11 +98,11 @@ export class Span {
 
 /*
  * parser state, used internally.
- * - pos: current text position (next char to parse)
- * - startpos: text position at the start of the current parser
- * - depth: debugging indicator: how nested is this parser
- * - parser: which parser is currently operating
- * - engine: link back to whatever engine executed me
+ *   - pos: current text position (next char to parse)
+ *   - startpos: text position at the start of the current parser
+ *   - depth: debugging indicator: how nested is this parser
+ *   - parser: which parser is currently operating
+ *   - engine: link back to whatever engine executed me
  */
 export class ParserState {
   constructor() {
@@ -128,7 +128,8 @@ export class ParserState {
   }
 
   /*
-   * jump to a new parser, marking the state as one-deeper and a new parser id.
+   * jump to a new parser, increasing the parse depth and reseting the start
+   * position.
    */
   next(parser) {
     const rv = new ParserState();

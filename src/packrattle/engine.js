@@ -16,7 +16,7 @@ export default class Engine {
     this.debugger = options.debugger;
     if (typeof this.debugger == "string") {
       const f = require("fs").openSync(this.debugger, "w");
-      this.debugger = (text) => require("fs").writeSync(f, text + "\n");
+      this.debugger = text => require("fs").writeSync(f, text + "\n");
     }
     if (options.dotfile) {
       this.dotfile = typeof options.dotfile == "string" ?
@@ -25,7 +25,7 @@ export default class Engine {
       this.debugGraph = options.debugGraph || new DebugGraph();
     }
 
-    // queue contains items of { parser: Parser, state: ParserState, results: PromiseSet }.
+    // queue contains items of { state: ParserState, results: PromiseSet }.
     this.workQueue = new PriorityQueue();
 
     // cache of (parser, position) -> PromiseSet
@@ -52,7 +52,7 @@ export default class Engine {
     if (this.cache[state.id]) return this.cache[state.id];
 
     const results = new PromiseSet({
-      debugger: this.debugger ? (line) => this.debugger(`-> ${state.id} = ${line}`) : null,
+      debugger: this.debugger ? line => this.debugger(`-> ${state.id} = ${line}`) : null,
       exceptionHandler: error => {
         this.currentException = error;
       }

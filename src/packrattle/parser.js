@@ -11,16 +11,16 @@ const __cache = {};
 
 /*
  * create a new Parser object:
- * - name: type of parser, in one word ("alt", "optional", ...)
- * - options:
- *   - children: list of nested parsers, if this is a combiner
- *   - describe: `(children: Array(String)) => String`
- *     - returns a description of the parser for debugging, including children,
- *       like "x or y or z"
- * - matcher: `(parser, state, results) => void`
- *   - parser: effectively `this`
- *   - state: `ParserState` current text and position
- *   - results: `ResultSet` container for eventual result (success or failure)
+ *   - name: type of parser, in one word ("alt", "optional", ...)
+ *   - options:
+ *       - children: list of nested parsers, if this is a combiner
+ *       - describe: `(children: Array(String)) => String`: returns a
+ *         description of the parser for debugging, including children, like
+ *         "x or y or z"
+ *   - matcher: `(state, results, ...children) => void`
+ *       - state: `ParserState`: current text and position
+ *       - results: `ResultSet`: container for eventual result (success or
+ *         failure)
  */
 function newParser(name, options = {}, matcher) {
   if (!matcher) {
