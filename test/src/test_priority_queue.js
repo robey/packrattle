@@ -1,7 +1,9 @@
+"use strict";
+
 import pr from "../../lib";
 
-require("should");
-require("source-map-support").install();
+import "should";
+import "source-map-support/register";
 
 describe("PriorityQueue", () => {
   it("puts items sorted", () => {

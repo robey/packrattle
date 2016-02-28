@@ -1,8 +1,9 @@
-const pr = require("../../lib");
-const util = require("util");
+"use strict";
 
-require("should");
-require("source-map-support").install();
+import pr from "../../lib";
+
+import "should";
+import "source-map-support/register";
 
 describe("Span", () => {
   const text = "line one\nline two\nline 3\n\nline 4";

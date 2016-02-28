@@ -1,7 +1,9 @@
+"use strict";
+
 import PromiseSet from "../../lib/packrattle/promise_set";
 
-require("should");
-require("source-map-support").install();
+import "should";
+import "source-map-support/register";
 
 describe("PromiseSet", () => {
   it("sets one value and then receives it", done => {
