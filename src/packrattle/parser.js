@@ -21,6 +21,7 @@ const __cache = {};
  *       - state: `ParserState`: current text and position
  *       - results: `ResultSet`: container for eventual result (success or
  *         failure)
+ *       - children: same as `options.children`, but with implicits resolved
  */
 function newParser(name, options = {}, matcher) {
   if (!matcher) {

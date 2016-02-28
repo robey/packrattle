@@ -85,7 +85,6 @@ export default class Engine {
       } else {
         if (this.debugger) this.debugger(`-> FAILURE: ${match.inspect()}`);
         if (this.debugGraph) this.debugGraph.markFailure(match.state.id);
-         //this.debugGraph.addEdge(match.state.id, "failure");
         failures.push(match);
       }
     });

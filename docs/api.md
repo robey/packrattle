@@ -33,9 +33,9 @@ The simple parsers attempt to match a chunk of text. These are all global functi
 Example:
 
 ```javascript
-var packrattle = require("packrattle");
+const packrattle = require("packrattle");
 
-var hello = packrattle.string("hello");
+const hello = packrattle.string("hello");
 hello.run("hi");
 // Error: Expected 'hello'
 hello.run("hello");
@@ -68,17 +68,17 @@ The real power is in combining parsers together. These are all global functions 
 Example:
 
 ```javascript
-var packrattle = require("packrattle");
+const packrattle = require("packrattle");
 
 // match either "true" _or_ "false".
-var bools = packrattle.alt("true", "false");
+const bools = packrattle.alt("true", "false");
 bools.run("true");
 // "true"
 bools.run("false");
 // "false"
 
 // match as many "z" as possible.
-var sleepy = packrattle.repeat("z", { min: 1 });
+const sleepy = packrattle.repeat("z", { min: 1 });
 sleepy.run("zz");
 // [ 'z', 'z' ]
 sleepy.run("zzzzz");
@@ -167,7 +167,7 @@ For both `map` and `filter`, the function `f` is called with the current match r
 For example, this parser matches strings of digits and transforms them into a number:
 
 ```javascript
-var number = pr.regex(/\d+/).map(x => parseInt(x, 10));
+const number = pr.regex(/\d+/).map(x => parseInt(x, 10));
 ```
 
 ### Combiners

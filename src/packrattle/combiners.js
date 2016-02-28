@@ -10,7 +10,7 @@ import { newParser } from "./parser";
 export function chain(p1, p2, combiner) {
   return newParser("chain", {
     children: [ p1, p2 ],
-    describe: (list) => `${list[0]} then ${list[1]}`
+    describe: list => `${list[0]} then ${list[1]}`
   }, (state, results, p1, p2) => {
     state.schedule(p1).then(match1 => {
       if (!match1.ok) {
