@@ -158,7 +158,13 @@ export class ParserState {
    * return the covering span of the current match.
    */
   span() {
-    return new Span(this.engine.text, this.startpos, this.pos);
+    if (Array.isArray(this.engine.text)) {
+      const start = this.engine.text[this.startpos].span;
+      const end = this.engine.text[this.pos == this.startpos ? this.pos : this.pos - 1].span;
+      return start.merge(end);
+    } else {
+      return new Span(this.engine.text, this.startpos, this.pos);
+    }
   }
 
   /*
