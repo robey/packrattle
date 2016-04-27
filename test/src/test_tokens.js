@@ -15,12 +15,12 @@ class Token {
   }
 
   toString() {
-    if (!this.value) return this.name.toUpperCase();
+    if (!this.value || this.value == this.name) return this.name.toUpperCase();
     return this.name.toUpperCase() + "(" + this.value + ")";
   }
 }
 
-function makeLexer(f) {
+function makeLexer1(f) {
   function token(name, matcher, f) {
     name = name.toUpperCase();
     if (!matcher) matcher = name;
@@ -42,12 +42,42 @@ function makeLexer(f) {
   return packrattle.repeat(packrattle.alt(...parsers));
 }
 
+function makeLexer(rules) {
+  const ignoreList = rules.ignore == null ? [] : (Array.isArray(rules.ignore) ? rules.ignore : [ rules.ignore ]);
+  const stringsList = rules.strings == null ? [] : (Array.isArray(rules.strings) ? rules.strings : [ rules.strings ]);
+
+  const ignore = ignoreList.map(regex => packrattle(regex).drop());
+  const strings = stringsList.map(str => packrattle(str).onMatch((m, span) => new Token(str, span, str)));
+  let matchers = Object.keys(rules.matchers || {}).map(key => {
+    const matcher = rules.matchers[key];
+    return packrattle(matcher.match).onMatch((m, span) => {
+      const value = matcher.value ? (typeof matcher.value == "function" ? matcher.value(m) : matcher.value) : m;
+      return new Token(key.toUpperCase(), span, value);
+    });
+  });
+
+  return packrattle.repeat(packrattle.alt(...(ignore.concat(strings).concat(matchers))));
+}
+
 // -----
 
-const lexer = makeLexer((token, drop) => {
-  return [
-    drop(/\s+/),
-    token("number", /\d+/, m => parseInt(m[0], 10)),
+// const lexer = makeLexer((token, drop) => {
+//   return [
+//     drop(/\s+/),
+//     token("number", /\d+/, m => parseInt(m[0], 10)),
+//     "(",
+//     ")",
+//     "+",
+//     "-",
+//     "*",
+//     "/",
+//     "%"
+//   ];
+// });
+
+const lexer = makeLexer({
+  ignore: [ /\s+/ ],
+  strings: [
     "(",
     ")",
     "+",
@@ -55,7 +85,13 @@ const lexer = makeLexer((token, drop) => {
     "*",
     "/",
     "%"
-  ];
+  ],
+  matchers: {
+    number: {
+      match: /\d+/,
+      value: m => parseInt(m[0], 10)
+    }
+  }
 });
 
 
