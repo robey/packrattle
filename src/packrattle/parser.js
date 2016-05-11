@@ -17,6 +17,9 @@ const __cache = {};
  *       - describe: `(children: Array(String)) => String`: returns a
  *         description of the parser for debugging, including children, like
  *         "x or y or z"
+ *       - cacheable: true if this parser is stateless: exactly the same as
+ *         any other parser with the same name and children (packrattle will
+ *         replace all duplicates with references to a single object)
  *   - matcher: `(state, results, ...children) => void`
  *       - state: `ParserState`: current text and position
  *       - results: `ResultSet`: container for eventual result (success or
