@@ -113,15 +113,11 @@ export default class Engine {
       if (this.currentException) throw this.currentException;
 
       this.currentState = null;
-
-      // FIXME robey -- check if there are any unfinished states
-      if (Object.keys(this.unresolvedStates).length > 0) {
-        this.flushUnresolvedState();
-      }
+      this.flushUnresolvedState();
     }
 
     // message with 'commit' set has highest priority. secondary sort by depth.
-    failures.sort((a, b) => a.priority - b.priority);
+    failures.sort((a, b) => b.priority - a.priority);
 
     if (this.debugger) {
       if (successes.length > 0) {

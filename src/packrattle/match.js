@@ -64,14 +64,12 @@ export default class Match {
     return rv;
   }
 
-  // determine how "important" this match is (smaller number: higher priority).
+  // determine how "important" this match is (larger number: higher priority).
   get priority() {
-    // lower startpos is better.
+    // higher startpos is better.
     let rv = this.state.startpos;
     // commit is even better.
-    if (this.commit) rv -= Math.pow(2, 40);
-    // don't show an artificial result unless there's literally nothing else.
-    if (this.artificial) rv += Math.pow(2, 41);
+    if (this.commit) rv += Math.pow(2, 40);
     return rv;
   }
 }
