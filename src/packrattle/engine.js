@@ -138,36 +138,45 @@ export default class Engine {
     return successes.length > 0 ? successes[0] : failures[0];
   }
 
-  // find a leaf-node unresolved parse, and fail it.
+  /*
+   * okay, gather round, kids.
+   *
+   * GLL handles recursion by allowing cycles in the parser graph, and
+   * assuming that if there's a successful match, some number of recursions
+   * will find it. (the recursions are done cheaply in parallel by memoizing.
+   * check out the docs folder for more about that.)
+   *
+   * but if there's no match, the engine will give up and declare failure
+   * without necessarily marking all nodes as failed. for example:
+   *
+   *     const expr = alt(number, [ () => expr, "+", () => expr ]);
+   *
+   * if the "number" parser fails, then "expr" can never succeed. GLL handles
+   * this by making the 2nd alternative's result dependent on "expr". once
+   * "number" fails, it runs out of ways forward and gives up without
+   * explicitly marking "expr" as failed. this is correct, but for certain
+   * kinds of transform, we'd like to notice all failures and generate a good
+   * error message (or even convert it to a success, in the case of "not").
+   *
+   * so we track unresolved parser states, and if the engine ends with any
+   * still unresolved, we pick the deepest state (the state that nested most
+   * deeply before cycling back), mark it as failed, and let the engine run
+   * again to see if it can make any more progress. we repeat this until all
+   * states are resolved; usually, each failure triggers a cascade of other
+   * failures that finish off one cycle.
+   */
   flushUnresolvedState() {
-    // first, build a map of links between the parsers of these states.
-    const parserMap = {};
-    const keyMap = {};
-    for (const key in this.unresolvedStates) {
-      const parser = this.unresolvedStates[key].parser;
-      parserMap[parser.id] = parser;
-      keyMap[parser.id] = key;
-    }
+    const states = [];
+    Object.keys(this.unresolvedStates).forEach(key => {
+      states.push(this.unresolvedStates[key]);
+    });
+    if (states.length == 0) return;
+    states.sort((a, b) => b.depth - a.depth);
+    if (this.debugger) this.debugger("unresolved states: " + states.map(s => s.id).join(", "));
 
-    // now, walk the tree, putting leafs first.
-    const list = [];
-    function visit(id) {
-      const parser = parserMap[id];
-      if (!parser) return;
-      delete parserMap[id];
-      parser.children.forEach(p => visit(p.id));
-      list.push(parser);
-    }
-    while (Object.keys(parserMap).length > 0) {
-      visit(Object.keys(parserMap)[0]);
-    }
-
-    // finally, take the first item (a leaf of some sort) and force-fail it.
-    // hopefully it will cascade a bit.
-    const key = keyMap[list[0].id];
-    const state = this.unresolvedStates[key];
+    const state = states[0];
     if (this.debugger) this.debugger(`forcing fail of ${state.id}`);
-    this.cache[key].add(state.failure("unresolvable", false, true));
+    this.cache[state.id].add(state.failure());
   }
 }
 
