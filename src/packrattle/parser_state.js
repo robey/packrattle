@@ -187,14 +187,14 @@ export class ParserState {
     return new Match(true, this, { value, commit });
   }
 
-  failure(value, commit = false, artificial = false) {
+  failure(value, commit = false) {
     // use "Expected (current parser)" as the default failure message.
     let generated = false;
     if (!value && this.parser) {
       value = "Expected " + this.parser.inspect();
       generated = true;
     }
-    return new Match(false, this, { value, commit, generated, artificial });
+    return new Match(false, this, { value, commit, generated });
   }
 }
 
