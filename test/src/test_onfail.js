@@ -34,9 +34,10 @@ describe("Parser.onFail", () => {
     // this is unresolvable, because it can never finish "failing" p until it gets the result from p.
     const p = pr.alt(
       number,
-      [ () => p, ".", () => p ]
+      [ () => p, ".", () => p ],
+      [ "i", () => p ]
     ).named("numbers");
 
-    (() => p.run("ice", { debugger: console.log })).should.throw(/numbers/);
+    (() => p.run("ice")).should.throw(/numbers/);
   });
 });
