@@ -47,18 +47,18 @@ describe("PromiseSet", () => {
     const p = new PromiseSet();
     let count = 0;
 
-    p.then(v => {
+    p.then(_ => {
       count += 1;
     });
-    p.then(v => {
+    p.then(_ => {
       count += 1;
     });
 
     p.add(100);
-    p.then(v => {
+    p.then(_ => {
       count += 1;
     });
 
     count.should.eql(3);
-  })
+  });
 });

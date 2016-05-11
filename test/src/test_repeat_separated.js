@@ -26,7 +26,7 @@ describe("Parser.repeatSeparated", () => {
       const rv = p.consume().execute("98, 99 ,100");
       rv.state.pos.should.equal(11);
       rv.value.should.eql([ "98", "99", "100" ]);
-    })
+    });
 
     it("map", () => {
       const rv = p.onMatch(x => x.map(n => parseInt(n, 10))).consume().execute("98, 99 ,100");

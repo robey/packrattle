@@ -28,7 +28,7 @@ describe("Engine", () => {
   describe("lazily resolves", () => {
     it("a nested parser", () => {
       const p = pr.chain(pr.string(":"), () => pr.regex(/\w+/), (a, b) => [ a, b ]);
-      const rv = p.execute(":hello")
+      const rv = p.execute(":hello");
       rv.state.pos.should.equal(6);
       rv.value[0].should.eql(":");
       rv.value[1][0].should.eql("hello");
@@ -79,11 +79,14 @@ describe("Engine", () => {
   it("stops immediately on an exception", () => {
     let canary = false;
     const problematic = pr.alt(
-      pr("a").map(x => {
+      pr("a").map(_ => {
         throw new Error("help!");
       }),
-      pr(/[a-z]/).map(x => canary = true)
+      pr(/[a-z]/).map(_ => {
+        canary = true;
+      })
     );
     (() => problematic.run("a")).should.throw(/help/);
+    canary.should.eql(false);
   });
 });

@@ -41,7 +41,7 @@ describe("Parser.onMatch spans", () => {
   it("cover a sequence", () => {
     const p = pr.seq("xyz", "abc").onMatch((m, span) => span);
     const rv = p.execute("xyzabc");
-    rv.ok.should.eql(true)
+    rv.ok.should.eql(true);
     rv.value.start.should.eql(0);
     rv.value.end.should.eql(6);
   });
@@ -103,7 +103,7 @@ describe("Parser.onMatch spans", () => {
 
   it("survives chains of maps", () => {
     const p = pr.seq(/[a-z]+/, /\d+/)
-      .map((match, span) => match[0][0] + match[1][0])
+      .map(match => match[0][0] + match[1][0])
       .map((match, span) => match.toUpperCase() + span.end);
     const rv = p.execute("what34");
     rv.ok.should.eql(true);

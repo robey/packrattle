@@ -78,10 +78,10 @@ describe("Parser example", () => {
   });
 
   it("parses alternatives in priority (left to right) order", () => {
-    const abc = pr.string('abc');
+    const abc = pr.string("abc");
     const wordOrSep = pr.alt(/\s+/, /\S+/).onMatch(m => ({ word: m[0] }));
     const line = pr.repeat(pr.alt(abc, wordOrSep));
-    const rv = line.consume().execute('abcabc def');
+    const rv = line.consume().execute("abcabc def");
     rv.ok.should.eql(true);
     rv.value.should.eql([ "abc", "abc", { word: " " }, { word: "def" } ]);
   });
@@ -89,15 +89,15 @@ describe("Parser example", () => {
   it("obeys leftmost/depth precedence in the face of ambiguity", () => {
     const expr = pr.repeat(
       pr.alt(
-        pr.repeat(pr.alt('++', '--'), { min: 1 }),
+        pr.repeat(pr.alt("++", "--"), { min: 1 }),
         pr(/\S+/).onMatch(m => m[0]),
         pr(/\s+/).onMatch(() => null)
       )
     );
-    let rv = expr.consume().execute('++--');
+    let rv = expr.consume().execute("++--");
     rv.ok.should.eql(true);
     rv.value.should.eql([ [ "++", "--" ] ]);
-    rv = expr.consume().execute('++y++ --++ ++');
+    rv = expr.consume().execute("++y++ --++ ++");
     rv.ok.should.eql(true);
     rv.value.should.eql([ [ "++" ], "y++", [ "--", "++" ], [ "++" ] ]);
   });

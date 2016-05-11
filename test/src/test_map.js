@@ -20,7 +20,7 @@ describe("Parser.map", () => {
   });
 
   it("transforms a match into a failure on exception", () => {
-    const p = pr("hello").map(value => {
+    const p = pr("hello").map(_ => {
       throw new Error("utter failure");
     });
     (() => p.run("hello")).should.throw(/utter failure/);

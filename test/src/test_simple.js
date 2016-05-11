@@ -17,7 +17,7 @@ describe("simple parsers", () => {
   it("end", () => {
     (pr.end.run("") == null).should.eql(true);
     (() => pr.end.run("a")).should.throw(/end/);
-  })
+  });
 
   it("literal string", () => {
     const p = pr.string("hello");

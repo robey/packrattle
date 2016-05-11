@@ -11,7 +11,7 @@ describe("Parser.commit", () => {
       pr("!").commit(),
       pr(/\d+/).onFail("! must be a number")
     ]).or([ "@", /\d+/ ]).onMatch(a => [ a[0], a[1][0] ]);
-    let rv = p.execute("!3")
+    let rv = p.execute("!3");
     rv.ok.should.equal(true);
     rv.value.should.eql([ "!", "3" ]);
     rv = p.execute("@55");

@@ -22,7 +22,7 @@ describe("combiners", () => {
     rv.ok.should.eql(false);
     rv.state.pos.should.equal(3);
     rv.value.should.match(/123/);
-    rv = p.execute("123")
+    rv = p.execute("123");
     rv.ok.should.eql(false);
     rv.state.pos.should.equal(0);
     rv.value.should.match(/abc/);
@@ -46,14 +46,14 @@ describe("combiners", () => {
 
   it("drop", () => {
     const p = pr.drop("abc");
-    let m = p.execute("abc");
+    const m = p.execute("abc");
     m.state.pos.should.eql(3);
     (m.value == null).should.eql(true);
   });
 
   it("parser.drop", () => {
     const p = pr("abc").drop();
-    let m = p.execute("abc");
+    const m = p.execute("abc");
     m.state.pos.should.eql(3);
     (m.value == null).should.eql(true);
   });

@@ -6,7 +6,7 @@ import "should";
 import "source-map-support/register";
 
 function matchSpan(m) {
-  const span = m.state.span()
+  const span = m.state.span();
   return [ m.value, span.start, span.end ];
 }
 
