@@ -10,6 +10,8 @@
  *
  * whenever a new listener is attached, it will immediately receive all current
  * values. if a new value is added later, it will receive the new value later.
+ *
+ * the added value may not be null.
  */
 export default class PromiseSet {
   constructor(options = {}) {
@@ -23,10 +25,10 @@ export default class PromiseSet {
   }
 
   add(value) {
-    if (!this.value0) {
+    if (this.value0 == null) {
       this.value0 = value;
     } else {
-      if (!this.values) this.values = [];
+      if (this.values == null) this.values = [];
       if (this.value0 == value || (this.value0.equals && this.value0.equals(value))) return;
       // babel bug: "for (let v of this.values)" causes it to try to refer to Symbol, which it fails to define.
       for (let i = 0; i < this.values.length; i++) {
@@ -60,9 +62,13 @@ export default class PromiseSet {
       this.listeners.push(safeCallback);
     }
 
-    if (this.value0) safeCallback(this.value0);
-    if (this.values) this.values.forEach(safeCallback);
+    if (this.value0 != null) safeCallback(this.value0);
+    if (this.values != null) this.values.forEach(safeCallback);
 
     return this;
+  }
+
+  get isSettled() {
+    return (this.value0 != null || this.values != null);
   }
 }
