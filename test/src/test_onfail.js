@@ -27,5 +27,16 @@ describe("Parser.onFail", () => {
     ).named("widget");
 
     (() => p.run("a")).should.throw(/widget/);
-  })
+  });
+
+  it("executes onFail for unresolvable loops", () => {
+    const number = pr.regex(/\d+/);
+    // this is unresolvable, because it can never finish "failing" p until it gets the result from p.
+    const p = pr.alt(
+      number,
+      [ () => p, ".", () => p ]
+    ).named("numbers");
+
+    (() => p.run("ice", { debugger: console.log })).should.throw(/numbers/);
+  });
 });

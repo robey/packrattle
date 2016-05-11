@@ -39,6 +39,9 @@ export default class Engine {
 
     // if any handler throws an exception, abort immediately.
     this.currentException = null;
+
+    // set of ParserState that haven't received a result yet
+    this.unresolvedStates = {};
   }
 
   /*
@@ -58,6 +61,10 @@ export default class Engine {
       }
     });
     this.cache[state.id] = results;
+    this.unresolvedStates[state.id] = state;
+    results.then(() => {
+      delete this.unresolvedStates[state.id];
+    });
 
     if (this.debugGraph) {
       this.debugGraph.addNode(state.id, state.parser, state.span());
@@ -90,26 +97,31 @@ export default class Engine {
     });
 
     // start the engine!
-    while (!this.workQueue.isEmpty && successes.length == 0 && !this.currentException) {
-      const { state, results } = this.workQueue.get();
+    while (Object.keys(this.unresolvedStates).length > 0) {
+      while (!this.workQueue.isEmpty && successes.length == 0 && !this.currentException) {
+        const { state, results } = this.workQueue.get();
 
-      this.ticks++;
-      this.currentState = state;
-      if (this.debugger) {
-        this.debugger(`${rpad(this.ticks, 4)}. [${state.parser.id}]${state.parser.inspect()} @ ${state.inspect()}`);
+        this.ticks++;
+        this.currentState = state;
+        if (this.debugger) {
+          this.debugger(`${rpad(this.ticks, 4)}. [${state.parser.id}]${state.parser.inspect()} @ ${state.inspect()}`);
+        }
+
+        state.parser.matcher(state, results, ...(state.parser.children || []));
       }
 
-      state.parser.matcher(state, results, ...(state.parser.children || []));
+      if (this.currentException) throw this.currentException;
+
+      this.currentState = null;
+
+      // FIXME robey -- check if there are any unfinished states
+      if (Object.keys(this.unresolvedStates).length > 0) {
+        this.flushUnresolvedState();
+      }
     }
 
-    if (this.currentException) throw this.currentException;
-
-    this.currentState = null;
-
     // message with 'commit' set has highest priority. secondary sort by depth.
-    failures.sort((a, b) => {
-      return (a.commit != b.commit) ? (b.commit ? 1 : -1) : (b.state.startpos - a.state.startpos);
-    });
+    failures.sort((a, b) => a.priority - b.priority);
 
     if (this.debugger) {
       if (successes.length > 0) {
@@ -124,6 +136,38 @@ export default class Engine {
     if (this.dotfile) this.dotfile(this.debugGraph.toDot());
 
     return successes.length > 0 ? successes[0] : failures[0];
+  }
+
+  // find a leaf-node unresolved parse, and fail it.
+  flushUnresolvedState() {
+    // first, build a map of links between the parsers of these states.
+    const parserMap = {};
+    const keyMap = {};
+    for (const key in this.unresolvedStates) {
+      const parser = this.unresolvedStates[key].parser;
+      parserMap[parser.id] = parser;
+      keyMap[parser.id] = key;
+    }
+
+    // now, walk the tree, putting leafs first.
+    const list = [];
+    function visit(id) {
+      const parser = parserMap[id];
+      if (!parser) return;
+      delete parserMap[id];
+      parser.children.forEach(p => visit(p.id));
+      list.push(parser);
+    }
+    while (Object.keys(parserMap).length > 0) {
+      visit(Object.keys(parserMap)[0]);
+    }
+
+    // finally, take the first item (a leaf of some sort) and force-fail it.
+    // hopefully it will cascade a bit.
+    const key = keyMap[list[0].id];
+    const state = this.unresolvedStates[key];
+    if (this.debugger) this.debugger(`forcing fail of ${state.id}`);
+    this.cache[key].add(state.failure("unresolvable", false, true));
   }
 }
 
