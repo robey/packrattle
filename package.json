@@ -15,22 +15,20 @@
   },
   "license": "Apache-2.0",
   "scripts": {
-    "build": "eslint src && babel --source-maps --out-dir lib src",
-    "build-test": "eslint test/src && npm run build && babel --source-maps --out-dir test/lib test/src",
+    "build": "tsc",
     "clean": "rm -rf lib test/lib",
     "distclean": "npm run clean && rm -rf node_modules npm-debug.log",
     "prepublish": "npm run build",
-    "test": "npm run build-test && mocha -R spec --colors --recursive test/lib"
+    "test": "npm run build && mocha -R spec --colors --recursive lib/test"
   },
   "dependencies": {},
   "devDependencies": {
-    "babel-cli": "^6.0.0",
-    "babel-plugin-add-module-exports": "^0.1.2",
-    "babel-preset-es2015": "^6.5.0",
-    "eslint": "^2.2.0",
+    "@types/mocha": "^2.2.32",
+    "@types/should": "^8.1.30",
     "mocha": "^2.3.4",
     "should": "^7.1.1",
-    "source-map-support": "^0.3.3"
+    "source-map-support": "^0.3.3",
+    "typescript": "^2.0.9"
   },
   "main": "./lib",
   "files": [
