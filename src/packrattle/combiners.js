@@ -130,11 +130,11 @@ export function drop(p) {
 export function optional(p, defaultValue) {
   return newParser("optional", {
     wrap: p,
-    cacheable: (typeof defaultValue == "string"),
-    extraCacheKey: defaultValue
+    cacheable: (typeof defaultValue == "string" || defaultValue == null),
+    extraCacheKey: defaultValue == null ? "(null)" : ("str:" + defaultValue)
   }, (state, results, p) => {
     state.schedule(p).then(match => {
-      results.add(match);
+      if (match.ok) results.add(match);
       // unless we committed to p, always try the non-p case too.
       if (!match.commit) results.add(state.success(defaultValue));
     });

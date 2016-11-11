@@ -27,6 +27,7 @@ export default class Match {
       "value='" + quote(this.value && this.value.inspect ? this.value.inspect() : this.value) + "'"
     ];
     if (this.commit) fields.push("commit");
+    fields.push(`priority=0x${this.priority.toString(16)}`);
     return "Match(" + fields.join(", ") + ")";
   }
 
@@ -57,6 +58,15 @@ export default class Match {
   setCommit() {
     const rv = new Match(this.ok, this.state, this);
     rv.commit = true;
+    return rv;
+  }
+
+  // determine how "important" this match is (larger number: higher priority).
+  get priority() {
+    // higher startpos is better.
+    let rv = this.state.startpos;
+    // commit is even better.
+    if (this.commit) rv += Math.pow(2, 40);
     return rv;
   }
 }

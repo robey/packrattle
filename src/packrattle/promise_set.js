@@ -15,10 +15,11 @@
  */
 export default class PromiseSet {
   constructor(options = {}) {
-    // optimize for the case of 1 value or 1 listener.
+    // optimize for the case of 1 value and 2 listeners.
     this.value0 = null;
     this.values = null;
     this.listener0 = null;
+    this.listener1 = null;
     this.listeners = null;
     this.debugger = options.debugger;
     this.exceptionHandler = options.exceptionHandler;
@@ -40,8 +41,9 @@ export default class PromiseSet {
 
     if (this.debugger) this.debugger(value.inspect ? value.inspect() : value.toString());
 
-    if (this.listener0) this.listener0(value);
-    if (this.listeners) this.listeners.forEach(f => f(value));
+    if (this.listener0 != null) this.listener0(value);
+    if (this.listener1 != null) this.listener1(value);
+    if (this.listeners != null) this.listeners.forEach(f => f(value));
 
     return this;
   }
@@ -55,10 +57,12 @@ export default class PromiseSet {
       }
     };
 
-    if (!this.listener0) {
+    if (this.listener0 == null) {
       this.listener0 = safeCallback;
+    } else if (this.listener1 == null) {
+      this.listener1 = safeCallback;
     } else {
-      if (!this.listeners) this.listeners = [];
+      if (this.listeners == null) this.listeners = [];
       this.listeners.push(safeCallback);
     }
 
