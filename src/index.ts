@@ -1,5 +1,6 @@
 export { PriorityQueue } from "./packrattle/priority_queue";
 export { PromiseSet } from "./packrattle/promise_set";
+export { Line, Span } from "./packrattle/span";
 
 // import resolve from "./packrattle/resolve";
 //
