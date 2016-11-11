@@ -131,7 +131,7 @@ export function optional(p, defaultValue) {
   return newParser("optional", {
     wrap: p,
     cacheable: (typeof defaultValue == "string" || defaultValue == null),
-    extraCacheKey: defaultValue
+    extraCacheKey: defaultValue == null ? "(null)" : ("str:" + defaultValue)
   }, (state, results, p) => {
     state.schedule(p).then(match => {
       if (match.ok) results.add(match);
