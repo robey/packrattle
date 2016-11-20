@@ -1,10 +1,5 @@
-export interface EqualityCapable {
-  valueOf(): number | string;
-  inspect?: () => string;
-}
-
 export interface PromiseSetOptions {
-  debugger?: (text: string) => void;
+  log?: (text: string) => void;
   exceptionHandler?: (error: Error) => void;
 }
 
@@ -15,15 +10,15 @@ export interface PromiseSetOptions {
  * it starts out with zero values and zero listeners.
  *
  * whenever a new value is posted, it's sent immediately to all listeners.
- * the value set can grow but never shrink; values must implement "valueOf()"
- * and redundant values will not be added.
+ * the value set can grow but never shrink.
  *
- * whenever a new listener is attached, it will immediately receive all current
- * values. if a new value is added later, it will receive the new value later.
+ * whenever a new listener is attached, it will immediately receive all
+ * current values. if a new value is added later, it will receive the new
+ * value later.
  *
  * the added value may not be null.
  */
-export class PromiseSet<T extends EqualityCapable> {
+export class PromiseSet<T> {
   // optimize for the case of 1 value and 2 listeners.
   value0?: T;
   values?: T[];
@@ -31,11 +26,11 @@ export class PromiseSet<T extends EqualityCapable> {
   listener1?: (value: T) => void;
   listeners?: ((value: T) => void)[];
 
-  debugger?: (text: string) => void;
+  log?: (text: string) => void;
   exceptionHandler?: (error: Error) => void;
 
   constructor(options: PromiseSetOptions = {}) {
-    this.debugger = options.debugger;
+    this.log = options.log;
     this.exceptionHandler = options.exceptionHandler;
   }
 
@@ -44,14 +39,10 @@ export class PromiseSet<T extends EqualityCapable> {
       this.value0 = value;
     } else {
       if (this.values === undefined) this.values = [];
-      if (this.value0.valueOf() == value.valueOf()) return;
-      for (let v of this.values) {
-        if (v.valueOf() == value.valueOf()) return;
-      }
       this.values.push(value);
     }
 
-    if (this.debugger) this.debugger(value.inspect ? value.inspect() : value.toString());
+    if (this.log) this.log(value["inspect"] ? value["inspect"]() : value.toString());
 
     if (this.listener0 !== undefined) this.listener0(value);
     if (this.listener1 !== undefined) this.listener1(value);

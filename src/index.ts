@@ -1,6 +1,10 @@
+export { newParser, Parser } from "./packrattle/parser";
 export { PriorityQueue } from "./packrattle/priority_queue";
 export { PromiseSet } from "./packrattle/promise_set";
 export { Line, Span } from "./packrattle/span";
+
+import { Parser } from "./packrattle/parser";
+import { simple } from "./packrattle/simple";
 
 // import resolve from "./packrattle/resolve";
 //
@@ -25,3 +29,13 @@ export { Line, Span } from "./packrattle/span";
 //
 // // export "default": babel can't do this anymore.
 // module.exports = resolve;
+
+const packrattle = {
+  end: simple.end(),
+  reject: simple.reject(),
+  succeed: simple.succeed,
+  string: simple.string,
+  regex: simple.regex
+};
+
+export { packrattle };
