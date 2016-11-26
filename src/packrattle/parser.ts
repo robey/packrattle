@@ -7,13 +7,15 @@ import { Engine, EngineOptions } from "./engine";
 import { FailedMatch, Match, SuccessfulMatch } from "./match";
 import { ParserState } from "./parser_state";
 import { PromiseSet } from "./promise_set";
-import { LazyParser, resolve } from "./resolve";
+import { LazyParser, LazyParser2, resolve } from "./resolve";
 import { simple } from "./simple";
 import { Span } from "./span";
+import { quote } from "./strings";
 
 let ParserId = 1;
 
-// const __cache = {};
+// private cache of generated parsers:
+const __cache: { [key: string]: Parser<any> } = {};
 
 export interface ParserOptions {
   // list of nested parsers, if this is a combining parser:
@@ -74,6 +76,9 @@ export class Parser<T> {
 
   // set when all lazy and implicit parsers have been resolved:
   private resolved = false;
+
+  // if this parser is cacheable, this is its unique key:
+  private cacheKey: string;
 
 
   constructor(
@@ -148,7 +153,7 @@ export class Parser<T> {
   //   require("fs").writeFileSync(filename, this.toDot(maxLength));
   // }
 
-  resolve(functionCache: { [key: string]: Parser<any> } = {}) {
+  resolve(functionCache: { [key: string]: LazyParser2 } = {}) {
     if (this.children) return;
 
     try {
@@ -158,55 +163,40 @@ export class Parser<T> {
       error.message += " (inside " + this.name + ")";
       throw error;
     }
+
+    // if this parser can be cached, do so. if one like it already exists, return that one and let this one vanish.
+    this.computeCacheKey();
+    if (this.cacheKey) {
+      if (__cache[this.cacheKey]) return __cache[this.cacheKey];
+      __cache[this.cacheKey] = this;
+    }
+    return this;
   }
 
-  // resolve(functionCache = null) {
-  //   // we won't perfectly cache loops, but that's fine.
-  //   if (this.resolved) return this;
-  //   this.resolved = true;
-  //
-  //   if (this.children) {
-  //     if (!functionCache) functionCache = {};
-  //     try {
-  //       this.children = this.children.map(p => resolve(p, functionCache).resolve(functionCache));
-  //     } catch (error) {
-  //       error.message += " (inside " + this.name + ")";
-  //       throw error;
-  //     }
-  //   }
-  //
-  //   // if this parser can be cached, do so. if one like it already exists, return that one and let this one vanish.
-  //   this._computeCacheKey();
-  //   if (this.cacheKey) {
-  //     if (__cache[this.cacheKey]) return __cache[this.cacheKey];
-  //     __cache[this.cacheKey] = this;
-  //   }
-  //   return this;
-  // }
-  //
-  // // computed during resolve phase.
-  // _computeCacheKey() {
-  //   if (!this.cacheable) return null;
-  //   if (this.cacheKey) return this.cacheKey;
-  //
-  //   // if it's a simple parser (no children), it must have a simple string description to be cacheable.
-  //   if (!this.children || this.children.length == 0) {
-  //     if (!(typeof this.describe == "string")) return null;
-  //     this.cacheKey = this.name + ":" + quote(this.describe);
-  //     if (this.extraCacheKey) this.cacheKey += "&" + quote(this.extraCacheKey);
-  //     return this.cacheKey;
-  //   }
-  //
-  //   // all children must be cacheable (and already cached).
-  //   let ok = true;
-  //   this.children.forEach(p => {
-  //     if (!p.cacheKey) ok = false;
-  //   });
-  //   if (!ok) return null;
-  //   this.cacheKey = this.name + ":" + this.children.map(p => quote(p.cacheKey)).join("&");
-  //   if (this.extraCacheKey) this.cacheKey += "&" + quote(this.extraCacheKey);
-  //   return this.cacheKey;
-  // }
+  // computed during resolve phase.
+  private computeCacheKey() {
+    if (!this.cacheable) return;
+    if (this.cacheKey) return;
+
+    // if it's a simple parser (no children), it must have a simple string description to be cacheable.
+    if (!this.children || this.children.length == 0) {
+      this.inspect();
+      if (!this.description) return;
+      this.cacheKey = this.name + ":" + quote(this.description);
+      if (this.extraCacheKey) this.cacheKey += "&" + quote(this.extraCacheKey);
+      return;
+    }
+
+    // all children must be cacheable (and already cached).
+    let ok = true;
+    this.children.forEach(p => {
+      if (!p.cacheKey) ok = false;
+    });
+    if (!ok) return;
+    this.cacheKey = this.name + ":" + this.children.map(p => quote(p.cacheKey)).join("&");
+    if (this.extraCacheKey) this.cacheKey += "&" + quote(this.extraCacheKey);
+    return this.cacheKey;
+  }
 
   // called by engine.
   match(state: ParserState<T>) {
@@ -274,18 +264,18 @@ export class Parser<T> {
     });
   }
 
-  // // transforms the error message of a parser, but only if it hasn't been already.
-  // named(description) {
-  //   return newParser("onFail", { wrap: this, describe: description }, (state, results) => {
-  //     state.schedule(this).then(match => {
-  //       results.add(match.commit ?
-  //         match :
-  //         match.changeGeneratedMessage("Expected " + description)
-  //       );
-  //     });
-  //   });
-  // }
-  //
+  // transforms the error message of a parser, but only if it hasn't been already.
+  named(description: string): Parser<T> {
+    return newParser<T>("onFail", { children: [ this ], describe: () => description }, state => {
+      state.schedule(this, state.pos).then(match => {
+        state.result.add(match.commit || match instanceof SuccessfulMatch ?
+          match :
+          match.withMessage("Expected " + description)
+        );
+      });
+    });
+  }
+
   // // only succeed if f(value, state) returns true. optional failure message.
   // matchIf(f, message) {
   //   return newParser("filter", { wrap: this }, (state, results) => {

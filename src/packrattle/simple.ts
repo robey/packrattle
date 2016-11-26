@@ -6,21 +6,21 @@ import { newParser, Parser } from "./parser";
 export class Simple {
   // matches the end of the string.
   end(): Parser<null> {
-    return newParser<null>("end", {}, (state, children) => {
+    return newParser<null>("end", { cacheable: true }, (state, children) => {
       state.result.add(state.pos == state.text.length ? state.success(null) : state.failure());
     });
   }
 
   // never matches anything.
   reject(): Parser<null> {
-    return newParser<null>("reject", {}, (state, children) => {
+    return newParser<null>("reject", { cacheable: true }, (state, children) => {
       state.result.add(state.failure("rejected"));
     });
   }
 
   // always matches without consuming input and yields the given value.
   succeed<T>(value: T): Parser<T> {
-    return newParser<T>("succeed", {}, (state, children) => {
+    return newParser<T>("succeed", { cacheable: true }, (state, children) => {
       state.result.add(state.success(value));
     });
   }

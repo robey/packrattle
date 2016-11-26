@@ -1,19 +1,17 @@
-"use strict";
-
-import pr from "../../lib";
+import { packrattle, Parser } from "..";
 
 import "should";
 import "source-map-support/register";
 
 describe("Parser.onFail", () => {
   it("overrides an inner failure", () => {
-    const p = pr.alt(/\d+/, "hello").onFail("Expected number or greeting");
+    const p = packrattle.alt(/\d+/, "hello").onFail("Expected number or greeting");
     (() => p.run("a")).should.throw(/number or greeting/);
   });
 
   it("combines across an alt", () => {
-    const p = pr.alt(
-      pr(/\d+/).named("number"),
+    const p = packrattle.alt(
+      packrattle.regex(/\d+/).named("number"),
       "hello"
     );
 
@@ -21,8 +19,8 @@ describe("Parser.onFail", () => {
   });
 
   it("picks up a new name across an alt", () => {
-    const p = pr.alt(
-      pr(/\d+/).named("number"),
+    const p = packrattle.alt(
+      packrattle.regex(/\d+/).named("number"),
       "hello"
     ).named("widget");
 
@@ -30,12 +28,12 @@ describe("Parser.onFail", () => {
   });
 
   it("executes onFail for unresolvable loops", () => {
-    const number = pr.regex(/\d+/);
+    const number = packrattle.regex(/\d+/);
     // this is unresolvable, because it can never finish "failing" p until it gets the result from p.
-    const p = pr.alt(
+    const p: Parser<any> = packrattle.alt(
       number,
-      [ () => p, ".", () => p ],
-      [ "i", () => p ]
+      packrattle.seq(() => p, ".", () => p),
+      packrattle.seq("i", () => p)
     ).named("numbers");
 
     (() => p.run("ice")).should.throw(/numbers/);

@@ -10,6 +10,7 @@ import { ParserState } from "./parser_state";
  */
 export function chain<R, T1, T2>(p1: Parser<T1>, p2: Parser<T2>, combiner: (r1: T1, r2: T2) => R): Parser<R> {
   return newParser<R>("chain", {
+    cacheable: true,
     children: [ p1, p2 ],
     describe: list => `${list[0]} then ${list[1]}`
   }, (state, [ p1, p2 ]) => {
@@ -154,7 +155,7 @@ export function optional<T>(p: Parser<T>): Parser<T | undefined> {
 export function optionalOr<T>(p: Parser<T>, defaultValue: T): Parser<T> {
   return newParser<T>("optionalOr", {
     children: [ p ],
-    cacheable: (typeof defaultValue == "string" || typeof defaultValue == "number"),
+    cacheable: (defaultValue == null || typeof defaultValue == "string" || typeof defaultValue == "number"),
     extraCacheKey: defaultValue == null ? "(null)" : ("str:" + defaultValue)
   }, (state, [ p ]) => {
     state.schedule(p, state.pos).then(match => {
