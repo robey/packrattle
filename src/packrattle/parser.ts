@@ -2,11 +2,12 @@
 // import resolve from "./resolve";
 // import { quote } from "./strings";
 
-import { chain } from "./combiners";
+import { alt, chain } from "./combiners";
 import { Engine, EngineOptions } from "./engine";
-import { Match } from "./match";
+import { FailedMatch, Match, SuccessfulMatch } from "./match";
 import { ParserState } from "./parser_state";
 import { PromiseSet } from "./promise_set";
+import { LazyParser, resolve } from "./resolve";
 import { simple } from "./simple";
 import { Span } from "./span";
 
@@ -16,7 +17,7 @@ let ParserId = 1;
 
 export interface ParserOptions {
   // list of nested parsers, if this is a combining parser:
-  children?: Parser<any>[];
+  children?: LazyParser[];
 
   // for debugging, how to produce a description of this parser (like
   // "x or y or z"):
@@ -68,13 +69,16 @@ export class Parser<T> {
   // cache description once we've computed it
   private description?: string;
 
+  // children, once we've resolved them
+  private children?: Parser<any>[];
+
   // set when all lazy and implicit parsers have been resolved:
   private resolved = false;
 
 
   constructor(
     public readonly name: string,
-    public readonly children: Parser<any>[],
+    public readonly originalChildren: LazyParser[],
     public readonly describe: (children: string[]) => string,
     public readonly matcher: Matcher<T>,
     public readonly cacheable: boolean,
@@ -92,7 +96,7 @@ export class Parser<T> {
     if (this.recursing) return "...";
     this.recursing = true;
     this.resolve();
-    const list = this.children.map(p => {
+    const list = (this.children || []).map(p => {
       return (p.children && p.children.length > 1) ? ("(" + p.inspect() + ")") : p.inspect();
     });
     this.recursing = false;
@@ -144,8 +148,16 @@ export class Parser<T> {
   //   require("fs").writeFileSync(filename, this.toDot(maxLength));
   // }
 
-  resolve() {
+  resolve(functionCache: { [key: string]: Parser<any> } = {}) {
+    if (this.children) return;
 
+    try {
+      this.children = this.originalChildren.map(p => resolve(p, functionCache));
+      this.children.forEach(p => p.resolve(functionCache));
+    } catch (error) {
+      error.message += " (inside " + this.name + ")";
+      throw error;
+    }
   }
 
   // resolve(functionCache = null) {
@@ -196,8 +208,13 @@ export class Parser<T> {
   //   return this.cacheKey;
   // }
 
+  // called by engine.
+  match(state: ParserState<T>) {
+    this.matcher(state, this.children || []);
+  }
+
   execute(text: string, options: EngineOptions = {}): Match<T> {
-    // this.resolve();
+    this.resolve();
     return new Engine(text, options).execute(this);
   }
 
@@ -209,42 +226,54 @@ export class Parser<T> {
   // consume an entire text with this parser. convert failure into an exception.
   run(text: string, options = {}): T {
     const rv = this.consume().execute(text, options);
-    if (!rv.ok) throw new ParseError(rv.errorMessage || "", rv.span());
-    if (rv.value === undefined) throw new Error("Parser returned no result");
+    if (rv instanceof FailedMatch) throw new ParseError(rv.message, rv.span());
     return rv.value;
   }
 
   // ----- transforms
 
-  // // transforms the result of a parser if it succeeds.
-  // // f(value, span)
-  // map(f) {
-  //   return newParser("map", { wrap: this }, (state, results) => {
-  //     state.schedule(this).then(match => {
-  //       if (!match.ok) return results.add(match);
-  //       if (typeof f != "function") return results.add(match.withValue(f));
-  //
-  //       const rv = f(match.value, match.state.span());
-  //       if (rv instanceof Parser) {
-  //         match.state.schedule(rv).then(m => results.add(m));
-  //       } else {
-  //         results.add(match.withValue(rv));
-  //       }
-  //     });
-  //   });
-  // }
-  //
-  // onMatch(f) { return this.map(f); }
-  //
-  // // transforms the error message of a parser
-  // onFail(newMessage) {
-  //   return newParser("onFail", { wrap: this }, (state, results) => {
-  //     state.schedule(this).then(match => {
-  //       results.add(match.ok ? match : match.toError(newMessage));
-  //     });
-  //   });
-  // }
-  //
+  // transforms the result of a parser if it succeeds.
+  // f(value, span)
+  map<U>(f: U | ((item: T, span: Span) => U)): Parser<U> {
+    return newParser<U>("map", { children: [ this ] }, state => {
+      state.schedule(this, state.pos).then(match => {
+        if (match instanceof FailedMatch) {
+          state.result.add(match.forState(state));
+          return;
+        }
+
+        const rv = (typeof f === "function") ? f(match.value, match.span()) : f;
+        // used to be able to return a new Parser here, but i can't come up
+        // with any practical use for it.
+        state.result.add(match.merge(match, state, rv));
+      });
+    });
+  }
+
+  flatmap<U>(f: (item: T, span: Span) => Parser<U>): Parser<U> {
+    return newParser<U>("flatmap", { children: [ this ] }, state => {
+      state.schedule(this, state.pos).then(match => {
+        if (match instanceof FailedMatch) {
+          state.result.add(match.forState(state));
+          return;
+        }
+
+        state.schedule(f(match.value, match.span()), state.pos).then(m => state.result.add(m));
+      });
+    });
+  }
+
+  onMatch<U>(f: (item: T, span: Span) => U): Parser<U> { return this.map(f); }
+
+  // transforms the error message of a parser
+  onFail(newMessage: string): Parser<T> {
+    return newParser<T>("onFail", { children: [ this ] }, state => {
+      state.schedule(this, state.pos).then(match => {
+        state.result.add(match instanceof SuccessfulMatch ? match : match.withMessage(newMessage));
+      });
+    });
+  }
+
   // // transforms the error message of a parser, but only if it hasn't been already.
   // named(description) {
   //   return newParser("onFail", { wrap: this, describe: description }, (state, results) => {
@@ -271,14 +300,14 @@ export class Parser<T> {
   // }
   //
   // filter(f, message) { return this.matchIf(f, message); }
-  //
-  //
-  // // ----- convenience methods for accessing the combinators
-  //
-  // then(...parsers) { return seq(this, ...parsers); }
-  //
-  // or(...parsers) { return alt(this, ...parsers); }
-  //
+
+
+  // ----- convenience methods for accessing the combinators
+
+  then<U>(p: Parser<U>): Parser<[ T, U ]> { return chain(this, p, (a: T, b: U) => [ a, b ] as [ T, U ]); }
+
+  or<U>(p: Parser<U>): Parser<T | U> { return alt(this, p); }
+
   // drop() { return drop(this); }
   //
   // optional(defaultValue = "") { return optional(this, defaultValue); }

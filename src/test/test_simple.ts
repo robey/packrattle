@@ -1,4 +1,4 @@
-import { packrattle } from "../";
+import { packrattle, SuccessfulMatch } from "../";
 
 import "should";
 import "source-map-support/register";
@@ -21,15 +21,18 @@ describe("simple parsers", () => {
     const p = packrattle.string("hello");
     (() => p.run("cat")).should.throw(/hello/);
     const rv = p.execute("hellon");
-    rv.pos.should.eql(5);
-    (rv.value || "").should.eql("hello");
+    rv.startpos.should.eql(0);
+    rv.match.should.eql(true);
+    (rv as SuccessfulMatch<string>).pos.should.eql(5);
+    (rv as SuccessfulMatch<string>).value.should.eql("hello");
   });
 
   it("consumes the whole string", () => {
-    const p = packrattle.string("hello")/*.consume()*/;
+    const p = packrattle.string("hello").consume();
     const rv = p.execute("hello");
-    rv.pos.should.eql(5);
-    (rv.value || "").should.eql("hello");
+    rv.match.should.eql(true);
+    (rv as SuccessfulMatch<string>).pos.should.eql(5);
+    (rv as SuccessfulMatch<string>).value.should.eql("hello");
     (() => p.run("hello!")).should.throw(/end/);
   });
 
@@ -37,8 +40,9 @@ describe("simple parsers", () => {
     const p = packrattle.regex(/h(i)?/);
     (() => p.run("no")).should.throw(/h\(i\)\?/);
     const rv = p.execute("hit");
-    rv.pos.should.equal(2);
-    (rv.value || [])[0].should.eql("hi");
-    (rv.value || [])[1].should.eql("i");
+    rv.match.should.eql(true);
+    (rv as SuccessfulMatch<RegExpExecArray>).pos.should.equal(2);
+    (rv as SuccessfulMatch<RegExpExecArray>).value[0].should.eql("hi");
+    (rv as SuccessfulMatch<RegExpExecArray>).value[1].should.eql("i");
   });
 });

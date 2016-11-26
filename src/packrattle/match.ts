@@ -2,54 +2,115 @@ import { ParserState } from "./parser_state";
 import { Span } from "./span";
 import { quote } from "./strings";
 
-/*
- * created by ParserState on demand.
- */
-export class Match<T> {
+
+export abstract class BaseMatch<T> {
+  public readonly match: boolean;
+  public readonly startpos: number;
+  public readonly state: ParserState<T>;
+  public readonly commit: boolean;
+
+  abstract inspect(): string;
+
+  /*
+   * return the covering span of the current match.
+   */
+  abstract span(): Span;
+
+  /*
+   * determine how "important" this match is (larger number: higher priority).
+   */
+  get priority() {
+    // higher startpos is better.
+    let rv = this.startpos;
+    // commit is even better.
+    if (this.commit) rv += Math.pow(2, 40);
+    return rv;
+  }
+}
+
+
+export class FailedMatch<T> extends BaseMatch<T> {
+  match = false;
+
   constructor(
-    public readonly ok: boolean,
     public readonly startpos: number,
-    public readonly pos: number,
     public readonly state: ParserState<T>,
+    public readonly message: string,
     public readonly commit: boolean,
-    public readonly generated: boolean,
-    public readonly value: T | undefined,
-    public readonly errorMessage: string | undefined
+    public readonly generated: boolean
   ) {
-    // pass.
+    super();
   }
 
   inspect(): string {
     const fields = [
-      this.ok ? "yes" : "no",
       "state=" + this.state.id,
-      "span=" + this.span().inspect()
+      "span=" + this.span().inspect(),
+      "error='" + quote(this.message) + "'"
     ];
-    if (this.value) fields.push("value='" + quote(this.value["inspect"] ? this.value["inspect"]() : this.value) + "'");
-    if (this.errorMessage) fields.push(`error='${this.errorMessage}'`);
     if (this.commit) fields.push("commit");
     if (this.generated) fields.push("generated");
-    // fields.push(`priority=0x${this.priority.toString(16)}`);
-    return "Match(" + fields.join(", ") + ")";
+    return `FailedMatch(${fields.join(", ")}`;
+  }
+
+  span(): Span {
+    return new Span(this.state.text, this.startpos, this.startpos);
+  }
+
+  /*
+   * for combiners: convert this error into an error for a state higher up
+   * the tree.
+   */
+  forState<U>(state: ParserState<U>, commit: boolean = false): FailedMatch<U> {
+    return new FailedMatch(this.startpos, state, this.message, this.commit || commit, this.generated);
+  }
+
+  withMessage(message: string): FailedMatch<T> {
+    return new FailedMatch<T>(this.startpos, this.state, message, this.commit, false);
+  }
+}
+
+
+export class SuccessfulMatch<T> extends BaseMatch<T> {
+  match = true;
+
+  constructor(
+    public readonly startpos: number,
+    public readonly pos: number,
+    public readonly state: ParserState<T>,
+    public readonly value: T,
+    public readonly commit: boolean
+  ) {
+    super();
+  }
+
+  inspect(): string {
+    const fields = [
+      "state=" + this.state.id,
+      "span=" + this.span().inspect(),
+      "value='" + quote(this.value["inspect"] ? this.value["inspect"]() : this.value) + "'"
+    ];
+    if (this.commit) fields.push("commit");
+    return `SuccessfulMatch(${fields.join(", ")}`;
+  }
+
+  span(): Span {
+    return new Span(this.state.text, this.startpos, this.pos);
   }
 
   /*
    * return a match with a span covering both this one and another.
    */
-  merge(other: Match<any>): Match<T> {
+  merge<U>(other: SuccessfulMatch<any>, state: ParserState<U>, newValue: U): SuccessfulMatch<U> {
     const startpos = Math.min(this.startpos, other.startpos);
     const pos = Math.max(this.pos, other.pos);
     const commit = this.commit || other.commit;
-    const generated = this.generated || other.generated;
-    return new Match<T>(this.ok, startpos, pos, this.state, commit, generated, this.value, this.errorMessage);
+    return new SuccessfulMatch<U>(startpos, pos, state, newValue, commit);
   }
+}
 
-  /*
-   * return the covering span of the current match.
-   */
-  span(): Span {
-    return new Span(this.state.text, this.startpos, this.pos);
-  }
+
+export type Match<T> = FailedMatch<T> | SuccessfulMatch<T>;
 
 
 //
@@ -82,13 +143,3 @@ export class Match<T> {
 //     rv.commit = true;
 //     return rv;
 //   }
-
-  // determine how "important" this match is (larger number: higher priority).
-  get priority() {
-    // higher startpos is better.
-    let rv = this.startpos;
-    // commit is even better.
-    if (this.commit) rv += Math.pow(2, 40);
-    return rv;
-  }
-}

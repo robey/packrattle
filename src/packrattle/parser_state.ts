@@ -1,5 +1,5 @@
 import { Engine } from "./engine";
-import { Match } from "./match";
+import { FailedMatch, Match, SuccessfulMatch } from "./match";
 import { Parser } from "./parser";
 import { PromiseSet } from "./promise_set";
 import { simple } from "./simple";
@@ -73,17 +73,21 @@ export class ParserState<T> {
   }
 
   success(value: T, advance: number = 0, commit: boolean = false): Match<T> {
-    return new Match<T>(true, this.pos, this.pos + advance, this, commit, false, value, undefined);
+    return new SuccessfulMatch<T>(this.pos, this.pos + advance, this, value, commit);
   }
 
   failure(errorMessage?: string, commit = false): Match<T> {
     // use "Expected (current parser)" as the default failure message.
     let generated = false;
-    if (errorMessage === undefined && this.parser !== undefined) {
-      errorMessage = "Expected " + this.parser.inspect();
+    if (errorMessage === undefined) {
+      if (this.parser !== undefined) {
+        errorMessage = "Expected " + this.parser.inspect();
+      } else {
+        errorMessage = "?";
+      }
       generated = true;
     }
-    return new Match<T>(false, this.pos, this.pos, this, commit, generated, undefined, errorMessage);
+    return new FailedMatch<T>(this.pos, this, errorMessage, commit, generated);
   }
 }
 

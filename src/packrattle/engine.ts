@@ -101,7 +101,7 @@ export class Engine {
     if (this.log) this.log(`Try '${quote(this.text)}' in ${parser.inspect()}`);
 
     this.schedule(state, parser, 0).then(match => {
-      if (match.ok) {
+      if (match.match) {
         if (this.log) this.log(`-> SUCCESS: ${match.inspect()}`);
         if (this.debugGraph) this.debugGraph.addEdge(match.state.id, "success");
         successes.push(match);
@@ -123,7 +123,7 @@ export class Engine {
           this.log(`${ticks}. [${state.parser.id}]${state.parser.inspect()} @ ${state.inspect()}`);
         }
 
-        state.parser.matcher(state, state.parser.children);
+        state.parser.match(state);
       }
 
       if (this.currentError) throw this.currentError;

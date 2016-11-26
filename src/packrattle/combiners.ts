@@ -1,5 +1,6 @@
-import { Match } from "./match";
+import { FailedMatch, Match, SuccessfulMatch } from "./match";
 import { newParser, Parser } from "./parser";
+import { LazyParser } from "./resolve";
 
 /*
  * chain together parsers p1 & p2 such that if p1 matches, p2 is executed on
@@ -11,18 +12,16 @@ export function chain<R, T1, T2>(p1: Parser<T1>, p2: Parser<T2>, combiner: (r1: 
     children: [ p1, p2 ],
     describe: list => `${list[0]} then ${list[1]}`
   }, (state, [ p1, p2 ]) => {
-    state.schedule(p1).then((match1: Match<T1>) => {
-      if (!match1.ok) {
-        state.result.add(match1 as Match<R>);
+    state.schedule(p1, state.pos).then((match1: Match<T1>) => {
+      if (match1 instanceof FailedMatch) {
+        state.result.add(match1.forState(state));
       } else {
-        match1.state.schedule(p2).then((match2: Match<T2>) => {
-          if (!match2.ok) {
+        match1.state.schedule(p2, match1.pos).then((match2: Match<T2>) => {
+          if (match2 instanceof FailedMatch) {
             // no backtracking if the left match was commit()'d.
-            state.result.add((match1.commit ? match2.setCommit() : match2) as Match<R>);
+            state.result.add(match2.forState(state, match1.commit));
           } else {
-            const newState = match2.state.merge(match1.state);
-            const value = combiner(match1.value, match2.value);
-            state.result.add(newState.success(value, match1.commit || match2.commit));
+            state.result.add(match1.merge(match2, state, combiner(match1.value, match2.value)));
           }
         });
       }
@@ -70,47 +69,49 @@ export function chain<R, T1, T2>(p1: Parser<T1>, p2: Parser<T2>, combiner: (r1: 
 //   });
 //   return seq(...newseq);
 // }
-//
-// /*
-//  * try each of these parsers, in order (starting from the same position),
-//  * looking for the first match.
-//  */
-// export function alt(...parsers) {
-//   return newParser("alt", {
-//     cacheable: true,
-//     children: parsers,
-//     describe: list => list.join(" or ")
-//   }, (state, results, ...parsers) => {
-//     let aborting = false;
-//     let count = 0;
-//     const fails = [];
-//     parsers.forEach(p => {
-//       state.schedule(p, () => !aborting).then(match => {
-//         if (match.ok) {
-//           results.add(match);
-//         } else {
-//           if (match.commit) {
-//             // skip other alternatives; dump error buffer.
-//             aborting = true;
-//             fails.splice(0, fails.length);
-//             return results.add(match);
-//           }
-//           fails.push(match);
-//         }
-//         // save up all the fails. if *all* of the alternatives fail, summarize it.
-//         count++;
-//         if (count == parsers.length) {
-//           if (count == fails.length) {
-//             results.add(state.failure());
-//           } else {
-//             fails.forEach(f => results.add(f));
-//           }
-//         }
-//       });
-//     });
-//   });
-// }
-//
+
+/*
+ * try each of these parsers, in order (starting from the same position),
+ * looking for the first match.
+ */
+export function alt(...parsers: LazyParser[]): Parser<any> {
+  return newParser("alt", {
+    cacheable: true,
+    children: parsers,
+    describe: list => list.join(" or ")
+  }, (state, parsers) => {
+    let aborting = false;
+    let count = 0;
+    const fails: FailedMatch<any>[] = [];
+    parsers.forEach(p => {
+      state.schedule(p, state.pos, () => !aborting).then(match => {
+        if (match.match) {
+          state.result.add(match);
+        } else {
+          if (match instanceof SuccessfulMatch) {
+            // skip other alternatives; dump error buffer.
+            aborting = true;
+            fails.splice(0, fails.length);
+            state.result.add(match);
+            return;
+          } else {
+            fails.push(match);
+          }
+        }
+        // save up all the fails. if *all* of the alternatives fail, summarize it.
+        count++;
+        if (count == parsers.length) {
+          if (count == fails.length) {
+            state.result.add(state.failure());
+          } else {
+            fails.forEach(f => state.result.add(f));
+          }
+        }
+      });
+    });
+  });
+}
+
 // /*
 //  * throw away the match value, equivalent to `map(null)`.
 //  */
@@ -121,25 +122,25 @@ export function chain<R, T1, T2>(p1: Parser<T1>, p2: Parser<T2>, combiner: (r1: 
 //     });
 //   });
 // }
-//
-// /*
-//  * allow a parser to fail, and instead return a default value (the empty string
-//  * if no other value is provided).
-//  */
-// export function optional(p, defaultValue) {
-//   return newParser("optional", {
-//     wrap: p,
-//     cacheable: (typeof defaultValue == "string" || defaultValue == null),
-//     extraCacheKey: defaultValue == null ? "(null)" : ("str:" + defaultValue)
-//   }, (state, results, p) => {
-//     state.schedule(p).then(match => {
-//       if (match.ok) results.add(match);
-//       // unless we committed to p, always try the non-p case too.
-//       if (!match.commit) results.add(state.success(defaultValue));
-//     });
-//   });
-// }
-//
+
+/*
+ * allow a parser to fail, and instead return a default value (the empty string
+ * if no other value is provided).
+ */
+export function optional<T>(p: Parser<T>, defaultValue: T): Parser<T> {
+  return newParser<T>("optional", {
+    children: [ p ],
+    cacheable: (typeof defaultValue == "string" || defaultValue == null),
+    extraCacheKey: defaultValue == null ? "(null)" : ("str:" + defaultValue)
+  }, (state, [ p ]) => {
+    state.schedule(p, state.pos).then(match => {
+      if (match instanceof SuccessfulMatch) state.result.add(match);
+      // unless we committed to p, always try the non-p case too.
+      if (!match.commit) state.result.add(state.success(defaultValue));
+    });
+  });
+}
+
 // /*
 //  * check that this parser matches, but don't advance our position in the
 //  * string. (perl calls this a zero-width lookahead.)
