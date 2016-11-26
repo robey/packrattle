@@ -70,32 +70,32 @@ describe("combiners", () => {
       (m as SuccessfulMatch<string>).value.should.eql("?");
     });
 
-    // it("parser.optional", () => {
-    //   const p = packrattle(/\d+/).optional("?");
-    //   let m = p.execute("34.");
-    //   m.state.pos.should.eql(2);
-    //   m.value[0].should.eql("34");
-    //   m = p.execute("no");
-    //   m.state.pos.should.eql(0);
-    //   m.value.should.eql("?");
-    // });
-    //
+    it("parser.optional", () => {
+      const p = packrattle.regex(/\d+/).map(m => m[0]).optional("?");
+      let m = p.execute("34.") as SuccessfulMatch<string>;
+      m.pos.should.eql(2);
+      m.value.should.eql("34");
+      m = p.execute("no") as SuccessfulMatch<string>;
+      m.pos.should.eql(0);
+      m.value.should.eql("?");
+    });
+
     // it("advances position correctly past an optional", () => {
-    //   const p = packrattle([
+    //   const p = packrattle.seq([
     //     /[b]+/,
-    //     pr(/c/).optional().map((m, span) => ({ start: span.start, end: span.end })),
-    //     pr(/[d]+/)
+    //     packrattle.regex(/c/).optional().map((m, span) => ({ start: span.start, end: span.end })),
+    //     packrattle.regex(/[d]+/)
     //   ]);
-    //   const rv = p.execute("bbbd");
-    //   rv.ok.should.eql(true);
+    //   const rv = p.execute("bbbd") as SuccessfulMatch<any>;
+    //   rv.match.should.eql(true);
     //   rv.value[1].should.eql({ start: 3, end: 4 });
     //   rv.value[2][0].should.eql("d");
     // });
-    //
+
     // it("tries both the success and failure sides", () => {
-    //   const p = packrattle([
-    //     pr.optional(/\d+/),
-    //     pr.alt(
+    //   const p = packrattle.seq([
+    //     packrattle.optional(/\d+/),
+    //     packrattle.alt(
     //       "z",
     //       "9y"
     //     )
