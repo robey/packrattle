@@ -1,6 +1,7 @@
 import { FailedMatch, Match, SuccessfulMatch } from "./match";
 import { newParser, Parser } from "./parser";
 import { LazyParser } from "./resolve";
+import { ParserState } from "./parser_state";
 
 /*
  * chain together parsers p1 & p2 such that if p1 matches, p2 is executed on
@@ -29,33 +30,39 @@ export function chain<R, T1, T2>(p1: Parser<T1>, p2: Parser<T2>, combiner: (r1: 
   });
 }
 
-// /*
-//  * chain together a series of parsers as in 'chain'. the match value is an
-//  * array of non-null match values from the inner parsers.
-//  */
-// export function seq(...parsers) {
-//   return newParser("seq", {
-//     cacheable: true,
-//     children: parsers,
-//     describe: list => "[ " + list.join(", ") + " ]"
-//   }, (state, results, ...parsers) => {
-//     let commit = false;
-//
-//     function next(state, i, rv = []) {
-//       if (i >= parsers.length) return results.add(state.success(rv, commit));
-//       const p = parsers[i];
-//       state.schedule(p).then(match => {
-//         // no backtracking if we commit()'d in this chain.
-//         if (!match.ok) return results.add(commit ? match.setCommit() : match);
-//         if (match.commit) commit = true;
-//         next(state.merge(match.state), i + 1, match.value != null ? rv.concat([ match.value ]) : rv);
-//       });
-//     }
-//
-//     next(state, 0);
-//   });
-// }
-//
+/*
+ * chain together a series of parsers as in 'chain'. the match value is an
+ * array of non-null match values from the inner parsers.
+ */
+export function seq(...parsers: LazyParser[]): Parser<any[]> {
+  return newParser<any[]>("seq", {
+    cacheable: true,
+    children: parsers,
+    describe: list => "[ " + list.join(", ") + " ]"
+  }, (state, parsers) => {
+    let commit = false;
+
+    function next(i: number, pos: number, rv: any[] = []) {
+      if (i >= parsers.length) {
+        state.result.add(state.success(rv, pos, commit));
+        return;
+      }
+      const p = parsers[i];
+      state.schedule(p, pos).then(match => {
+        // no backtracking if we commit()'d in this chain.
+        if (match instanceof FailedMatch) {
+          state.result.add(match.forState(state, commit));
+          return;
+        }
+        if (match.commit) commit = true;
+        next(i + 1, match.pos, rv.concat([ match.value ]));
+      });
+    }
+
+    next(0, state.pos);
+  });
+}
+
 // /*
 //  * chain together a sequence of parsers. before each parser is checked, the
 //  * 'ignore' parser is optionally matched and thrown away. this is typicially
@@ -124,13 +131,30 @@ export function alt(...parsers: LazyParser[]): Parser<any> {
 // }
 
 /*
+ * allow a parser to fail, and instead return undefined (js equivalent of
+ * the Optional type).
+ */
+export function optional<T>(p: Parser<T>): Parser<T | undefined> {
+  return newParser<T | undefined>("optional", {
+    children: [ p ],
+    cacheable: true
+  }, (state, [ p ]) => {
+    state.schedule(p, state.pos).then(match => {
+      if (match instanceof SuccessfulMatch) state.result.add(match);
+      // unless we committed to p, always try the non-p case too.
+      if (!match.commit) state.result.add(state.success(undefined));
+    });
+  });
+}
+
+/*
  * allow a parser to fail, and instead return a default value (the empty string
  * if no other value is provided).
  */
-export function optional<T>(p: Parser<T>, defaultValue: T): Parser<T> {
-  return newParser<T>("optional", {
+export function optionalOr<T>(p: Parser<T>, defaultValue: T): Parser<T> {
+  return newParser<T>("optionalOr", {
     children: [ p ],
-    cacheable: (typeof defaultValue == "string" || defaultValue == null),
+    cacheable: (typeof defaultValue == "string" || typeof defaultValue == "number"),
     extraCacheKey: defaultValue == null ? "(null)" : ("str:" + defaultValue)
   }, (state, [ p ]) => {
     state.schedule(p, state.pos).then(match => {

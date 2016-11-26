@@ -88,7 +88,7 @@ export class SuccessfulMatch<T> extends BaseMatch<T> {
     const fields = [
       "state=" + this.state.id,
       "span=" + this.span().inspect(),
-      "value='" + quote(this.value["inspect"] ? this.value["inspect"]() : this.value) + "'"
+      "value='" + quote(this.value && this.value["inspect"] ? this.value["inspect"]() : this.value) + "'"
     ];
     if (this.commit) fields.push("commit");
     return `SuccessfulMatch(${fields.join(", ")}`;

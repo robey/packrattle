@@ -60,7 +60,18 @@ describe("combiners", () => {
 
   describe("optional", () => {
     it("optional", () => {
-      const p = packrattle.optional(packrattle.regex(/\d+/).map(m => m[0]), "?");
+      const p = packrattle.optional(packrattle.regex(/\d+/).map(m => m[0]));
+      const m1 = p.execute("34.") as SuccessfulMatch<string | undefined>;
+      m1.match.should.eql(true);
+      m1.pos.should.eql(2);
+      (m1.value || "").should.eql("34");
+      const m2 = p.execute("no") as SuccessfulMatch<string | undefined>;
+      m2.pos.should.eql(0);
+      (m2.value === undefined).should.eql(true);
+    });
+
+    it("optionalOr", () => {
+      const p = packrattle.optionalOr(packrattle.regex(/\d+/).map(m => m[0]), "?");
       let m = p.execute("34.");
       m.match.should.eql(true);
       (m as SuccessfulMatch<string>).pos.should.eql(2);
@@ -71,7 +82,17 @@ describe("combiners", () => {
     });
 
     it("parser.optional", () => {
-      const p = packrattle.regex(/\d+/).map(m => m[0]).optional("?");
+      const p = packrattle.regex(/\d+/).map(m => m[0]).optional();
+      let m = p.execute("34.") as SuccessfulMatch<string | undefined>;
+      m.pos.should.eql(2);
+      (m.value || "").should.eql("34");
+      m = p.execute("no") as SuccessfulMatch<string | undefined>;
+      m.pos.should.eql(0);
+      (m.value === undefined).should.eql(true);
+    });
+
+    it("parser.optionalOr", () => {
+      const p = packrattle.regex(/\d+/).map(m => m[0]).optionalOr("?");
       let m = p.execute("34.") as SuccessfulMatch<string>;
       m.pos.should.eql(2);
       m.value.should.eql("34");
@@ -80,36 +101,36 @@ describe("combiners", () => {
       m.value.should.eql("?");
     });
 
-    // it("advances position correctly past an optional", () => {
-    //   const p = packrattle.seq([
-    //     /[b]+/,
-    //     packrattle.regex(/c/).optional().map((m, span) => ({ start: span.start, end: span.end })),
-    //     packrattle.regex(/[d]+/)
-    //   ]);
-    //   const rv = p.execute("bbbd") as SuccessfulMatch<any>;
-    //   rv.match.should.eql(true);
-    //   rv.value[1].should.eql({ start: 3, end: 4 });
-    //   rv.value[2][0].should.eql("d");
-    // });
+    it("advances position correctly past an optional", () => {
+      const p = packrattle.seq(
+        /[b]+/,
+        packrattle.regex(/c/).optional().map((m, span) => ({ start: span.start, end: span.end })),
+        packrattle.regex(/[d]+/)
+      );
+      const rv = p.execute("bbbd") as SuccessfulMatch<any>;
+      rv.match.should.eql(true);
+      rv.value[1].should.eql({ start: 3, end: 4 });
+      rv.value[2][0].should.eql("d");
+    });
 
-    // it("tries both the success and failure sides", () => {
-    //   const p = packrattle.seq([
-    //     packrattle.optional(/\d+/),
-    //     packrattle.alt(
-    //       "z",
-    //       "9y"
-    //     )
-    //   ]);
-    //   const rv1 = p.execute("33z");
-    //   rv1.ok.should.eql(true);
-    //   rv1.value[1].should.eql("z");
-    //   const rv2 = p.execute("9y");
-    //   rv2.ok.should.eql(true);
-    //   rv2.value[0].should.eql("9y");
-    //   // consumes either "49" or nothing:
-    //   const rv3 = p.execute("49y");
-    //   rv3.ok.should.eql(false);
-    // });
+    it("tries both the success and failure sides", () => {
+      const p = packrattle.seq(
+        packrattle.optional(packrattle.regex(/\d+/)),
+        packrattle.alt(
+          "z",
+          "9y"
+        )
+      );
+      const rv1 = p.execute("33z") as SuccessfulMatch<any[]>;
+      rv1.match.should.eql(true);
+      rv1.value[1].should.eql("z");
+      const rv2 = p.execute("9y") as SuccessfulMatch<any[]>;
+      rv2.match.should.eql(true);
+      rv2.value[1].should.eql("9y");
+      // consumes either "49" or nothing:
+      const rv3 = p.execute("49y");
+      rv3.match.should.eql(false);
+    });
   });
 
 //   it("check", () => {

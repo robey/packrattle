@@ -1,3 +1,4 @@
+import { seq } from "./combiners";
 import { Parser } from "./parser";
 import { simple } from "./simple";
 
@@ -8,10 +9,9 @@ import { simple } from "./simple";
 // } catch (error) {
 //   haveSymbol = false;
 // }
-//
-// const ID = haveSymbol ? Symbol("id") : "__packrattle_Symbol_id";
-// let LazyId = 0;
 
+const ID = "__packrattle_cache_id";
+let LazyId = 0;
 
 export type LazyParser1 = string | RegExp | Parser<any>;
 export type LazyParser2 = LazyParser1 | Array<LazyParser1>;
@@ -24,30 +24,27 @@ export type LazyParser = LazyParser2 | (() => LazyParser2);
  *
  * if you'd like te cache the results of function evaluations, pass an empty object as `functionCache`.
  */
-export function resolve(parser: LazyParser, functionCache: { [key: string]: Parser<any> }): Parser<any> {
+export function resolve(parser: LazyParser, functionCache: { [key: string]: LazyParser2 } = {}): Parser<any> {
   if (typeof parser == "function") {
-//     if (!parser[ID]) {
-//       // give every lazy parser an id so we can cache them.
-//       LazyId++;
-//       parser[ID] = LazyId;
-//     }
-//     const id = parser[ID];
-//     if (functionCache && functionCache[id]) {
-//       parser = functionCache[id];
-//     } else {
-//       parser = parser();
-//       if (functionCache) functionCache[id] = parser;
-//     }
-  }
+    if (!parser[ID]) {
+      // give every lazy parser an id so we can cache them.
+      LazyId++;
+      parser[ID] = LazyId.toString();
+    }
 
-//   // avoid 'require' loops.
-//   const combiners = require("./combiners");
-//   const Parser = require("./parser").Parser;
+    const id = parser[ID];
+    if (functionCache[id]) {
+      parser = functionCache[id];
+    } else {
+      parser = parser();
+      functionCache[id] = parser;
+    }
+  }
 
   // implicits:
   if (typeof parser == "string") return simple.string(parser);
   if (parser instanceof RegExp) return simple.regex(parser);
-  // if (Array.isArray(parser)) parser = combiners.seq(...parser);
+  if (Array.isArray(parser)) return seq(...parser);
 
   if (!(parser instanceof Parser)) throw new Error("Unable to resolve parser: " + parser);
   return parser;

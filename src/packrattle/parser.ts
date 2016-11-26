@@ -2,7 +2,7 @@
 // import resolve from "./resolve";
 // import { quote } from "./strings";
 
-import { alt, chain, optional } from "./combiners";
+import { alt, chain, optional, optionalOr } from "./combiners";
 import { Engine, EngineOptions } from "./engine";
 import { FailedMatch, Match, SuccessfulMatch } from "./match";
 import { ParserState } from "./parser_state";
@@ -310,7 +310,9 @@ export class Parser<T> {
 
   // drop() { return drop(this); }
 
-  optional(defaultValue: T) { return optional<T>(this, defaultValue); }
+  optional(): Parser<T | undefined> { return optional(this); }
+
+  optionalOr(defaultValue: T) { return optionalOr<T>(this, defaultValue); }
 
   // check() { return check(this); }
   //
