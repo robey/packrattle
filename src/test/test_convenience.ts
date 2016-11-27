@@ -24,19 +24,19 @@ describe("convenience", () => {
     it("skips whitespace lazily", () => {
       let hits = 0;
       const p = packrattle.seqIgnore(
-        packrattle.resolve(() => {
+        packrattle.build(() => {
           hits += 1;
           return packrattle.regex(/\s+/);
         }),
-        packrattle.resolve(() => {
+        packrattle.build(() => {
           hits += 1;
           return packrattle.string("abc");
         }),
-        packrattle.resolve(() => {
+        packrattle.build(() => {
           hits += 1;
           return packrattle.string("xyz");
         }),
-        packrattle.resolve(() => {
+        packrattle.build(() => {
           hits += 1;
           return packrattle.string("ghk");
         })
@@ -117,33 +117,52 @@ describe("convenience", () => {
       });
     });
   });
+
+  describe("reduce", () => {
+    it("basic", () => {
+      const p = packrattle.reduce(
+        packrattle.regex(/\d+/),
+        packrattle.regex(/[a-z]+/),
+        {
+          first: m => m[0],
+          next: (sum, num, word) => sum + "-" + num[0] + "-" + word[0]
+        }
+      );
+      p.run("a4x6bc900xyz").should.eql("a-4-x-6-bc-900-xyz");
+    });
+
+    it("aborts if a repeating phrase aborts", () => {
+      const ws = packrattle.regex(/\s*/);
+      const operand = packrattle.regex(/\d+/).map(m => m[0]).onFail("Expected operand");
+      const operator = packrattle.seq(
+        ws,
+        packrattle.alt(packrattle.string("+"), packrattle.string("-")),
+        ws
+      ).commit().map(m => m[1]);
+      const algebra = packrattle.reduce(operator, operand, {
+        first: x => x,
+        next: (left, op, right) => ({ binary: op, left, right })
+      });
+
+      algebra.run("3 + 2").should.eql({ binary: "+", left: "3", right: "2" });
+
+      try {
+        algebra.run("3 +");
+        throw new Error("nope");
+      } catch (error) {
+        error.message.should.eql("Expected operand");
+        error.span.start.should.eql(3);
+        error.span.end.should.eql(3);
+      }
+
+      try {
+        algebra.run("3 + 5 +");
+        throw new Error("nope");
+      } catch (error) {
+        error.message.should.eql("Expected operand");
+        error.span.start.should.eql(7);
+        error.span.end.should.eql(7);
+      }
+    });
+  });
 });
-    //   it("aborts if a repeating phrase aborts", () => {
-    //     const ws = pr(/\s*/).drop();
-    //     const operand = pr(/\d+/).onMatch(m => m[0]).onFail("Expected operand");
-    //     const operator = pr([ ws, pr.alt("+", "-"), ws ]).commit().onMatch(m => m[0]);
-    //     const algebra = pr.reduce(operand, operator, {
-    //       first: x => x,
-    //       next: (left, op, right) => ({ binary: op, left, right })
-    //     });
-    //
-    //     algebra.run("3 + 2").should.eql({ binary: "+", left: "3", right: "2" });
-    //
-    //     try {
-    //       algebra.run("3 +");
-    //       throw new Error("nope");
-    //     } catch (error) {
-    //       error.message.should.eql("Expected operand");
-    //       error.span.start.should.eql(3);
-    //       error.span.end.should.eql(4);
-    //     }
-    //
-    //     try {
-    //       algebra.run("3 + 5 +");
-    //       throw new Error("nope");
-    //     } catch (error) {
-    //       error.message.should.eql("Expected operand");
-    //       error.span.start.should.eql(7);
-    //       error.span.end.should.eql(8);
-    //     }
-    //   });

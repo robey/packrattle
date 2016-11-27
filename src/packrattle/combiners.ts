@@ -229,27 +229,3 @@ export function repeat<T>(p: Parser<T>, options: RepeatOptions = {}): Parser<T[]
     state.schedule(p, state.pos).then(m => next(m));
   });
 }
-
-// /*
-//  * convenience method for reducing the result of 'repeatSeparated', optionally
-//  * keeping the separator results. if 'accumulator' exists, it will transform
-//  * the initial result into an accumulator. if 'reducer' exists, it will be
-//  * used to progressively attach separators and new results.
-//  */
-// export function reduce(p, separator = "", options = {}) {
-//   const first = options.first || (x => [ x ]);
-//   const next = options.next || ((sum, sep, x) => sum.push(x));
-//   const min = options.min ? options.min - 1 : 0;
-//   const max = options.max ? options.max - 1 : Infinity;
-//
-//   return seq(p, repeat(seq(separator, p), { min, max })).map(([ initial, remainder ]) => {
-//     return [ first(initial) ].concat(remainder).reduce((sum, [ sep, item ]) => {
-//       // 'sep' may have been dropped.
-//       if (item === undefined) {
-//         item = sep;
-//         sep = null;
-//       }
-//       return next(sum, sep, item);
-//     });
-//   });
-// }

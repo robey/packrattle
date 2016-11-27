@@ -40,7 +40,7 @@ describe("Parser.seq", () => {
   });
 
   it("can sequence optional elements", () => {
-    const p = packrattle.resolve([ "abc", packrattle.regex(/\d+/).map(m => m[0]).optionalOr(""), "xyz" ]);
+    const p = packrattle.build([ "abc", packrattle.regex(/\d+/).map(m => m[0]).optionalOr(""), "xyz" ]);
     let rv = p.execute("abcxyz") as SuccessfulMatch<string[]>;
     rv.pos.should.equal(6);
     rv.value.should.eql([ "abc", "", "xyz" ]);

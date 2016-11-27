@@ -5,9 +5,9 @@ import "source-map-support/register";
 
 describe("Parser.commit", () => {
   it("can commit to an alternative", () => {
-    const p = packrattle.resolve([
-      packrattle.resolve("!").commit(),
-      packrattle.resolve(/\d+/).onFail("! must be a number")
+    const p = packrattle.build([
+      packrattle.build("!").commit(),
+      packrattle.build(/\d+/).onFail("! must be a number")
     ]).or(packrattle.seq("@", /\d+/)).onMatch(a => [ a[0], a[1][0] ]);
     p.run("!3").should.eql([ "!", "3" ]);
     p.run("@55").should.eql([ "@", "55" ]);

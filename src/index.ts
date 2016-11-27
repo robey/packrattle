@@ -7,8 +7,10 @@ export { Line, Span } from "./packrattle/span";
 import { Parser } from "./packrattle/parser";
 import { simple } from "./packrattle/simple";
 import { alt, chain, check, not, optional, optionalOr, repeat, RepeatOptions, seq } from "./packrattle/combiners";
-import { repeatIgnore, repeatSeparated, seqIgnore } from "./packrattle/convenience";
+import { reduce, ReduceOptions, repeatIgnore, repeatSeparated, seqIgnore } from "./packrattle/convenience";
 import { resolve } from "./packrattle/resolve";
+
+export { ReduceOptions, RepeatOptions };
 
 // import resolve from "./packrattle/resolve";
 //
@@ -42,15 +44,16 @@ const packrattle = {
   regex: simple.regex,
 
   alt,
+  build: resolve,
   chain,
   check,
   not,
   optional,
   optionalOr,
+  reduce,
   repeat,
   repeatIgnore,
   repeatSeparated,
-  resolve,
   seq,
   seqIgnore
 };

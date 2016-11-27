@@ -29,3 +29,29 @@ export function repeatSeparated<A, B>(separator: Parser<A>, p: Parser<B>, option
   const p2 = chain(separator, p, (a, b) => b);
   return chain(p, repeat(p2, { min, max }), (a, b) => [ a ].concat(b));
 }
+
+export interface ReduceOptions<A, B, R> extends RepeatOptions {
+  first: (value: B) => R;
+  next: (sum: R, sep: A, value: B) => R;
+}
+
+/*
+ * convenience method for reducing the result of 'repeatSeparated', optionally
+ * keeping the separator results. if 'accumulator' exists, it will transform
+ * the initial result into an accumulator. if 'reducer' exists, it will be
+ * used to progressively attach separators and new results.
+ */
+export function reduce<A, B, R>(separator: Parser<A>, p: Parser<B>, options: ReduceOptions<A, B, R>): Parser<R> {
+  const first = options.first;
+  const next = options.next;
+  const min = options.min ? options.min - 1 : 0;
+  const max = options.max ? options.max - 1 : Infinity;
+
+  return chain(
+    p,
+    repeat(chain(separator, p, (a, b) => [ a, b ] as [ A, B ]), { min, max }),
+    (initial, remainder) => {
+      return remainder.reduce((sum, [ sep, value ]) => next(sum, sep, value), first(initial));
+    }
+  );
+}
