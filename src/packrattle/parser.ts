@@ -276,20 +276,26 @@ export class Parser<T> {
     });
   }
 
-  // // only succeed if f(value, state) returns true. optional failure message.
-  // matchIf(f, message) {
-  //   return newParser("filter", { wrap: this }, (state, results) => {
-  //     state.schedule(this).then(match => {
-  //       if (match.ok && !f(match.value, match.state.span())) {
-  //         results.add(state.failure(message));
-  //       } else {
-  //         results.add(match);
-  //       }
-  //     });
-  //   });
-  // }
-  //
-  // filter(f, message) { return this.matchIf(f, message); }
+  // only succeed if f(value, state) returns true. optional failure message.
+  filter(f: (value: T, span: Span) => boolean, message?: string): Parser<T> {
+    return newParser<T>("filter", { children: [ this ] }, state => {
+      state.schedule(this, state.pos).then(match => {
+        if (match instanceof SuccessfulMatch) {
+          if (!f(match.value, match.span())) {
+            state.result.add(state.failure(message, match.commit));
+          } else {
+            state.result.add(state.success(match.value, match.pos - state.pos, match.commit))
+          }
+        } else {
+          state.result.add(match.forState(state));
+        }
+      });
+    });
+  }
+
+  matchIf(f: (value: T, span: Span) => boolean, message?: string): Parser<T> {
+    return this.filter(f, message);
+  }
 
 
   // ----- convenience methods for accessing the combinators
@@ -297,8 +303,6 @@ export class Parser<T> {
   then<U>(p: Parser<U>): Parser<[ T, U ]> { return chain(this, p, (a: T, b: U) => [ a, b ] as [ T, U ]); }
 
   or<U>(p: Parser<U>): Parser<T | U> { return alt(this, p); }
-
-  // drop() { return drop(this); }
 
   optional(): Parser<T | undefined> { return optional(this); }
 
