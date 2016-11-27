@@ -2,7 +2,7 @@
 // import resolve from "./resolve";
 // import { quote } from "./strings";
 
-import { alt, chain, check, commit, optional, optionalOr } from "./combiners";
+import { alt, chain, check, commit, not, optional, optionalOr } from "./combiners";
 import { Engine, EngineOptions } from "./engine";
 import { FailedMatch, Match, SuccessfulMatch } from "./match";
 import { ParserState } from "./parser_state";
@@ -308,8 +308,8 @@ export class Parser<T> {
 
   commit(): Parser<T> { return commit(this); }
 
-  // not() { return not(this); }
-  //
+  not(): Parser<null> { return not(this); }
+
   // repeat(options) { return repeat(this, options); }
   //
   // times(count) { return repeat(this, { min: count, max: count }); }

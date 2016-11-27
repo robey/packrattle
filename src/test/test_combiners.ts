@@ -158,19 +158,19 @@ describe("combiners", () => {
     (() => p.run("helloth")).should.throw(/there/);
   });
 
-//   it("not", () => {
-//     const p = pr.not("hello");
-//     const m = p.execute("cat");
-//     m.state.pos.should.eql(0);
-//     m.value.should.eql("");
-//     (() => p.run("hello")).should.throw(/hello/);
-//   });
-//
-//   it("parser.not", () => {
-//     const p = pr.string("hello").not();
-//     const m = p.execute("cat");
-//     m.state.pos.should.eql(0);
-//     m.value.should.eql("");
-//     (() => p.run("hello")).should.throw(/hello/);
-//   });
+  it("not", () => {
+    const p = packrattle.not(packrattle.string("hello"));
+    const m = p.execute("cat") as SuccessfulMatch<null>;
+    m.pos.should.eql(0);
+    (m.value == null).should.eql(true);
+    (() => p.run("hello")).should.throw(/hello/);
+  });
+
+  it("parser.not", () => {
+    const p = packrattle.string("hello").not();
+    const m = p.execute("cat") as SuccessfulMatch<null>;
+    m.pos.should.eql(0);
+    (m.value == null).should.eql(true);
+    (() => p.run("hello")).should.throw(/hello/);
+  });
 });

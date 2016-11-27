@@ -193,20 +193,20 @@ export function commit<T>(p: Parser<T>): Parser<T> {
   });
 }
 
-// /*
-//  * succeed (with an empty match) if the inner parser fails; otherwise fail.
-//  */
-// export function not(p) {
-//   return newParser("not", { wrap: p, cacheable: true }, (state, results, p) => {
-//     state.schedule(p).then(match => {
-//       results.add(
-//         match.ok ?
-//         state.failure(null, match.commit) :
-//         state.success("", match.commit));
-//     });
-//   });
-// }
-//
+/*
+ * succeed (with an empty match) if the inner parser fails; otherwise fail.
+ */
+export function not<T>(p: Parser<T>): Parser<null> {
+  return newParser<null>("not", { children: [ p ], cacheable: true }, (state, [ p ]) => {
+    state.schedule(p, state.pos).then(match => {
+      state.result.add(
+        match instanceof SuccessfulMatch ?
+          state.failure(undefined, match.commit) :
+          state.success(null, 0, match.commit));
+    });
+  });
+}
+
 // /*
 //  * from 'min' to 'max' (inclusive) repetitions of a parser, returned as an
 //  * array. 'max' may be omitted to mean infinity.
