@@ -44,20 +44,6 @@ describe("combiners", () => {
     p.run("goodbye").should.eql("goodbye");
   });
 
-//   it("drop", () => {
-//     const p = pr.drop("abc");
-//     const m = p.execute("abc");
-//     m.state.pos.should.eql(3);
-//     (m.value == null).should.eql(true);
-//   });
-//
-//   it("parser.drop", () => {
-//     const p = pr("abc").drop();
-//     const m = p.execute("abc");
-//     m.state.pos.should.eql(3);
-//     (m.value == null).should.eql(true);
-//   });
-
   describe("optional", () => {
     it("optional", () => {
       const p = packrattle.optional(packrattle.regex(/\d+/).map(m => m[0]));
@@ -109,7 +95,7 @@ describe("combiners", () => {
       );
       const rv = p.execute("bbbd") as SuccessfulMatch<any>;
       rv.match.should.eql(true);
-      rv.value[1].should.eql({ start: 3, end: 4 });
+      rv.value[1].should.eql({ start: 3, end: 3 });
       rv.value[2][0].should.eql("d");
     });
 

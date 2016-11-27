@@ -38,7 +38,7 @@ export class Span {
   private _endLine?: Line;
 
   constructor(public readonly text: string, public readonly start: number, public readonly end: number) {
-    if (this.end == this.start) this.end++;
+    // pass
   }
 
   inspect() {

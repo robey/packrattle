@@ -49,53 +49,6 @@ describe("Parser.seq", () => {
     rv.value.should.eql([ "abc", "99", "xyz" ]);
   });
 
-  // it("skips a dropped element at the end", () => {
-  //   const p = pr([ "abc", pr.optional(/\d+/).drop(), pr.optional(/\w+/).drop() ]);
-  //   let rv = p.execute("abcj");
-  //   rv.state.pos.should.equal(4);
-  //   rv.value.should.eql([ "abc" ]);
-  //   rv = p.execute("abc99");
-  //   rv.state.pos.should.equal(5);
-  //   rv.value.should.eql([ "abc" ]);
-  // });
-  //
-  // it("skips whitespace inside seqIgnore()", () => {
-  //   const p = pr.seqIgnore(/\s+/, "abc", "xyz", "ghk");
-  //   let rv = p.execute("abcxyzghk");
-  //   rv.ok.should.equal(true);
-  //   rv.value.should.eql([ "abc", "xyz", "ghk" ]);
-  //   rv = p.execute("   abc xyz\tghk");
-  //   rv.ok.should.equal(true);
-  //   rv.value.should.eql([ "abc", "xyz", "ghk" ]);
-  // });
-  //
-  // it("skips whitespace lazily", () => {
-  //   let hits = 0;
-  //   const p = pr.seqIgnore(
-  //     () => {
-  //       hits += 1;
-  //       return /\s+/;
-  //     },
-  //     () => {
-  //       hits += 1;
-  //       return pr.string("abc");
-  //     },
-  //     () => {
-  //       hits += 1;
-  //       return pr.string("xyz");
-  //     },
-  //     () => {
-  //       hits += 1;
-  //       return pr.string("ghk");
-  //     }
-  //   );
-  //   hits.should.equal(0);
-  //   const rv = p.execute("   abc xyz\tghk");
-  //   hits.should.equal(4);
-  //   rv.ok.should.equal(true);
-  //   rv.value.should.eql([ "abc", "xyz", "ghk" ]);
-  // });
-
   it("handles regexen in a sequence", () => {
     const p = packrattle.seq(/\s*/, "if");
     let rv = p.execute("   if") as SuccessfulMatch<any[]>;

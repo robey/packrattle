@@ -64,20 +64,6 @@ export function seq(...parsers: LazyParser[]): Parser<any[]> {
   });
 }
 
-// /*
-//  * chain together a sequence of parsers. before each parser is checked, the
-//  * 'ignore' parser is optionally matched and thrown away. this is typicially
-//  * used for discarding whitespace in lexical parsing.
-//  */
-// export function seqIgnore(ignore, ...parsers) {
-//   const newseq = [];
-//   parsers.forEach(p => {
-//     newseq.push(drop(optional(ignore)));
-//     newseq.push(p);
-//   });
-//   return seq(...newseq);
-// }
-
 /*
  * try each of these parsers, in order (starting from the same position),
  * looking for the first match.
@@ -118,17 +104,6 @@ export function alt(...parsers: LazyParser[]): Parser<any> {
     });
   });
 }
-
-// /*
-//  * throw away the match value, equivalent to `map(null)`.
-//  */
-// export function drop(p) {
-//   return newParser("drop", { wrap: p, cacheable: true }, (state, results, p) => {
-//     state.schedule(p).then(match => {
-//       results.add(match.ok ? match.withValue(null) : match);
-//     });
-//   });
-// }
 
 /*
  * allow a parser to fail, and instead return undefined (js equivalent of
@@ -207,64 +182,54 @@ export function not<T>(p: Parser<T>): Parser<null> {
   });
 }
 
-// /*
-//  * from 'min' to 'max' (inclusive) repetitions of a parser, returned as an
-//  * array. 'max' may be omitted to mean infinity.
-//  */
-// export function repeat(p, options = {}) {
-//   const min = options.min || 0;
-//   const max = options.max || Infinity;
-//   return newParser("repeat", {
-//     children: [ p ],
-//     describe: list => list.join() + (max == Infinity ? `{${min}+}` : `{${min}, ${max}}`)
-//   }, (state, results, p) => {
-//     function next(match, startingState, list = [], count = 0) {
-//       if (!match.ok) {
-//         // if we were committed, don't backtrack.
-//         if (match.commit) return results.add(match);
-//         // intentionally use the "last good state" from our repeating parser.
-//         return results.add(count >= min ?
-//           state.merge(startingState).success(list, match.commit) :
-//           state.failure());
-//       }
-//       count++;
-//       const newlist = match.value != null ? list.concat([ match.value ]) : list;
-//       if (count >= min) results.add(state.merge(match.state).success(newlist, match.commit));
-//       if (count < max) {
-//         // if a parser matches nothing, we could go on forever...
-//         if (match.state.pos == state.pos) {
-//           throw new Error(`Repeating parser isn't making progress at position ${state.pos}: ${p}`);
-//         }
-//         match.state.schedule(p).then(m => next(m, match.state, newlist, count));
-//       }
-//     }
-//
-//     state.schedule(p).then(m => next(m, state));
-//   });
-// }
-//
-// /*
-//  * like 'repeat', but each element may be optionally preceded by 'ignore',
-//  * which will be thrown away. this is usually used to remove leading
-//  * whitespace.
-//  */
-// export function repeatIgnore(p, ignore, options) {
-//   return repeat(seq(optional(ignore).drop(), p).map(x => x[0]), options);
-// }
-//
-// /*
-//  * like 'repeat', but the repeated elements are separated by 'separator',
-//  * which is ignored.
-//  */
-// export function repeatSeparated(p, separator = "", options = {}) {
-//   const min = options.min ? options.min - 1 : 0;
-//   const max = options.max ? options.max - 1 : Infinity;
-//   const p2 = seq(drop(separator), p).map(x => x[0]);
-//   return seq(p, repeat(p2, { min, max })).map(x => {
-//     return [ x[0] ].concat(x[1]);
-//   });
-// }
-//
+export interface RepeatOptions {
+  min?: number;
+  max?: number;
+}
+
+/*
+ * from 'min' to 'max' (inclusive) repetitions of a parser, returned as an
+ * array. 'max' may be omitted to mean infinity.
+ */
+export function repeat<T>(p: Parser<T>, options: RepeatOptions = {}): Parser<T[]> {
+  const min = options.min || 0;
+  const max = options.max || Infinity;
+
+  return newParser<T[]>("repeat", {
+    children: [ p ],
+    describe: list => list.join() + (max == Infinity ? `{${min}+}` : `{${min}, ${max}}`)
+  }, (state, [ p ]) => {
+    // if 0 is ok, then instantly we have zero.
+    if (min == 0) state.result.add(state.success([], 0));
+
+    function next(match: Match<T>, list: T[] = [], count: number = 0) {
+      if (match instanceof FailedMatch) {
+        // if we were committed, don't backtrack.
+        if (match.commit) {
+          state.result.add(match.forState(state));
+        } else if (count < min) {
+          // intentionally use the "last good state" from our repeating parser.
+          state.result.add(state.failure());
+        }
+        return;
+      }
+
+      count++;
+      const newlist = list.concat([ match.value ]);
+      if (count >= min) state.result.add(state.success(newlist, match.pos - state.pos, match.commit));
+      if (count < max) {
+        // if a parser matches nothing, we could go on forever...
+        if (match.pos == match.startpos) {
+          throw new Error(`Repeating parser isn't making progress at position ${match.pos}: ${p}`);
+        }
+        match.state.schedule(p, match.pos).then(m => next(m, newlist, count));
+      }
+    }
+
+    state.schedule(p, state.pos).then(m => next(m));
+  });
+}
+
 // /*
 //  * convenience method for reducing the result of 'repeatSeparated', optionally
 //  * keeping the separator results. if 'accumulator' exists, it will transform

@@ -2,7 +2,7 @@
 // import resolve from "./resolve";
 // import { quote } from "./strings";
 
-import { alt, chain, check, commit, not, optional, optionalOr } from "./combiners";
+import { alt, chain, check, commit, not, optional, optionalOr, repeat, RepeatOptions } from "./combiners";
 import { Engine, EngineOptions } from "./engine";
 import { FailedMatch, Match, SuccessfulMatch } from "./match";
 import { ParserState } from "./parser_state";
@@ -310,9 +310,9 @@ export class Parser<T> {
 
   not(): Parser<null> { return not(this); }
 
-  // repeat(options) { return repeat(this, options); }
-  //
-  // times(count) { return repeat(this, { min: count, max: count }); }
+  repeat(options: RepeatOptions = {}): Parser<T[]> { return repeat(this, options); }
+
+  times(count: number): Parser<T[]> { return repeat(this, { min: count, max: count }); }
 }
 
 export class ParseError extends Error {

@@ -6,7 +6,8 @@ export { Line, Span } from "./packrattle/span";
 
 import { Parser } from "./packrattle/parser";
 import { simple } from "./packrattle/simple";
-import { alt, chain, check, not, optional, optionalOr, seq } from "./packrattle/combiners";
+import { alt, chain, check, not, optional, optionalOr, repeat, RepeatOptions, seq } from "./packrattle/combiners";
+import { repeatIgnore, repeatSeparated, seqIgnore } from "./packrattle/convenience";
 import { resolve } from "./packrattle/resolve";
 
 // import resolve from "./packrattle/resolve";
@@ -46,8 +47,12 @@ const packrattle = {
   not,
   optional,
   optionalOr,
+  repeat,
+  repeatIgnore,
+  repeatSeparated,
   resolve,
-  seq
+  seq,
+  seqIgnore
 };
 
 export { packrattle };
