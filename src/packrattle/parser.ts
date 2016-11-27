@@ -2,7 +2,7 @@
 // import resolve from "./resolve";
 // import { quote } from "./strings";
 
-import { alt, chain, optional, optionalOr } from "./combiners";
+import { alt, chain, check, commit, optional, optionalOr } from "./combiners";
 import { Engine, EngineOptions } from "./engine";
 import { FailedMatch, Match, SuccessfulMatch } from "./match";
 import { ParserState } from "./parser_state";
@@ -304,10 +304,10 @@ export class Parser<T> {
 
   optionalOr(defaultValue: T) { return optionalOr<T>(this, defaultValue); }
 
-  // check() { return check(this); }
-  //
-  // commit() { return commit(this); }
-  //
+  check(): Parser<T> { return check(this); }
+
+  commit(): Parser<T> { return commit(this); }
+
   // not() { return not(this); }
   //
   // repeat(options) { return repeat(this, options); }

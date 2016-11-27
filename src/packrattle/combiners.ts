@@ -45,7 +45,7 @@ export function seq(...parsers: LazyParser[]): Parser<any[]> {
 
     function next(i: number, pos: number, rv: any[] = []) {
       if (i >= parsers.length) {
-        state.result.add(state.success(rv, pos, commit));
+        state.result.add(state.success(rv, pos - state.pos, commit));
         return;
       }
       const p = parsers[i];
@@ -93,18 +93,17 @@ export function alt(...parsers: LazyParser[]): Parser<any> {
     const fails: FailedMatch<any>[] = [];
     parsers.forEach(p => {
       state.schedule(p, state.pos, () => !aborting).then(match => {
-        if (match.match) {
+        if (match instanceof SuccessfulMatch) {
           state.result.add(match);
         } else {
-          if (match instanceof SuccessfulMatch) {
+          if (match.commit) {
             // skip other alternatives; dump error buffer.
             aborting = true;
             fails.splice(0, fails.length);
             state.result.add(match);
             return;
-          } else {
-            fails.push(match);
           }
+          fails.push(match);
         }
         // save up all the fails. if *all* of the alternatives fail, summarize it.
         count++;
@@ -166,30 +165,34 @@ export function optionalOr<T>(p: Parser<T>, defaultValue: T): Parser<T> {
   });
 }
 
-// /*
-//  * check that this parser matches, but don't advance our position in the
-//  * string. (perl calls this a zero-width lookahead.)
-//  */
-// export function check(p) {
-//   return newParser("check", { wrap: p, cacheable: true }, (state, results, p) => {
-//     state.schedule(p).then(match => {
-//       results.add(match.ok ? match.withState(state) : match);
-//     });
-//   });
-// }
-//
-// /*
-//  * if this parser matches, "commit" to this path and refuse to backtrack to
-//  * previous alternatives.
-//  */
-// export function commit(p) {
-//   return newParser("commit", { wrap: p, cacheable: true }, (state, results, p) => {
-//     state.schedule(p).then(match => {
-//       results.add(match.ok ? match.setCommit() : match);
-//     });
-//   });
-// }
-//
+/*
+ * check that this parser matches, but don't advance our position in the
+ * string. (perl calls this a zero-width lookahead.)
+ */
+export function check<T>(p: Parser<T>): Parser<T> {
+  return newParser<T>("check", { children: [ p ], cacheable: true }, (state, [ p ]) => {
+    state.schedule(p, state.pos).then(match => {
+      if (match instanceof FailedMatch) {
+        state.result.add(match);
+        return;
+      }
+      state.result.add(state.success(match.value, 0, match.commit));
+    });
+  });
+}
+
+/*
+ * if this parser matches, "commit" to this path and refuse to backtrack to
+ * previous alternatives.
+ */
+export function commit<T>(p: Parser<T>): Parser<T> {
+  return newParser<T>("commit", { children: [ p ], cacheable: true }, (state, [ p ]) => {
+    state.schedule(p, state.pos).then(match => {
+      state.result.add(match instanceof SuccessfulMatch ? match.withCommit() : match);
+    });
+  });
+}
+
 // /*
 //  * succeed (with an empty match) if the inner parser fails; otherwise fail.
 //  */

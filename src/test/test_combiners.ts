@@ -133,31 +133,31 @@ describe("combiners", () => {
     });
   });
 
-//   it("check", () => {
-//     const p = pr.check("hello");
-//     const m = p.execute("hello");
-//     m.ok.should.eql(true);
-//     m.state.pos.should.eql(0);
-//     m.value.should.eql("hello");
-//   });
-//
-//   it("parser.check", () => {
-//     const p = pr("hello").check();
-//     const m = p.execute("hello");
-//     m.ok.should.eql(true);
-//     m.state.pos.should.eql(0);
-//     m.value.should.eql("hello");
-//   });
-//
-//   it("check within a sequence", () => {
-//     const p = pr([ "hello", pr.check("there"), "th" ]);
-//     const m = p.execute("hellothere");
-//     m.ok.should.eql(true);
-//     m.state.pos.should.eql(7);
-//     m.value.should.eql([ "hello", "there", "th" ]);
-//     (() => p.run("helloth")).should.throw(/there/);
-//   });
-//
+  it("check", () => {
+    const p = packrattle.check(packrattle.string("hello"));
+    const m = p.execute("hello") as SuccessfulMatch<string>;
+    m.match.should.eql(true);
+    m.pos.should.eql(0);
+    m.value.should.eql("hello");
+  });
+
+  it("parser.check", () => {
+    const p = packrattle.string("hello").check();
+    const m = p.execute("hello") as SuccessfulMatch<string>;
+    m.match.should.eql(true);
+    m.pos.should.eql(0);
+    m.value.should.eql("hello");
+  });
+
+  it("check within a sequence", () => {
+    const p = packrattle.seq("hello", packrattle.check(packrattle.string("there")), "th");
+    const m = p.execute("hellothere") as SuccessfulMatch<any[]>;
+    m.match.should.eql(true);
+    m.pos.should.eql(7);
+    m.value.should.eql([ "hello", "there", "th" ]);
+    (() => p.run("helloth")).should.throw(/there/);
+  });
+
 //   it("not", () => {
 //     const p = pr.not("hello");
 //     const m = p.execute("cat");

@@ -50,7 +50,7 @@ export class FailedMatch<T> extends BaseMatch<T> {
     ];
     if (this.commit) fields.push("commit");
     if (this.generated) fields.push("generated");
-    return `FailedMatch(${fields.join(", ")}`;
+    return `FailedMatch(${fields.join(", ")})`;
   }
 
   span(): Span {
@@ -91,7 +91,7 @@ export class SuccessfulMatch<T> extends BaseMatch<T> {
       "value='" + quote(this.value && this.value["inspect"] ? this.value["inspect"]() : this.value) + "'"
     ];
     if (this.commit) fields.push("commit");
-    return `SuccessfulMatch(${fields.join(", ")}`;
+    return `SuccessfulMatch(${fields.join(", ")})`;
   }
 
   span(): Span {
@@ -106,6 +106,10 @@ export class SuccessfulMatch<T> extends BaseMatch<T> {
     const pos = Math.max(this.pos, other.pos);
     const commit = this.commit || other.commit;
     return new SuccessfulMatch<U>(startpos, pos, state, newValue, commit);
+  }
+
+  withCommit() {
+    return new SuccessfulMatch<T>(this.startpos, this.pos, this.state, this.value, true);
   }
 }
 
@@ -138,8 +142,3 @@ export type Match<T> = FailedMatch<T> | SuccessfulMatch<T>;
 //     return rv;
 //   }
 //
-//   setCommit() {
-//     const rv = new Match(this.ok, this.state, this);
-//     rv.commit = true;
-//     return rv;
-//   }
