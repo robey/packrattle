@@ -1,6 +1,6 @@
 import { chain } from "./combiners";
 import { Engine, EngineOptions } from "./engine";
-import { Match, Matcher, MatchFailure, MatchResult, MatchSuccess, Sequence, Span } from "./matcher";
+import { mapMatch, Match, Matcher, MatchFailure, MatchResult, MatchSuccess, schedule, Sequence, Span } from "./matcher";
 import { simple } from "./simple";
 import { quote } from "./strings";
 
@@ -161,6 +161,24 @@ export class Parser<A, Out> {
     } else {
       throw new Error("impossible");
     }
+  }
+
+  // ----- transforms
+
+  // transforms the result of a parser if it succeeds.
+  // f(value, span)
+  map<U>(f: U | ((item: Out, span: Span) => U)): Parser<A, U> {
+    return new Parser<A, U>("map", { children: [ this ] }, children => {
+      return (stream, index) => {
+        return schedule<A, Out, U>(this, index, (match: Match<Out>) => {
+          return mapMatch<A, Out, U>(match, (span, value) => {
+            // used to be able to return a new Parser here, but i can't come up
+            // with any practical use for it.
+            return new MatchSuccess(span, (typeof f === "function") ? f(value, span) : f);
+          });
+        });
+      };
+    });
   }
 }
 

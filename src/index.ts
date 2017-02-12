@@ -23,6 +23,8 @@ const reject = simple.reject();
 const succeed = simple.succeed;
 export { end, matchRegex, matchString, reject, succeed };
 
+export { chain, seq } from "./combiners";
+
 // const packrattle = {
 //   end: simple.end(),
 //   reject: simple.reject(),
