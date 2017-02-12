@@ -1,4 +1,4 @@
-import { chain } from "./combiners";
+import { chain, seq } from "./combiners";
 import { Engine, EngineOptions } from "./engine";
 import { mapMatch, Match, Matcher, MatchFailure, MatchResult, MatchSuccess, schedule, Sequence, Span } from "./matcher";
 import { simple } from "./simple";
@@ -152,7 +152,7 @@ export class Parser<A, Out> {
 
   // consume an entire text with this parser. convert failure into an exception.
   run(stream: Sequence<A>, options: EngineOptions = {}): Out {
-    const rv = this.consume().resolve().execute(stream, options);
+    const rv = this.consume().execute(stream, options);
     // really want 'match' statement here.
     if (rv instanceof MatchFailure) {
       throw new ParseError(rv.message, rv.span);
@@ -170,12 +170,40 @@ export class Parser<A, Out> {
   map<U>(f: U | ((item: Out, span: Span) => U)): Parser<A, U> {
     return new Parser<A, U>("map", { children: [ this ] }, children => {
       return (stream, index) => {
-        return schedule<A, Out, U>(this, index, (match: Match<Out>) => {
+        return schedule<A, Out, U>(children[0], index, (match: Match<Out>) => {
           return mapMatch<A, Out, U>(match, (span, value) => {
-            // used to be able to return a new Parser here, but i can't come up
-            // with any practical use for it.
-            return new MatchSuccess(span, (typeof f === "function") ? f(value, span) : f);
+            return [ new MatchSuccess(span, (typeof f === "function") ? f(value, span) : f) ];
           });
+        });
+      };
+    });
+  }
+
+  // i don't understand why you would want this.
+  // flatmap<U>(f: (item: Out, span: Span) => Parser<A, U>): Parser<A, U> {
+  //   return new Parser<A, U>("flatmap", { children: [ this ] }, children => {
+  //     return (stream, index) => {
+  //       return schedule<A, Out, U>(children[0], index, (match: Match<Out>) => {
+  //         return mapMatch<A, Out, U>(match, (span, value) => {
+  //           return schedule<A, Out, U>(f(value, span).resolve(), index, (match: Match<U>) => {
+  //             return match;
+  //           });
+  //         });
+  //       });
+  //     };
+  //   });
+  // }
+
+  // transforms the error message of a parser
+  mapError(newMessage: string): Parser<A, Out> {
+    return new Parser<A, Out>("mapError", { children: [ this ] }, children => {
+      return (stream, index) => {
+        return schedule<A, Out, Out>(children[0], index, (match: Match<Out>) => {
+          if (match instanceof MatchFailure) {
+            return [ new MatchFailure(match.span, newMessage) ];
+          } else {
+            return [ match ];
+          }
         });
       };
     });
@@ -211,10 +239,14 @@ function unlazy<A>(parser: LazyParser<A>, functionCache: FunctionCache<A>): Pars
   }
 
   // implicits:
-  if (typeof parser == "string") throw new Error("unimplemented"); //return simple.string(parser);
-  if (parser instanceof RegExp) throw new Error("unimplemented"); //return simple.regex(parser);
-  if (Array.isArray(parser)) throw new Error("unimplemented"); //return seq(...parser);
+  if (typeof parser == "string") return simple.matchString(parser) as Parser<any, string>;
+  if (parser instanceof RegExp) return simple.matchRegex(parser) as Parser<any, RegExpExecArray>;
+  if (Array.isArray(parser)) return seq(...parser) as Parser<A, any[]>;
 
   if (!(parser instanceof Parser)) throw new Error("Unable to resolve parser: " + parser);
   return parser;
+}
+
+export function parser<A, Out>(parser: LazyParser<A>): Parser<A, Out> {
+  return unlazy(parser, {}) as Parser<A, Out>;
 }

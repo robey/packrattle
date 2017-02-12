@@ -1,4 +1,4 @@
-import { fail, Match, MatchFailure, MatchResult, MatchSuccess, Sequence } from "./matcher";
+import { fail, Match, MatchFailure, MatchResult, MatchSuccess, Schedule, Sequence } from "./matcher";
 import { Parser } from "./parser";
 import { PriorityQueue } from "./priority_queue";
 import { PromiseSet, PromiseSetOptions } from "./promise_set";
@@ -101,14 +101,15 @@ export class Engine<A> {
   }
 
   processResult<T>(task: ParseTask<A, T>, mr: MatchResult<A, T>) {
-    if (Array.isArray(mr)) {
-      // schedule new tasks
-      mr.forEach(s => {
-        this.schedule(s.parser, s.index).result.then(match => this.processResult(task, s.handler(match)));
-      });
-    } else {
-      task.result.add(mr);
-    }
+    mr.forEach(result => {
+      if (result instanceof Schedule) {
+        this.schedule(result.parser, result.index).result.then(match => {
+          this.processResult(task, result.handler(match));
+        });
+      } else {
+        task.result.add(result);
+      }
+    });
   }
 
   /*
@@ -180,7 +181,7 @@ export class Engine<A> {
 
     const task = this.cache[ids[0]];
     if (this.options.logger) this.options.logger(`forcing fail of ${task.cacheKey}`);
-    task.result.add(fail(task.index, task.parser));
+    task.result.add(fail(task.index, task.parser)[0]);
   }
 }
 

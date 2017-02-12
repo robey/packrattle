@@ -5,8 +5,8 @@ export { PromiseSet } from "./promise_set";
 // export { Line, Span } from "./packrattle/span";
 
 // need to do in two parts, so tsc understands that the simple/combo parsers below are of known type.
-import { Parser } from "./parser";
-export { Parser };
+import { Parser, parser } from "./parser";
+export { Parser, parser };
 
 // import { simple } from "./packrattle/simple";
 // import { alt, chain, check, not, optional, optionalOr, repeat, RepeatOptions, seq } from "./packrattle/combiners";
@@ -23,7 +23,7 @@ const reject = simple.reject();
 const succeed = simple.succeed;
 export { end, matchRegex, matchString, reject, succeed };
 
-export { chain, seq } from "./combiners";
+export { chain, optional, optionalOr, seq } from "./combiners";
 
 // const packrattle = {
 //   end: simple.end(),

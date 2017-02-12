@@ -3,8 +3,9 @@ const SQUOTE = "\'".charCodeAt(0);
 const BACKSLASH = "\\".charCodeAt(0);
 
 // quote a string so it can be displayed.
-export function quote(s: string): string {
-  if (s == null) return "null";
+export function quote(s?: string | null): string {
+  if (s === undefined) return "undefined";
+  if (s === null) return "null";
   return s.toString().replace(/[^\u0020-\u007e]|\"|\'/g, c => {
     const n = c.charCodeAt(0);
     switch (n) {

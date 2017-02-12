@@ -1,5 +1,8 @@
-import { mapMatch, Match, MatchFailure, MatchResult, MatchSuccess, mergeSpan, schedule, success } from "./matcher";
+import {
+  defer, mapMatch, Match, MatchFailure, MatchResult, MatchSuccess, mergeSpan, schedule, success
+} from "./matcher";
 import { LazyParser, Parser } from "./parser";
+import { quote } from "./strings";
 
 /*
  * chain together parsers p1 & p2 such that if p1 matches, p2 is executed on
@@ -21,7 +24,7 @@ export function chain<A, T1, T2, R>(
         return mapMatch<A, T1, R>(match1, (span1, value1) => {
           return schedule<A, T2, R>(children[1], span1.end, (match2: Match<T2>) => {
             return mapMatch<A, T2, R>(match2, (span2, value2) => {
-              return new MatchSuccess<R>(mergeSpan(span1, span2), combiner(value1, value2));
+              return [ new MatchSuccess<R>(mergeSpan(span1, span2), combiner(value1, value2)) ];
             });
           });
         });
@@ -40,7 +43,6 @@ export function seq<A>(...parsers: LazyParser<A>[]): Parser<A, any[]> {
     children: parsers,
     describe: list => "[ " + list.join(", ") + " ]"
   }, children => {
-    console.log(children);
     function next(i: number, start: number, index: number, rv: any[] = []): MatchResult<A, any[]> {
       if (i >= parsers.length) return success(start, index, rv);
       return schedule<A, any, any[]>(children[i], index, (match: Match<any>) => {
@@ -49,5 +51,32 @@ export function seq<A>(...parsers: LazyParser<A>[]): Parser<A, any[]> {
     }
 
     return (stream, index) => next(0, index, index);
+  });
+}
+
+// alt
+
+/*
+ * allow a parser to fail, and instead return undefined (js equivalent of
+ * the Optional type).
+ */
+export function optional<A, Out>(p: Parser<A, Out>): Parser<A, Out | undefined> {
+  return optionalOr<A, Out | undefined>(p, undefined);
+}
+
+/*
+ * allow a parser to fail, and instead return a default value (the empty string
+ * if no other value is provided).
+ */
+export function optionalOr<A, Out>(p: Parser<A, Out>, defaultValue: Out): Parser<A, Out> {
+  return new Parser<A, Out>("optionalOr", {
+    children: [ p ],
+    cacheable: (defaultValue == null || typeof defaultValue == "string" || typeof defaultValue == "number"),
+    describe: children => `optionalOr(${children[0]}, ${quote(defaultValue ? defaultValue.toString() : defaultValue)})`
+  }, children => {
+    return (stream, index) => {
+      // always succeed, but also try the optional parser.
+      return defer<A, Out>(children[0], index).concat(success(index, index, defaultValue) as MatchResult<A, Out>);
+    };
   });
 }
