@@ -1,48 +1,56 @@
-import { packrattle, SuccessfulMatch } from "../";
+import { end, MatchFailure, matchRegex, matchString, MatchSuccess, reject, succeed } from "../";
 
 import "should";
 import "source-map-support/register";
 
 describe("simple parsers", () => {
   it("reject", () => {
-    (() => packrattle.reject.run("")).should.throw(/rejected/);
+    (() => reject.run("")).should.throw(/rejected/);
   });
 
   it("succeed", () => {
-    packrattle.succeed("foo").run("").should.eql("foo");
+    succeed("foo").run("").should.eql("foo");
   });
 
   it("end", () => {
-    (packrattle.end.run("") == null).should.eql(true);
-    (() => packrattle.end.run("a")).should.throw(/end/);
+    (end.execute("") instanceof MatchSuccess).should.eql(true);
+    (end.execute("a") instanceof MatchFailure).should.eql(true);
   });
 
   it("literal string", () => {
-    const p = packrattle.string("hello");
+    const p = matchString("hello");
     (() => p.run("cat")).should.throw(/hello/);
     const rv = p.execute("hellon");
-    rv.startpos.should.eql(0);
-    rv.match.should.eql(true);
-    (rv as SuccessfulMatch<string>).pos.should.eql(5);
-    (rv as SuccessfulMatch<string>).value.should.eql("hello");
+    (rv instanceof MatchSuccess).should.eql(true);
+    if (rv instanceof MatchSuccess) {
+      rv.span.start.should.eql(0);
+      rv.span.end.should.eql(5);
+      rv.value.should.eql("hello");
+    }
   });
 
   it("consumes the whole string", () => {
-    const p = packrattle.string("hello").consume();
+    const p = matchString("hello").consume();
     const rv = p.execute("hello");
-    rv.match.should.eql(true);
-    (rv as SuccessfulMatch<string>).pos.should.eql(5);
-    (rv as SuccessfulMatch<string>).value.should.eql("hello");
+    (rv instanceof MatchSuccess).should.eql(true);
+    if (rv instanceof MatchSuccess) {
+      rv.span.start.should.eql(0);
+      rv.span.end.should.eql(5);
+      rv.value.should.eql("hello");
+    }
     (() => p.run("hello!")).should.throw(/end/);
   });
 
   it("regex", () => {
-    const p = packrattle.regex(/h(i)?/);
+    const p = matchRegex(/h(i)?/);
     (() => p.run("no")).should.throw(/h\(i\)\?/);
     const rv = p.execute("hit");
-    rv.match.should.eql(true);
-    (rv as SuccessfulMatch<RegExpExecArray>).pos.should.equal(2);
-    (rv as SuccessfulMatch<RegExpExecArray>).value[0].should.eql("hi");
-    (rv as SuccessfulMatch<RegExpExecArray>).value[1].should.eql("i");
+    (rv instanceof MatchSuccess).should.eql(true);
+    if (rv instanceof MatchSuccess) {
+      rv.span.start.should.eql(0);
+      rv.span.end.should.eql(2);
+      rv.value[0].should.eql("hi");
+      rv.value[1].should.eql("i");
+    }
   });
 });

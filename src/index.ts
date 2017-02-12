@@ -1,61 +1,46 @@
-export { FailedMatch, Match, SuccessfulMatch } from "./packrattle/match";
-export { newParser, Parser } from "./packrattle/parser";
-export { PriorityQueue } from "./packrattle/priority_queue";
-export { PromiseSet } from "./packrattle/promise_set";
-export { Line, Span } from "./packrattle/span";
+export { Match, MatchFailure, MatchSuccess } from "./matcher";
+// export { newParser, Parser } from "./packrattle/parser";
+export { PriorityQueue } from "./priority_queue";
+export { PromiseSet } from "./promise_set";
+// export { Line, Span } from "./packrattle/span";
 
-import { Parser } from "./packrattle/parser";
-import { simple } from "./packrattle/simple";
-import { alt, chain, check, not, optional, optionalOr, repeat, RepeatOptions, seq } from "./packrattle/combiners";
-import { reduce, ReduceOptions, repeatIgnore, repeatSeparated, seqIgnore } from "./packrattle/convenience";
-import { resolve } from "./packrattle/resolve";
+// need to do in two parts, so tsc understands that the simple/combo parsers below are of known type.
+import { Parser } from "./parser";
+export { Parser };
 
-export { ReduceOptions, RepeatOptions };
+// import { simple } from "./packrattle/simple";
+// import { alt, chain, check, not, optional, optionalOr, repeat, RepeatOptions, seq } from "./packrattle/combiners";
+// import { reduce, ReduceOptions, repeatIgnore, repeatSeparated, seqIgnore } from "./packrattle/convenience";
+// import { resolve } from "./packrattle/resolve";
 
-// import resolve from "./packrattle/resolve";
-//
-// resolve.build = resolve;
-//
-// // for backward compatibility, put everything on the default exported function.
-//
-// import * as combiners from "./packrattle/combiners";
-// for (const k in combiners) resolve[k] = combiners[k];
-//
-// import * as parser from "./packrattle/parser";
-// for (const k in parser) resolve[k] = parser[k];
-//
-// import * as parser_state from "./packrattle/parser_state";
-// for (const k in parser_state) resolve[k] = parser_state[k];
-//
-// import PriorityQueue from "./packrattle/priority_queue";
-// resolve.PriorityQueue = PriorityQueue;
-//
-// import * as simple from "./packrattle/simple";
-// for (const k in simple) resolve[k] = simple[k];
-//
-// // export "default": babel can't do this anymore.
-// module.exports = resolve;
+// export { ReduceOptions, RepeatOptions };
 
-const packrattle = {
-  end: simple.end(),
-  reject: simple.reject(),
-  succeed: simple.succeed,
-  string: simple.string,
-  regex: simple.regex,
+import { simple } from "./simple";
+const end = simple.end();
+const matchRegex = simple.matchRegex;
+const matchString = simple.matchString;
+const reject = simple.reject();
+const succeed = simple.succeed;
+export { end, matchRegex, matchString, reject, succeed };
 
-  alt,
-  build: resolve,
-  chain,
-  check,
-  not,
-  optional,
-  optionalOr,
-  reduce,
-  repeat,
-  repeatIgnore,
-  repeatSeparated,
-  seq,
-  seqIgnore
-};
-
-export { packrattle };
+// const packrattle = {
+//   end: simple.end(),
+//   reject: simple.reject(),
+//   succeed: simple.succeed,
+//   string: simple.string,
+//   regex: simple.regex,
+//
+//   alt,
+//   build: resolve,
+//   chain,
+//   check,
+//   not,
+//   optional,
+//   optionalOr,
+//   reduce,
+//   repeat,
+//   repeatIgnore,
+//   repeatSeparated,
+//   seq,
+//   seqIgnore
+// };
