@@ -1,5 +1,5 @@
 import {
-  defer, mapMatch, Match, MatchFailure, MatchResult, MatchSuccess, mergeSpan, schedule, success
+  defer, fail, mapMatch, Match, MatchFailure, MatchResult, MatchSuccess, mergeSpan, Schedule, schedule, success
 } from "./matcher";
 import { LazyParser, Parser } from "./parser";
 import { quote } from "./strings";
@@ -54,7 +54,43 @@ export function seq<A>(...parsers: LazyParser<A>[]): Parser<A, any[]> {
   });
 }
 
-// alt
+/*
+ * try each of these parsers, in order (starting from the same position),
+ * looking for the first match.
+ */
+export function alt<A, Out>(...parsers: LazyParser<A>[]): Parser<A, Out> {
+  const parser: Parser<A, Out> = new Parser<A, Out>("alt", {
+    cacheable: true,
+    children: parsers,
+    describe: list => list.join(" or ")
+  }, children => {
+    return (stream, index) => {
+      let count = 0;
+      const fails: MatchFailure<any>[] = [];
+
+      return children.map(p => {
+        return new Schedule<A, Out, Out>(p, index, (match: Match<Out>) => {
+          if (match instanceof MatchSuccess) {
+            return [ match ];
+          } else if (match instanceof MatchFailure) {
+            fails.push(match);
+          } else {
+            throw new Error("impossible");
+          }
+
+          // save up all the fails.
+          // if *all* of the alternatives fail, summarize it.
+          count++;
+          if (count == children.length && count == fails.length) {
+            return fail(index, parser);
+          }
+          return [] as MatchResult<A, Out>;
+        });
+      });
+    };
+  });
+  return parser;
+}
 
 /*
  * allow a parser to fail, and instead return undefined (js equivalent of

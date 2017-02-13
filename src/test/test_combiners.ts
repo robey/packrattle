@@ -1,4 +1,4 @@
-import { chain, matchString, MatchSuccess } from "../";
+import { alt, chain, matchRegex, matchString, MatchSuccess, optional, optionalOr } from "../";
 
 import "should";
 import "source-map-support/register";
@@ -20,63 +20,46 @@ describe("combiners", () => {
 
   // seq tests are in test_seq.js.
 
-//   it("alt", () => {
-//     const p = packrattle.alt("hello", "goodbye");
-//     (() => p.run("cat")).should.throw(/'hello'/);
-//     p.run("hello").should.eql("hello");
-//     p.run("goodbye").should.eql("goodbye");
-//   });
-//
-//   it("parser.or", () => {
-//     const p = packrattle.string("hello").or(packrattle.string("goodbye"));
-//     (() => p.run("cat")).should.throw(/'hello'/);
-//     p.run("hello").should.eql("hello");
-//     p.run("goodbye").should.eql("goodbye");
-//   });
-//
-//   describe("optional", () => {
-//     it("optional", () => {
-//       const p = packrattle.optional(packrattle.regex(/\d+/).map(m => m[0]));
-//       const m1 = p.execute("34.") as SuccessfulMatch<string | undefined>;
-//       m1.match.should.eql(true);
-//       m1.pos.should.eql(2);
-//       (m1.value || "").should.eql("34");
-//       const m2 = p.execute("no") as SuccessfulMatch<string | undefined>;
-//       m2.pos.should.eql(0);
-//       (m2.value === undefined).should.eql(true);
-//     });
-//
-//     it("optionalOr", () => {
-//       const p = packrattle.optionalOr(packrattle.regex(/\d+/).map(m => m[0]), "?");
-//       let m = p.execute("34.");
-//       m.match.should.eql(true);
-//       (m as SuccessfulMatch<string>).pos.should.eql(2);
-//       (m as SuccessfulMatch<string>).value.should.eql("34");
-//       m = p.execute("no");
-//       (m as SuccessfulMatch<string>).pos.should.eql(0);
-//       (m as SuccessfulMatch<string>).value.should.eql("?");
-//     });
-//
-//     it("parser.optional", () => {
-//       const p = packrattle.regex(/\d+/).map(m => m[0]).optional();
-//       let m = p.execute("34.") as SuccessfulMatch<string | undefined>;
-//       m.pos.should.eql(2);
-//       (m.value || "").should.eql("34");
-//       m = p.execute("no") as SuccessfulMatch<string | undefined>;
-//       m.pos.should.eql(0);
-//       (m.value === undefined).should.eql(true);
-//     });
-//
-//     it("parser.optionalOr", () => {
-//       const p = packrattle.regex(/\d+/).map(m => m[0]).optionalOr("?");
-//       let m = p.execute("34.") as SuccessfulMatch<string>;
-//       m.pos.should.eql(2);
-//       m.value.should.eql("34");
-//       m = p.execute("no") as SuccessfulMatch<string>;
-//       m.pos.should.eql(0);
-//       m.value.should.eql("?");
-//     });
-//
+  it("alt", () => {
+    const p = alt("hello", "goodbye");
+    (() => p.run("cat")).should.throw(/'hello'/);
+    p.run("hello").should.eql("hello");
+    p.run("goodbye").should.eql("goodbye");
+  });
+
+  describe("optional", () => {
+    it("optional", () => {
+      const p = optional(matchRegex(/\d+/).map(m => m[0]));
+      const m1 = p.consume().execute("34");
+      (m1 instanceof MatchSuccess).should.eql(true);
+      if (m1 instanceof MatchSuccess) {
+        m1.span.end.should.eql(2);
+        (m1.value || "").should.eql("34");
+      }
+      const m2 = p.execute("no");
+      (m2 instanceof MatchSuccess).should.eql(true);
+      if (m2 instanceof MatchSuccess) {
+        m2.span.end.should.eql(0);
+        (m2.value === undefined).should.eql(true);
+      }
+    });
+
+    it("optionalOr", () => {
+      const p = optionalOr(matchRegex(/\d+/).map(m => m[0]), "?");
+      const m1 = p.consume().execute("34");
+      (m1 instanceof MatchSuccess).should.eql(true);
+      if (m1 instanceof MatchSuccess) {
+        m1.span.end.should.eql(2);
+        m1.value.should.eql("34");
+      }
+      const m2 = p.execute("no");
+      (m2 instanceof MatchSuccess).should.eql(true);
+      if (m2 instanceof MatchSuccess) {
+        m2.span.end.should.eql(0);
+        m2.value.should.eql("?");
+      }
+    });
+
 //     it("advances position correctly past an optional", () => {
 //       const p = packrattle.seq(
 //         /[b]+/,
@@ -107,8 +90,8 @@ describe("combiners", () => {
 //       const rv3 = p.execute("49y");
 //       rv3.match.should.eql(false);
 //     });
-//   });
-//
+  });
+
 //   it("check", () => {
 //     const p = packrattle.check(packrattle.string("hello"));
 //     const m = p.execute("hello") as SuccessfulMatch<string>;
