@@ -1,4 +1,4 @@
-import { alt, chain, matchRegex, matchString, MatchSuccess, optional, optionalOr } from "../";
+import { alt, chain, MatchFailure, matchRegex, matchString, MatchSuccess, optional, optionalOr, seq } from "../";
 
 import "should";
 import "source-map-support/register";
@@ -60,36 +60,42 @@ describe("combiners", () => {
       }
     });
 
-//     it("advances position correctly past an optional", () => {
-//       const p = packrattle.seq(
-//         /[b]+/,
-//         packrattle.regex(/c/).optional().map((m, span) => ({ start: span.start, end: span.end })),
-//         packrattle.regex(/[d]+/)
-//       );
-//       const rv = p.execute("bbbd") as SuccessfulMatch<any>;
-//       rv.match.should.eql(true);
-//       rv.value[1].should.eql({ start: 3, end: 3 });
-//       rv.value[2][0].should.eql("d");
-//     });
-//
-//     it("tries both the success and failure sides", () => {
-//       const p = packrattle.seq(
-//         packrattle.optional(packrattle.regex(/\d+/)),
-//         packrattle.alt(
-//           "z",
-//           "9y"
-//         )
-//       );
-//       const rv1 = p.execute("33z") as SuccessfulMatch<any[]>;
-//       rv1.match.should.eql(true);
-//       rv1.value[1].should.eql("z");
-//       const rv2 = p.execute("9y") as SuccessfulMatch<any[]>;
-//       rv2.match.should.eql(true);
-//       rv2.value[1].should.eql("9y");
-//       // consumes either "49" or nothing:
-//       const rv3 = p.execute("49y");
-//       rv3.match.should.eql(false);
-//     });
+    it("advances position correctly past an optional", () => {
+      const p = seq(
+        /[b]+/,
+        optional(matchRegex(/c/)).map((m, span) => ({ start: span.start, end: span.end })),
+        matchRegex(/[d]+/)
+      );
+      const rv = p.execute("bbbd");
+      (rv instanceof MatchSuccess).should.eql(true);
+      if (rv instanceof MatchSuccess) {
+        rv.value[1].should.eql({ start: 3, end: 3 });
+        rv.value[2][0].should.eql("d");
+      }
+    });
+
+    it("tries both the success and failure sides", () => {
+      const p = seq(
+        optional(matchRegex(/\d+/)),
+        alt(
+          "z",
+          "9y"
+        )
+      );
+      const rv1 = p.execute("33z");
+      (rv1 instanceof MatchSuccess).should.eql(true);
+      if (rv1 instanceof MatchSuccess) {
+        rv1.value[1].should.eql("z");
+      }
+      const rv2 = p.execute("9y");
+      (rv2 instanceof MatchSuccess).should.eql(true);
+      if (rv2 instanceof MatchSuccess) {
+        rv2.value[1].should.eql("9y");
+      }
+      // consumes either "49" or nothing:
+      const rv3 = p.execute("49y",);
+      (rv3 instanceof MatchFailure).should.eql(true);
+    });
   });
 
 //   it("check", () => {
