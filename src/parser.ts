@@ -1,6 +1,8 @@
 import { chain, seq } from "./combiners";
 import { Engine, EngineOptions } from "./engine";
-import { mapMatch, Match, Matcher, MatchFailure, MatchResult, MatchSuccess, schedule, Sequence, Span } from "./matcher";
+import {
+  fail, mapMatch, Match, Matcher, MatchFailure, MatchResult, MatchSuccess, schedule, Sequence, Span
+} from "./matcher";
 import { simple } from "./simple";
 import { quote } from "./strings";
 
@@ -178,6 +180,20 @@ export class Parser<A, Out> {
       };
     });
   }
+
+  // only succeed if f(value, state) returns true. optional failure message.
+  filter(f: (value: Out, span: Span) => boolean, message?: string): Parser<A, Out> {
+    return new Parser<A, Out>("filter", { children: [ this ] }, children => {
+      return (stream, index) => {
+        return schedule<A, Out, Out>(children[0], index, (match: Match<Out>) => {
+          return mapMatch<A, Out, Out>(match, (span, value) => {
+            return f(value, span) ? [ match ] : fail(span.start, message || children[0]);
+          });
+        });
+      };
+    });
+  }
+
 
   // i don't understand why you would want this.
   // flatmap<U>(f: (item: Out, span: Span) => Parser<A, U>): Parser<A, U> {
