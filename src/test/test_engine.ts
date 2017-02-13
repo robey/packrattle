@@ -61,33 +61,33 @@ describe("Engine", () => {
     });
   });
 
-  // it("only executes a parser once per string/position", () => {
-  //   let count = 0;
-  //
-  //   const dupe = packrattle.string("dupe").map(x => {
-  //     count++;
-  //     return x;
-  //   });
-  //   const p = packrattle.alt(
-  //     packrattle.chain(dupe, packrattle.string("1"), (a, b) => b),
-  //     packrattle.chain(dupe, packrattle.string("2"), (a, b) => b)
-  //   );
-  //
-  //   p.run("dupe2").should.eql("2");
-  //   count.should.eql(1);
-  // });
-  //
-  // it("stops immediately on an exception", () => {
-  //   let canary = false;
-  //   const problematic = packrattle.alt(
-  //     packrattle.string("a").map(_ => {
-  //       throw new Error("help!");
-  //     }),
-  //     packrattle.regex(/[a-z]/).map(_ => {
-  //       canary = true;
-  //     })
-  //   );
-  //   (() => problematic.run("a")).should.throw(/help/);
-  //   canary.should.eql(false);
-  // });
+  it("only executes a parser once per string/position", () => {
+    let count = 0;
+
+    const dupe = matchString("dupe").map(x => {
+      count++;
+      return x;
+    });
+    const p = alt(
+      chain(dupe, matchString("1"), (a, b) => b),
+      chain(dupe, matchString("2"), (a, b) => b)
+    );
+
+    p.run("dupe2").should.eql("2");
+    count.should.eql(1);
+  });
+
+  it("stops immediately on an exception", () => {
+    let canary = false;
+    const problematic = alt(
+      matchString("a").map(_ => {
+        throw new Error("help!");
+      }),
+      matchRegex(/[a-z]/).map(_ => {
+        canary = true;
+      })
+    );
+    (() => problematic.run("a")).should.throw(/help/);
+    canary.should.eql(false);
+  });
 });
