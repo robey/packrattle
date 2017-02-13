@@ -116,3 +116,37 @@ export function optionalOr<A, Out>(p: Parser<A, Out>, defaultValue: Out): Parser
     };
   });
 }
+
+/*
+ * check that this parser matches, but don't advance our position in the
+ * string. (perl calls this a zero-width lookahead.)
+ */
+export function check<A, Out>(p: Parser<A, Out>): Parser<A, Out> {
+  return new Parser<A, Out>("check", { children: [ p ], cacheable: true }, children => {
+    return (stream, index) => {
+      return schedule<A, Out, Out>(children[0], index, (match: Match<Out>) => {
+        return mapMatch<A, Out, Out>(match, (span, value) => success(index, index, value));
+      });
+    };
+  });
+}
+
+/*
+ * succeed (with an empty match) if the inner parser fails; otherwise fail.
+ */
+export function not<A, Out>(p: Parser<A, Out>): Parser<A, null> {
+  const parser: Parser<A, null> = new Parser<A, null>("not", { children: [ p ], cacheable: true }, children => {
+    return (stream, index) => {
+      return schedule<A, Out, null>(children[0], index, (match: Match<Out>) => {
+        if (match instanceof MatchSuccess) {
+          return fail(index, parser);
+        } else if (match instanceof MatchFailure) {
+          return success(index, index, null);
+        } else {
+          throw new Error("impossible");
+        }
+      });
+    };
+  });
+  return parser;
+}

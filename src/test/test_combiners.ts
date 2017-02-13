@@ -1,4 +1,6 @@
-import { alt, chain, MatchFailure, matchRegex, matchString, MatchSuccess, optional, optionalOr, seq } from "../";
+import {
+  alt, chain, check, MatchFailure, matchRegex, matchString, MatchSuccess, not, optional, optionalOr, seq
+} from "../";
 
 import "should";
 import "source-map-support/register";
@@ -98,44 +100,35 @@ describe("combiners", () => {
     });
   });
 
-//   it("check", () => {
-//     const p = packrattle.check(packrattle.string("hello"));
-//     const m = p.execute("hello") as SuccessfulMatch<string>;
-//     m.match.should.eql(true);
-//     m.pos.should.eql(0);
-//     m.value.should.eql("hello");
-//   });
-//
-//   it("parser.check", () => {
-//     const p = packrattle.string("hello").check();
-//     const m = p.execute("hello") as SuccessfulMatch<string>;
-//     m.match.should.eql(true);
-//     m.pos.should.eql(0);
-//     m.value.should.eql("hello");
-//   });
-//
-//   it("check within a sequence", () => {
-//     const p = packrattle.seq("hello", packrattle.check(packrattle.string("there")), "th");
-//     const m = p.execute("hellothere") as SuccessfulMatch<any[]>;
-//     m.match.should.eql(true);
-//     m.pos.should.eql(7);
-//     m.value.should.eql([ "hello", "there", "th" ]);
-//     (() => p.run("helloth")).should.throw(/there/);
-//   });
-//
-//   it("not", () => {
-//     const p = packrattle.not(packrattle.string("hello"));
-//     const m = p.execute("cat") as SuccessfulMatch<null>;
-//     m.pos.should.eql(0);
-//     (m.value == null).should.eql(true);
-//     (() => p.run("hello")).should.throw(/hello/);
-//   });
-//
-//   it("parser.not", () => {
-//     const p = packrattle.string("hello").not();
-//     const m = p.execute("cat") as SuccessfulMatch<null>;
-//     m.pos.should.eql(0);
-//     (m.value == null).should.eql(true);
-//     (() => p.run("hello")).should.throw(/hello/);
-//   });
+  it("check", () => {
+    const p = check(matchString("hello"));
+    const m = p.execute("hello");
+    (m instanceof MatchSuccess).should.eql(true);
+    if (m instanceof MatchSuccess) {
+      m.span.end.should.eql(0);
+      m.value.should.eql("hello");
+    }
+  });
+
+  it("check within a sequence", () => {
+    const p = seq("hello", check(matchString("there")), "th");
+    const m = p.execute("hellothere");
+    (m instanceof MatchSuccess).should.eql(true);
+    if (m instanceof MatchSuccess) {
+      m.span.end.should.eql(7);
+      m.value.should.eql([ "hello", "there", "th" ]);
+    }
+    (() => p.run("helloth")).should.throw(/there/);
+  });
+
+  it("not", () => {
+    const p = not(matchString("hello"));
+    const m = p.execute("cat");
+    (m instanceof MatchSuccess).should.eql(true);
+    if (m instanceof MatchSuccess) {
+      m.span.end.should.eql(0);
+      (m.value == null).should.eql(true);
+    }
+    (() => p.run("hello")).should.throw(/hello/);
+  });
 });
