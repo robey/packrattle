@@ -1,7 +1,7 @@
 import { chain, seq } from "./combiners";
 import { Engine, EngineOptions } from "./engine";
 import {
-  fail, mapMatch, Match, Matcher, MatchFailure, MatchResult, MatchSuccess, schedule, Sequence, Span
+  defer, fail, mapMatch, Match, Matcher, MatchFailure, MatchResult, MatchSuccess, schedule, Sequence, Span
 } from "./matcher";
 import { simple } from "./simple";
 import { quote } from "./strings";
@@ -94,22 +94,53 @@ export class Parser<A, Out> {
 
   // fill in children, description, cacheKey. cache if we can.
   // may return a different Parser (because an identical one is in the cache).
-  resolve(functionCache: FunctionCache<A> = {}): Parser<A, Out> {
-    if (this.cacheKey) return __cache[this.cacheKey];
-    if (this.children) return this;
+  resolve(): Parser<A, Out> {
+    this.unlazyChildren();
+    this.getDescription();
+    return this.uniqify();
+  }
 
+  // fill in 'childen' so we have a tree of actual Parsers instead of LazyParsers.
+  private unlazyChildren(functionCache: FunctionCache<A> = {}) {
+    if (this.children) return;
     try {
       this.children = (this.options.children || []).map(p => unlazy(p, functionCache));
-      this.children = this.children.map(p => p.resolve(functionCache));
+      this.children.forEach(p => p.unlazyChildren(functionCache));
     } catch (error) {
       error.message += " (inside " + this.name + ")";
       throw error;
     }
+  }
 
-    this.getDescription();
+  // flll in 'description'. recursive.
+  private getDescription(): string {
+    if (this.description) return this.description;
+    if (this.recursing) return "...";
+    this.recursing = true;
+    const list = this.children.map(p => {
+      return (p.children && p.children.length > 1) ? ("(" + p.getDescription() + ")") : p.getDescription();
+    });
+    this.recursing = false;
+    this.description = (this.options.describe || defaultDescribe(this.name))(list);
+    return this.description;
+  }
+
+  /*
+   * depth-first traversal to replace nodes with cached nodes if they're
+   * cacheable and equivalent. this way, we may be able to reuse results in
+   * far-off parts of the parse tree.
+   * we can't cache cycles, sadly.
+   */
+  private uniqify(): Parser<A, Out> {
+    if (this.cacheKey) return __cache[this.cacheKey];
+
+    if (this.recursing || !this.options) return this;
+    this.recursing = true;
+    this.children = this.children.map(p => p.uniqify());
+    this.recursing = false;
 
     if (this.options.cacheable) {
-      if (!this.children || this.children.length == 0) {
+      if (this.children.length == 0) {
         this.cacheKey = this.name + ":" + quote(this.description);
       } else {
         // cacheable children will all have a cache key set from the 'resolve' call above.
@@ -128,19 +159,6 @@ export class Parser<A, Out> {
     delete this.generateMatcher;
 
     return this;
-  }
-
-  // only called by resolve. recursive.
-  private getDescription(): string {
-    if (this.description) return this.description;
-    if (this.recursing) return "...";
-    this.recursing = true;
-    const list = this.children.map(p => {
-      return (p.children && p.children.length > 1) ? ("(" + p.getDescription() + ")") : p.getDescription();
-    });
-    this.recursing = false;
-    this.description = (this.options.describe || defaultDescribe(this.name))(list);
-    return this.description;
   }
 
   execute(stream: Sequence<A>, options: EngineOptions = {}): Match<Out> {
@@ -194,22 +212,6 @@ export class Parser<A, Out> {
     });
   }
 
-
-  // i don't understand why you would want this.
-  // flatmap<U>(f: (item: Out, span: Span) => Parser<A, U>): Parser<A, U> {
-  //   return new Parser<A, U>("flatmap", { children: [ this ] }, children => {
-  //     return (stream, index) => {
-  //       return schedule<A, Out, U>(children[0], index, (match: Match<Out>) => {
-  //         return mapMatch<A, Out, U>(match, (span, value) => {
-  //           return schedule<A, Out, U>(f(value, span).resolve(), index, (match: Match<U>) => {
-  //             return match;
-  //           });
-  //         });
-  //       });
-  //     };
-  //   });
-  // }
-
   // transforms the error message of a parser
   mapError(newMessage: string): Parser<A, Out> {
     return new Parser<A, Out>("mapError", { children: [ this ] }, children => {
@@ -217,6 +219,20 @@ export class Parser<A, Out> {
         return schedule<A, Out, Out>(children[0], index, (match: Match<Out>) => {
           if (match instanceof MatchFailure) {
             return [ new MatchFailure(match.span, newMessage) ];
+          } else {
+            return [ match ];
+          }
+        });
+      };
+    });
+  }
+
+  named(description: string): Parser<A, Out> {
+    return new Parser<A, Out>("mapError", { children: [ this ], describe: () => description }, children => {
+      return (stream, index) => {
+        return schedule<A, Out, Out>(children[0], index, (match: Match<Out>) => {
+          if (match instanceof MatchFailure) {
+            return [ new MatchFailure(match.span, "Expected " + description) ];
           } else {
             return [ match ];
           }
