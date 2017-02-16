@@ -83,17 +83,17 @@ export class Engine<A> {
       this.flushUnresolvedTask();
     }
 
-    // failures.sort((a, b) => b.priority - a.priority);
+    failures.sort((a, b) => b.span.start - a.span.start);
 
-    // if (this.logger) {
-    //   if (successes.length > 0) {
-    //     this.log("### successes:");
-    //     successes.forEach(x => this.logger("    " + x.inspect()) : null);
-    //   } else {
-    //     this.log("### failures:");
-    //     failures.forEach(x => this.logger("    " + x.inspect()) : null);
-    //   }
-    // }
+    if (this.options.logger) {
+      if (successes.length > 0) {
+        this.options.logger("### successes:");
+        successes.forEach(x => this.options.logger ? this.options.logger("    " + x.toString()) : null);
+      } else {
+        this.options.logger("### failures:");
+        failures.forEach(x => this.options.logger ? this.options.logger("    " + x.toString()) : null);
+      }
+    }
 
   //   if (this.dotfile) this.dotfile(this.debugGraph.toDot());
 

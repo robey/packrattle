@@ -1,7 +1,7 @@
 export { Match, MatchFailure, MatchSuccess, Span } from "./matcher";
 export { PriorityQueue } from "./priority_queue";
 export { PromiseSet } from "./promise_set";
-// export { Line, Span } from "./packrattle/span";
+export { Line, SourceSpan } from "./source_span";
 
 // need to do in two parts, so tsc understands that the simple/combo parsers below are of known type.
 import { Parser, parser } from "./parser";
