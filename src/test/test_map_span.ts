@@ -1,4 +1,4 @@
-import { alt, matchRegex, matchString, MatchSuccess, optional, seq, SourceSpan, Span } from "..";
+import { alt, MatchFailure, matchRegex, matchString, MatchSuccess, optional, seq, SourceSpan, Span } from "..";
 
 import "should";
 import "source-map-support/register";
@@ -102,28 +102,30 @@ describe("Parser.map span", () => {
     }
   });
 
-  // it("marks errors", () => {
-  //   const p = packrattle.seq(packrattle.regex(/\w+/).commit(), /\d+/);
-  //   const rv = p.execute("hello???");
-  //   rv.match.should.eql(false);
-  //   const span = rv.span();
-  //   span.toSquiggles().should.eql([
-  //     "hello???",
-  //     "     ~"
-  //   ]);
-  //   span.start.should.eql(5);
-  //   span.end.should.eql(5);
-  // });
-  //
-  // it("survives chains of maps", () => {
-  //   const p = packrattle.seq(/[a-z]+/, /\d+/)
-  //     .map(match => match[0][0] + match[1][0])
-  //     .map((match, span) => match.toUpperCase() + span.end);
-  //   const rv = p.execute("what34") as SuccessfulMatch<string>;
-  //   rv.match.should.eql(true);
-  //   rv.value.should.eql("WHAT346");
-  //   const span = rv.span();
-  //   span.start.should.eql(0);
-  //   span.end.should.eql(6);
-  // });
+  it("marks errors", () => {
+    const p = seq(matchRegex(/\w+/), /\d+/);
+    const source = "hello???";
+    const rv = p.execute(source);
+    (rv instanceof MatchFailure).should.eql(true);
+    const sourceSpan = new SourceSpan(source, rv.span);
+    sourceSpan.toSquiggles().should.eql([
+      "hello???",
+      "     ~"
+    ]);
+    sourceSpan.span.start.should.eql(5);
+    sourceSpan.span.end.should.eql(5);
+  });
+
+  it("survives chains of maps", () => {
+    const p = seq(/[a-z]+/, /\d+/)
+      .map(match => match[0][0] + match[1][0])
+      .map((match, span) => match.toUpperCase() + span.end);
+    const rv = p.execute("what34");
+    (rv instanceof MatchSuccess).should.eql(true);
+    if (rv instanceof MatchSuccess) {
+      rv.value.should.eql("WHAT346");
+      rv.span.start.should.eql(0);
+      rv.span.end.should.eql(6);
+    }
+  });
 });
