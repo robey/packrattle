@@ -1,5 +1,5 @@
 import {
-  defer, fail, mapMatch, Match, MatchFailure, MatchResult, MatchSuccess, mergeSpan, Schedule, schedule, success
+  defer, fail, mapMatch, Match, MatchFailure, MatchResult, MatchSuccess, mergeSpan, Schedule, schedule, Span, success
 } from "./matcher";
 import { LazyParser, Parser } from "./parser";
 import { quote } from "./strings";
@@ -147,6 +147,58 @@ export function not<A, Out>(p: Parser<A, Out>): Parser<A, null> {
           throw new Error("impossible");
         }
       });
+    };
+  });
+  return parser;
+}
+
+export interface RepeatOptions {
+  min?: number;
+  max?: number;
+}
+
+/*
+ * from 'min' to 'max' (inclusive) repetitions of a parser, returned as an
+ * array. 'max' may be omitted to mean infinity.
+ */
+export function repeat<A, Out>(p: Parser<A, Out>, options: RepeatOptions = {}): Parser<A, Out[]> {
+  const min = options.min || 0;
+  const max = options.max || Infinity;
+
+  const parser: Parser<A, Out[]> = new Parser<A, Out[]>("repeat", {
+    children: [ p ],
+    describe: list => list.join() + (max == Infinity ? `{${min}+}` : `{${min}, ${max}}`)
+  }, children => {
+    return (stream, index) => {
+      return next(0, [], index);
+
+      // register any success, and try again if we're allowed to go for more.
+      function next(count: number, accumulator: Out[], pos: number): MatchResult<A, Out[]> {
+        const rv: MatchResult<A, Out[]> = [];
+        if (count >= min) rv.push(new MatchSuccess(new Span(index, pos), accumulator));
+        if (count < max) rv.push(new Schedule<A, Out, Out[]>(children[0], pos, (match: Match<Out>) => {
+          return process(match, count, accumulator);
+        }));
+        return rv;
+      }
+
+      // process the next match.
+      function process(match: Match<Out>, count: number, accumulator: Out[]): MatchResult<A, Out[]> {
+        if (match instanceof MatchFailure) {
+          if (count < min) {
+            return [ new MatchFailure(new Span(index, match.span.start), "Expected " + parser.description) ];
+          } else {
+            return [];
+          }
+        } else if (match instanceof MatchSuccess) {
+          if (match.span.start == match.span.end) {
+            throw new Error(`Repeating parser isn't making progress at position ${match.span.start}: ${children[0]}`);
+          }
+          return next(count + 1, accumulator.concat([ match.value ]), match.span.end);
+        } else {
+          throw new Error("impossible");
+        }
+      }
     };
   });
   return parser;
