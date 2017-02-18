@@ -21,6 +21,7 @@ const succeed = simple.succeed;
 export { end, matchRegex, matchString, reject, succeed };
 
 export { alt, chain, check, not, optional, optionalOr, repeat, RepeatOptions, seq } from "./combiners";
+export { seqIgnore } from "./convenience";
 
 // const packrattle = {
 //   check,
