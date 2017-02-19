@@ -10,8 +10,8 @@ import { quote } from "./strings";
  * matched objects, to create a single match result.
  */
 export function chain<A, T1, T2, R>(
-  p1: Parser<A, T1>,
-  p2: Parser<A, T2>,
+  p1: LazyParser<A, T1>,
+  p2: LazyParser<A, T2>,
   combiner: (r1: T1, r2: T2) => R
 ): Parser<A, R> {
   return new Parser<A, R>("chain", {
@@ -37,7 +37,7 @@ export function chain<A, T1, T2, R>(
  * chain together a series of parsers as in 'chain'. the match value is an
  * array of non-null match values from the inner parsers.
  */
-export function seq<A>(...parsers: LazyParser<A>[]): Parser<A, any[]> {
+export function seq<A>(...parsers: LazyParser<A, any>[]): Parser<A, any[]> {
   return new Parser<A, any[]>("seq", {
     cacheable: true,
     children: parsers,
@@ -58,7 +58,7 @@ export function seq<A>(...parsers: LazyParser<A>[]): Parser<A, any[]> {
  * try each of these parsers, in order (starting from the same position),
  * looking for the first match.
  */
-export function alt<A, Out>(...parsers: LazyParser<A>[]): Parser<A, Out> {
+export function alt<A, Out>(...parsers: LazyParser<A, Out>[]): Parser<A, Out> {
   const parser: Parser<A, Out> = new Parser<A, Out>("alt", {
     cacheable: true,
     children: parsers,
@@ -97,7 +97,7 @@ export function alt<A, Out>(...parsers: LazyParser<A>[]): Parser<A, Out> {
  * allow a parser to fail, and instead return undefined (js equivalent of
  * the Optional type).
  */
-export function optional<A, Out>(p: Parser<A, Out>): Parser<A, Out | undefined> {
+export function optional<A, Out>(p: LazyParser<A, Out>): Parser<A, Out | undefined> {
   return optionalOr<A, Out | undefined>(p, undefined);
 }
 
@@ -105,7 +105,7 @@ export function optional<A, Out>(p: Parser<A, Out>): Parser<A, Out | undefined> 
  * allow a parser to fail, and instead return a default value (the empty string
  * if no other value is provided).
  */
-export function optionalOr<A, Out>(p: Parser<A, Out>, defaultValue: Out): Parser<A, Out> {
+export function optionalOr<A, Out>(p: LazyParser<A, Out>, defaultValue: Out): Parser<A, Out> {
   return new Parser<A, Out>("optionalOr", {
     children: [ p ],
     cacheable: (defaultValue == null || typeof defaultValue == "string" || typeof defaultValue == "number"),
@@ -122,7 +122,7 @@ export function optionalOr<A, Out>(p: Parser<A, Out>, defaultValue: Out): Parser
  * check that this parser matches, but don't advance our position in the
  * string. (perl calls this a zero-width lookahead.)
  */
-export function check<A, Out>(p: Parser<A, Out>): Parser<A, Out> {
+export function check<A, Out>(p: LazyParser<A, Out>): Parser<A, Out> {
   return new Parser<A, Out>("check", { children: [ p ], cacheable: true }, children => {
     return (stream, index) => {
       return schedule<A, Out, Out>(children[0], index, (match: Match<Out>) => {
@@ -135,7 +135,7 @@ export function check<A, Out>(p: Parser<A, Out>): Parser<A, Out> {
 /*
  * succeed (with an empty match) if the inner parser fails; otherwise fail.
  */
-export function not<A, Out>(p: Parser<A, Out>): Parser<A, null> {
+export function not<A, Out>(p: LazyParser<A, Out>): Parser<A, null> {
   const parser: Parser<A, null> = new Parser<A, null>("not", { children: [ p ], cacheable: true }, children => {
     return (stream, index) => {
       return schedule<A, Out, null>(children[0], index, (match: Match<Out>) => {
@@ -161,7 +161,7 @@ export interface RepeatOptions {
  * from 'min' to 'max' (inclusive) repetitions of a parser, returned as an
  * array. 'max' may be omitted to mean infinity.
  */
-export function repeat<A, Out>(p: Parser<A, Out>, options: RepeatOptions = {}): Parser<A, Out[]> {
+export function repeat<A, Out>(p: LazyParser<A, Out>, options: RepeatOptions = {}): Parser<A, Out[]> {
   const min = options.min || 0;
   const max = options.max || Infinity;
 

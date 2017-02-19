@@ -6,9 +6,7 @@ import {
 import { simple } from "./simple";
 import { quote } from "./strings";
 
-export type LazyParser1<A> = string | RegExp | Parser<A, any>;
-export type LazyParser2<A> = LazyParser1<A> | Array<LazyParser1<A>>;
-export type LazyParser<A> = LazyParser2<A> | (() => LazyParser2<A>);
+export type LazyParser<A, Out> = Parser<A, Out> | (() => Parser<A, Out>);
 
 export class ParseError extends Error {
   name = "ParseError";
@@ -18,9 +16,9 @@ export class ParseError extends Error {
   }
 }
 
-export interface ParserOptions<A> {
+export interface ParserOptions<A, Out> {
   // list of nested parsers, if this is a combining parser:
-  children?: LazyParser<A>[];
+  children?: LazyParser<A, any>[];
 
   // for debugging, how to produce a description of this parser (like
   // "x or y or z"):
@@ -78,7 +76,7 @@ export class Parser<A, Out> {
    */
   constructor(
     public readonly name: string,
-    public readonly options: ParserOptions<A>,
+    public readonly options: ParserOptions<A, Out>,
     public readonly generateMatcher: (children: Parser<A, any>[]) => Matcher<A, Out>
   ) {
     this.id = ParserId++;
@@ -101,7 +99,7 @@ export class Parser<A, Out> {
   }
 
   // fill in 'childen' so we have a tree of actual Parsers instead of LazyParsers.
-  private unlazyChildren(functionCache: FunctionCache<A> = {}) {
+  private unlazyChildren(functionCache: FunctionCache<A, Out> = {}) {
     if (this.children) return;
     try {
       this.children = (this.options.children || []).map(p => unlazy(p, functionCache));
@@ -245,7 +243,7 @@ export class Parser<A, Out> {
 
 const ID = "__packrattle_cache_id";
 let LazyId = 0;
-export type FunctionCache<A> = { [key: string]: LazyParser2<A> };
+export type FunctionCache<A, Out> = { [key: string]: Parser<A, Out> };
 
 /*
  * convert a "parser-like object" into an actual Parser object.
@@ -254,7 +252,7 @@ export type FunctionCache<A> = { [key: string]: LazyParser2<A> };
  *
  * if you'd like te cache the results of function evaluations, pass an empty object as `functionCache`.
  */
-function unlazy<A>(parser: LazyParser<A>, functionCache: FunctionCache<A>): Parser<A, any> {
+function unlazy<A, Out>(parser: LazyParser<A, Out>, functionCache: FunctionCache<A, Out>): Parser<A, Out> {
   if (typeof parser == "function") {
     if (!parser[ID]) {
       // give every lazy parser an id so we can cache them.
@@ -270,15 +268,10 @@ function unlazy<A>(parser: LazyParser<A>, functionCache: FunctionCache<A>): Pars
     }
   }
 
-  // implicits:
-  if (typeof parser == "string") return simple.matchString(parser) as Parser<any, string>;
-  if (parser instanceof RegExp) return simple.matchRegex(parser) as Parser<any, RegExpExecArray>;
-  if (Array.isArray(parser)) return seq(...parser) as Parser<A, any[]>;
-
   if (!(parser instanceof Parser)) throw new Error("Unable to resolve parser: " + parser);
   return parser;
 }
 
-export function parser<A, Out>(parser: LazyParser<A>): Parser<A, Out> {
-  return unlazy(parser, {}) as Parser<A, Out>;
+export function parser<A, Out>(parser: LazyParser<A, Out>): Parser<A, Out> {
+  return unlazy(parser, {});
 }

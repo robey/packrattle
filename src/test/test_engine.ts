@@ -16,8 +16,8 @@ describe("Engine", () => {
     });
 
     it("strings together a chained sequence", () => {
-      const p = [ "abc", matchRegex(/\d+/).map(m => ""), "xyz" ];
-      const m = seq(...p).execute("abc11xyz");
+      const p = seq(matchString("abc"), matchRegex(/\d+/).map(m => ""), matchString("xyz"));
+      const m = p.execute("abc11xyz");
       (m instanceof MatchSuccess).should.eql(true);
       if (m instanceof MatchSuccess) {
         m.value.should.eql([ "abc", "", "xyz" ]);
@@ -50,7 +50,7 @@ describe("Engine", () => {
       });
       const p1 = chain(matchString(":"), lazy, (a, b) => [ a, b[0].toUpperCase() ]);
       const p2 = chain(matchString(":h"), lazy, (a, b) => [ a, b[0].toUpperCase() ]);
-      const p = alt(chain(p1, matchString("?"), (a, b) => b), p2);
+      const p = alt<string, any>(chain(p1, matchString("?"), (a, b) => b), p2);
 
       p.run(":hello").should.eql([ ":h", "ELLO" ]);
       count.should.equal(1);

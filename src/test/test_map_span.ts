@@ -25,7 +25,7 @@ describe("Parser.map span", () => {
   });
 
   it("survive an alt", () => {
-    const p = alt("xyz", matchString("abc").map((m, span) => span));
+    const p = alt<string, any>(matchString("xyz"), matchString("abc").map((m, span) => span));
     const rv = p.execute("abc");
     (rv instanceof MatchSuccess).should.eql(true);
     if (rv instanceof MatchSuccess) {
@@ -35,7 +35,7 @@ describe("Parser.map span", () => {
   });
 
   it("cover an alt", () => {
-    const p = alt("xyz", "abc").map((m, span) => span);
+    const p = alt(matchString("xyz"), matchString("abc")).map((m, span) => span);
     const rv = p.execute("abc");
     (rv instanceof MatchSuccess).should.eql(true);
     if (rv instanceof MatchSuccess) {
@@ -45,7 +45,7 @@ describe("Parser.map span", () => {
   });
 
   it("cover a sequence", () => {
-    const p = seq("xyz", "abc").map((m, span) => span);
+    const p = seq(matchString("xyz"), matchString("abc")).map((m, span) => span);
     const rv = p.execute("xyzabc");
     (rv instanceof MatchSuccess).should.eql(true);
     if (rv instanceof MatchSuccess) {
@@ -56,11 +56,11 @@ describe("Parser.map span", () => {
 
   it("cover a combination", () => {
     const p = seq(
-      "abc",
+      matchString("abc"),
       optional(matchRegex(/\s+/)),
-      alt(
-        /\d+/,
-        seq("x", /\d+/, "x").map((m, span) => span)
+      alt<string, any>(
+        matchRegex(/\d+/),
+        seq(matchString("x"), matchRegex(/\d+/), matchString("x")).map((m, span) => span)
       ),
       optional(matchString("?"))
     ).map((m, span) => [ m, span ]);
@@ -77,11 +77,11 @@ describe("Parser.map span", () => {
 
   it("crosses line boundaries", () => {
     const p = seq(
-      /\w+/,
-      /\s+/,
+      matchRegex(/\w+/),
+      matchRegex(/\s+/),
       matchString("line\nbreak").map((m, span) => span),
-      /\s+/,
-      /\w+/
+      matchRegex(/\s+/),
+      matchRegex(/\w+/)
     );
     const source = "hello line\nbreak ok";
     const rv = p.consume().execute(source);
@@ -103,7 +103,7 @@ describe("Parser.map span", () => {
   });
 
   it("marks errors", () => {
-    const p = seq(matchRegex(/\w+/), /\d+/);
+    const p = seq(matchRegex(/\w+/), matchRegex(/\d+/));
     const source = "hello???";
     const rv = p.execute(source);
     (rv instanceof MatchFailure).should.eql(true);
@@ -117,7 +117,7 @@ describe("Parser.map span", () => {
   });
 
   it("survives chains of maps", () => {
-    const p = seq(/[a-z]+/, /\d+/)
+    const p = seq(matchRegex(/[a-z]+/), matchRegex(/\d+/))
       .map(match => match[0][0] + match[1][0])
       .map((match, span) => match.toUpperCase() + span.end);
     const rv = p.execute("what34");

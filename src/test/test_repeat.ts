@@ -25,7 +25,7 @@ describe("Parser.repeat", () => {
   });
 
   it("isn't always greedy", () => {
-    const p = seq(repeat(matchString("hi")), "hip");
+    const p = seq(repeat(matchString("hi")), matchString("hip"));
     p.run("hihihip").should.eql([ [ "hi", "hi" ], "hip" ]);
   });
 
@@ -37,7 +37,7 @@ describe("Parser.repeat", () => {
           repeat(matchString("!"))
         )
       ),
-      /[x]+/
+      matchRegex(/[x]+/)
     ).map(match => match[0]);
     const rv = p.consume().execute("hi!hi!!!hix");
     (rv instanceof MatchSuccess).should.eql(true);

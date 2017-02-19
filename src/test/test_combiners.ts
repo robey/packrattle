@@ -23,7 +23,7 @@ describe("combiners", () => {
   // seq tests are in test_seq.js.
 
   it("alt", () => {
-    const p = alt("hello", "goodbye");
+    const p = alt(matchString("hello"), matchString("goodbye"));
     (() => p.run("cat")).should.throw(/'hello'/);
     p.run("hello").should.eql("hello");
     p.run("goodbye").should.eql("goodbye");
@@ -64,7 +64,7 @@ describe("combiners", () => {
 
     it("advances position correctly past an optional", () => {
       const p = seq(
-        /[b]+/,
+        matchRegex(/[b]+/),
         optional(matchRegex(/c/)).map((m, span) => ({ start: span.start, end: span.end })),
         matchRegex(/[d]+/)
       );
@@ -80,8 +80,8 @@ describe("combiners", () => {
       const p = seq(
         optional(matchRegex(/\d+/)),
         alt(
-          "z",
-          "9y"
+          matchString("z"),
+          matchString("9y")
         )
       );
       const rv1 = p.execute("33z");
@@ -111,7 +111,7 @@ describe("combiners", () => {
   });
 
   it("check within a sequence", () => {
-    const p = seq("hello", check(matchString("there")), "th");
+    const p = seq(matchString("hello"), check(matchString("there")), matchString("th"));
     const m = p.execute("hellothere");
     (m instanceof MatchSuccess).should.eql(true);
     if (m instanceof MatchSuccess) {

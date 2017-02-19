@@ -40,7 +40,7 @@ describe("Parser.seq", () => {
   });
 
   it("can sequence optional elements", () => {
-    const p = parser([ "abc", optionalOr(matchRegex(/\d+/).map(m => m[0]), ""), "xyz" ]);
+    const p = seq(matchString("abc"), optionalOr(matchRegex(/\d+/).map(m => m[0]), ""), matchString("xyz"));
     let rv = p.execute("abcxyz") as MatchSuccess<string[]>;
     rv.span.end.should.equal(6);
     rv.value.should.eql([ "abc", "", "xyz" ]);
@@ -50,7 +50,7 @@ describe("Parser.seq", () => {
   });
 
   it("handles regexen in a sequence", () => {
-    const p = seq(/\s*/, "if");
+    const p = seq(matchRegex(/\s*/), matchString("if"));
     const rv = p.execute("   if");
     (rv instanceof MatchSuccess).should.eql(true);
     if (rv instanceof MatchSuccess) {
