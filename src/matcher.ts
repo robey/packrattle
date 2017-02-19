@@ -18,7 +18,7 @@ export class Span {
 }
 
 export function mergeSpan(span1: Span, span2: Span): Span {
-  return (span1.start < span2.start) ? new Span(span1.start, span2.end) : new Span(span2.start, span1.end);
+  return (span1.start < span2.start || span1.end < span2.end) ? new Span(span1.start, span2.end) : new Span(span2.start, span1.end);
 }
 
 export class MatchSuccess<Out> {
