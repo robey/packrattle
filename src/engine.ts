@@ -62,14 +62,14 @@ export class Engine<A> {
     });
 
     // start the engine!
-    while (Object.keys(this.unresolvedTasks).length > 0) {
+    while (Object.keys(this.unresolvedTasks).length > 0 && successes.length == 0) {
       while (this.workQueue.length > 0 && successes.length == 0) {
         const task = this.workQueue.get();
 
         this.ticks++;
         if (this.options.logger) {
           const ticks = ("    " + this.ticks.toString()).slice(-4);
-          this.options.logger(`${ticks}. [${task.parser.id}] ${task.parser.inspect()} @ ${task.index}`);
+          this.options.logger(`${ticks}. [${task.parser.id} @ ${task.index}] ${task.parser.inspect()}`);
         }
 
         try {
@@ -80,7 +80,7 @@ export class Engine<A> {
         }
       }
 
-      this.flushUnresolvedTask();
+      if (successes.length == 0) this.flushUnresolvedTask();
     }
 
     failures.sort((a, b) => b.span.start - a.span.start);
@@ -128,7 +128,9 @@ export class Engine<A> {
 
     if (this.options.logger) {
       const log = this.options.logger;
-      options.logger = (text: string) => log(`-> ${task.cacheKey} = ${text}`);
+      options.logger = (text: string) => {
+        log(`      [${task.parser.id} @ ${task.index}] = ${text}`);
+      };
     }
     const task = new ParseTask<A, T>(parser, index, new PromiseSet<Match<T>>(options));
     this.cache[task.cacheKey] = task;
@@ -142,7 +144,9 @@ export class Engine<A> {
     //   this.debugGraph.addEdge(state.id, id);
     // }
 
-    if (this.options.logger) this.options.logger(`schedule: ${task.cacheKey} ${inspect(parser)}`);
+    if (this.options.logger) {
+      this.options.logger(`      -> schedule: [${task.parser.id} @ ${task.index}] ${inspect(parser)}`);
+    }
     this.workQueue.put(task, task.index);
     return task;
   }

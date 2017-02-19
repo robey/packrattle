@@ -41,7 +41,7 @@ export function seq<A>(...parsers: LazyParser<A, any>[]): Parser<A, any[]> {
   return new Parser<A, any[]>("seq", {
     cacheable: true,
     children: parsers,
-    describe: list => "[ " + list.join(", ") + " ]"
+    describe: list => "seq(" + list.join(", ") + ")"
   }, children => {
     function next(i: number, start: number, index: number, rv: any[] = []): MatchResult<A, any[]> {
       if (i >= parsers.length) return success(start, index, rv);
