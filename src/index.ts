@@ -7,11 +7,6 @@ export { Line, SourceSpan } from "./source_span";
 import { Parser, parser } from "./parser";
 export { Parser, parser };
 
-// import { alt, chain, check, not, optional, optionalOr, repeat, RepeatOptions, seq } from "./packrattle/combiners";
-// import { reduce, ReduceOptions, repeatIgnore, repeatSeparated, seqIgnore } from "./packrattle/convenience";
-
-// export { ReduceOptions, RepeatOptions };
-
 import { simple } from "./simple";
 const end = simple.end();
 const matchRegex = simple.matchRegex;
@@ -21,14 +16,4 @@ const succeed = simple.succeed;
 export { end, matchRegex, matchString, reject, succeed };
 
 export { alt, chain, check, not, optional, optionalOr, repeat, RepeatOptions, seq } from "./combiners";
-export { seqIgnore } from "./convenience";
-
-// const packrattle = {
-//   check,
-//   not,
-//   reduce,
-//   repeat,
-//   repeatIgnore,
-//   repeatSeparated,
-//   seqIgnore
-// };
+export { reduce, ReduceOptions, repeatIgnore, repeatSeparated, seqIgnore } from "./convenience";
