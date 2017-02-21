@@ -1,3 +1,4 @@
+import { DebugGraph, NodeState } from "./debug_graph";
 import { fail, Match, MatchFailure, MatchResult, MatchSuccess, Schedule, Sequence } from "./matcher";
 import { Parser } from "./parser";
 import { PriorityQueue } from "./priority_queue";
@@ -19,6 +20,8 @@ export class ParseTask<A, Out> {
 
 export interface EngineOptions {
   logger?: (message: string) => void;
+
+  makeDot?: (graph: string) => void;
 }
 
 /*
@@ -37,8 +40,18 @@ export class Engine<A> {
   // how many parsers have we run?
   ticks = 0;
 
+  // build a debug graph so we can generate a dot file?
+  debugGraph?: DebugGraph;
+
+  // for debugging, we want to mark success/failure of the primary task in the debug groph.
+  primaryTask: ParseTask<A, any>;
+
+  // for debugging, when tracking a success/failure, what is the last task we *scheduled*?
+  lastScheduled: ParseTask<A, any>;
+
+
   constructor(public stream: Sequence<A>, public options: EngineOptions = {}) {
-    // pass
+    if (options.makeDot) this.debugGraph = new DebugGraph();
   }
 
   // execute a parser over a string.
@@ -48,15 +61,14 @@ export class Engine<A> {
 
     if (this.options.logger) this.options.logger(`Try '${inspect(this.stream)}' in ${inspect(parser)}`);
 
-    const task = this.schedule(parser, 0);
-    task.result.then(match => {
+    this.primaryTask = this.schedule(parser, 0);
+    if (this.debugGraph) this.debugGraph.start(this.primaryTask);
+    this.primaryTask.result.then(match => {
       if (match instanceof MatchSuccess) {
         if (this.options.logger) this.options.logger(`-> SUCCESS: ${inspect(match.value)}`);
-        //   if (this.debugGraph) this.debugGraph.addEdge(match.state.id, "success");
         successes.push(match);
       } else {
         if (this.options.logger) this.options.logger(`-> FAILURE: ${match.message}`);
-        //   if (this.debugGraph) this.debugGraph.markFailure(match.state.id);
         failures.push(match);
       }
     });
@@ -65,6 +77,7 @@ export class Engine<A> {
     while (Object.keys(this.unresolvedTasks).length > 0 && successes.length == 0) {
       while (this.workQueue.length > 0 && successes.length == 0) {
         const task = this.workQueue.get();
+        this.lastScheduled = task;
 
         this.ticks++;
         if (this.options.logger) {
@@ -95,7 +108,7 @@ export class Engine<A> {
       }
     }
 
-  //   if (this.dotfile) this.dotfile(this.debugGraph.toDot());
+    if (this.options.makeDot && this.debugGraph) this.options.makeDot(this.debugGraph.toDot());
 
     return successes.length > 0 ? successes[0] : failures[0];
   }
@@ -103,10 +116,22 @@ export class Engine<A> {
   processResult<T>(task: ParseTask<A, T>, mr: MatchResult<A, T>) {
     mr.forEach(result => {
       if (result instanceof Schedule) {
-        this.schedule(result.parser, result.index).result.then(match => {
+        const newTask = this.schedule(result.parser, result.index);
+        newTask.result.then(match => {
           this.processResult(task, result.handler(match));
         });
+
+        if (this.debugGraph) this.debugGraph.step(this.lastScheduled, newTask);
       } else {
+        if (this.debugGraph && this.lastScheduled) {
+          if (result instanceof MatchSuccess) {
+            if (this.primaryTask.cacheKey == task.cacheKey) {
+              this.debugGraph.mark(this.lastScheduled.cacheKey, NodeState.SUCCESS);
+            }
+          } else {
+            this.debugGraph.mark(this.lastScheduled.cacheKey, NodeState.FAILURE);
+          }
+        }
         task.result.add(result);
       }
     });
@@ -138,11 +163,6 @@ export class Engine<A> {
     task.result.then(() => {
       delete this.unresolvedTasks[task.cacheKey];
     });
-
-    // if (this.debugGraph) {
-    //   this.debugGraph.addNode(id, parser, pos);
-    //   this.debugGraph.addEdge(state.id, id);
-    // }
 
     if (this.options.logger) {
       this.options.logger(`      -> schedule: [${task.parser.id} @ ${task.index}] ${inspect(parser)}`);

@@ -238,6 +238,44 @@ export class Parser<A, Out> {
       };
     });
   }
+
+  // create a dot graph of the parser nesting
+  toDot(maxLength: number = 40): string {
+    const seen: { [id: number]: boolean } = {};
+    const nodes: { id: number, name: string, description: string }[] = [];
+    const edges: { from: number, to: number }[] = [];
+
+    function traverse(parser: Parser<A, any>) {
+      seen[parser.id] = true;
+      nodes.push({ id: parser.id, name: parser.name, description: parser.description });
+      parser.children.forEach(p => {
+        edges.push({ from: parser.id, to: p.id });
+        if (!seen[p.id]) traverse(p);
+      });
+    }
+
+    traverse(this.resolve());
+
+    const data: string[] = [
+      "digraph packrattle {",
+      "  node [fontname=Courier];"
+    ];
+    data.push("");
+    edges.forEach(e => {
+      data.push(`  "${e.from}" -> "${e.to}";`);
+    });
+    data.push("");
+    nodes.forEach(n => {
+      let description = n.description;
+      if (description.length > maxLength) description = description.slice(0, maxLength) + "...";
+      description = description.replace(/\\/g, "\\\\").replace(/"/g, "\\\"");
+      const name = n.name.replace(/\\/g, "\\\\").replace(/"/g, "\\\"");
+      const label = `[${n.id}] ${name}` + (name == description ? "" : "\\n" + description);
+      data.push(`  "${n.id}" [label="${label}", shape=rect];`);
+    });
+    data.push("}");
+    return data.join("\n") + "\n";
+  }
 }
 
 

@@ -1,33 +1,57 @@
-"use strict";
+import { ParseTask } from "./engine";
+import { Parser } from "./parser";
 
 // pretend like js has a collections library.
-function exists(array, f) {
+function exists<A>(array: A[], f: (item: A) => boolean): boolean {
   for (let i = 0; i < array.length; i++) if (f(array[i])) return true;
   return false;
+}
+
+export enum NodeState {
+  NORMAL, SUCCESS, FAILURE
+}
+
+export class Node {
+  constructor(
+    public parser: Parser<any, any>,
+    public index: number,
+    public parents: string[] = [],
+    public children: string[] = [],
+    public failure: boolean = false,
+    public state: NodeState = NodeState.NORMAL
+  ) {
+    // pass
+  }
 }
 
 /*
  * debug the parser by plotting a directed graph of parse nodes as it works
  * on a string.
  */
-export default class DebugGraph {
-  constructor() {
-    this.nodes = {};
-    this.edges = [];
-    this.success = false;
-    this.failure = false;
+export class DebugGraph {
+  nodes: { [name: string]: Node } = {};
+  edges: { from: string, to: string }[] = [];
+  hasSuccess = false;
+  hasFailure = false;
+
+  start(task: ParseTask<any, any>) {
+    this.addNode(task.cacheKey, task.parser, task.index);
+    this.addEdge("start", task.cacheKey);
   }
 
-  addEdge(from, to) {
+  step(task: ParseTask<any, any>, newTask: ParseTask<any, any>) {
+    this.addNode(newTask.cacheKey, newTask.parser, newTask.index);
+    this.addEdge(task.cacheKey, newTask.cacheKey);
+  }
+
+  addEdge(from: string, to: string) {
     this.edges.push({ from, to });
     if (this.nodes[from]) this.nodes[from].children.push(to);
     if (this.nodes[to]) this.nodes[to].parents.push(from);
-    if (to == "success") this.success = true;
-    if (to == "failure") this.failure = true;
   }
 
-  addNode(name, parser, span) {
-    const node = { parser, span, parents: [], children: [] };
+  addNode(name: string, parser: Parser<any, any>, index: number) {
+    const node = new Node(parser, index);
     this.edges.forEach(edge => {
       if (edge.from == name) node.children.push(edge.to);
       if (edge.to == name) node.parents.push(edge.from);
@@ -35,17 +59,17 @@ export default class DebugGraph {
     this.nodes[name] = node;
   }
 
-  markFailure(name) {
-    this.nodes[name].failure = true;
+  mark(name: string, state: NodeState) {
+    this.nodes[name].state = state;
   }
 
   // filter out parsers with certain names
-  filterOut(...names) {
+  filterOut(...names: string[]) {
     Object.keys(this.nodes).forEach(name => {
       const node = this.nodes[name];
       if (names.indexOf(node.parser.name) < 0) return;
 
-      const edgesToRemove = [];
+      const edgesToRemove: { from: string, to: string }[] = [];
       // skip deleting a node that would make the graph bushier
       if (node.parents.length > 1 && node.children.length > 1) return;
 
@@ -68,10 +92,10 @@ export default class DebugGraph {
     });
   }
 
-  toDot(maxLength = 40) {
+  toDot(maxLength: number = 40): string {
     this.filterOut("map", "filter", "drop", "optional");
 
-    const data = [
+    const data: string[] = [
       "digraph packrattle {",
       "  node [fontname=Courier];"
     ];
@@ -83,19 +107,29 @@ export default class DebugGraph {
     Object.keys(this.nodes).forEach(name => {
       const node = this.nodes[name];
       if (!node.parser) return;
-      let description = node.parser.inspect();
+      let description = node.parser.description;
       if (description.length > maxLength) description = description.slice(0, maxLength) + "...";
       description = description.replace(/\\/g, "\\\\").replace(/"/g, "\\\"");
-      const around = node.span.around(4).replace(/\\/g, "\\\\").replace(/"/g, "\\\"");
-      const label = `label="@${node.span.start}: ${description}\\n'${around}'"`;
-      const style = node.failure ? [ "style=filled", "fillcolor=pink" ] : [];
+      // const around = node.span.around(4).replace(/\\/g, "\\\\").replace(/"/g, "\\\"");
+      const label = `label="@${node.index}: ${description}"`;
+
+      let style: string[] = [];
+      switch (node.state) {
+        case NodeState.SUCCESS:
+          style.push("style=filled");
+          style.push("fillcolor=green");
+          break;
+        case NodeState.FAILURE:
+          style.push("style=filled");
+          style.push("fillcolor=pink");
+          break;
+      }
+
       const attrs = [ label, "shape=rect" ].concat(style).join(", ");
       data.push(`  "${name}" [${attrs}];`);
     });
     data.push("");
     data.push("  \"start\" [shape=circle, style=filled, fillcolor=yellow];");
-    if (this.success) data.push("  \"success\" [shape=rect, style=filled, fillcolor=green];");
-    if (this.failure) data.push("  \"failure\" [shape=rect, style=filled, fillcolor=red];");
     data.push("}");
     return data.join("\n") + "\n";
   }
