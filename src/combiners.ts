@@ -69,7 +69,7 @@ export function alt<A, Out>(...parsers: LazyParser<A, Out>[]): Parser<A, Out> {
       const fails: MatchFailure<any>[] = [];
 
       // reverse so the first listed alternative is tried first.
-      return children.reverse().map(p => {
+      return children.map(p => {
         return new Schedule<A, Out, Out>(p, index, (match: Match<Out>) => {
           if (match instanceof MatchSuccess) {
             return [ match ];
@@ -87,7 +87,7 @@ export function alt<A, Out>(...parsers: LazyParser<A, Out>[]): Parser<A, Out> {
           }
           return [] as MatchResult<A, Out>;
         });
-      });
+      }).reverse();
     };
   });
   return parser;
