@@ -106,11 +106,7 @@ describe("Parser example", () => {
     const wordOrSep = alt(matchRegex(/\s+/), matchRegex(/\S+/)).map(m => ({ word: m[0] }));
     const line = repeat(alt<string, string | { word: string }>(abc, wordOrSep));
 
-    const fs = require("fs");
-    fs.writeFileSync("test.dot", line.toDot());
-    const makeDot = (text: string) => fs.writeFileSync("work.dot", text);
-
-    const rv = line.consume().execute("abcabc def", { makeDot, logger: console.log });
+    const rv = line.consume().execute("abcabc def");
     (rv instanceof MatchSuccess).should.eql(true);
     if (rv instanceof MatchSuccess) {
       rv.value.should.eql([ "abc", "abc", { word: " " }, { word: "def" } ]);

@@ -1,6 +1,6 @@
 {
   "name": "packrattle",
-  "version": "4.1.0",
+  "version": "5.0.0",
   "description": "GLL parser-combinator library",
   "keywords": [
     "parser",
@@ -24,6 +24,7 @@
   "dependencies": {},
   "devDependencies": {
     "@types/mocha": "^2.2.32",
+    "@types/node": "^7.0.5",
     "@types/should": "^8.1.30",
     "mocha": "^2.3.4",
     "should": "^7.1.1",

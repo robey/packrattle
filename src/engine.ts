@@ -47,7 +47,7 @@ export class Engine<A> {
   primaryTask: ParseTask<A, any>;
 
   // for debugging, when tracking a success/failure, what is the last task we *scheduled*?
-  lastScheduled: ParseTask<A, any>;
+  lastExecuted: ParseTask<A, any>;
 
 
   constructor(public stream: Sequence<A>, public options: EngineOptions = {}) {
@@ -77,7 +77,7 @@ export class Engine<A> {
     while (Object.keys(this.unresolvedTasks).length > 0 && successes.length == 0) {
       while (this.workQueue.length > 0 && successes.length == 0) {
         const task = this.workQueue.get();
-        this.lastScheduled = task;
+        this.lastExecuted = task;
 
         this.ticks++;
         if (this.options.logger) {
@@ -121,15 +121,15 @@ export class Engine<A> {
           this.processResult(task, result.handler(match));
         });
 
-        if (this.debugGraph) this.debugGraph.step(this.lastScheduled, newTask);
+        if (this.debugGraph) this.debugGraph.step(this.lastExecuted, newTask);
       } else {
-        if (this.debugGraph && this.lastScheduled) {
+        if (this.debugGraph && this.lastExecuted) {
           if (result instanceof MatchSuccess) {
             if (this.primaryTask.cacheKey == task.cacheKey) {
-              this.debugGraph.mark(this.lastScheduled.cacheKey, NodeState.SUCCESS);
+              this.debugGraph.mark(this.lastExecuted.cacheKey, NodeState.SUCCESS);
             }
           } else {
-            this.debugGraph.mark(this.lastScheduled.cacheKey, NodeState.FAILURE);
+            this.debugGraph.mark(this.lastExecuted.cacheKey, NodeState.FAILURE);
           }
         }
         task.result.add(result);
