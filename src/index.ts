@@ -4,8 +4,8 @@ export { PromiseSet } from "./promise_set";
 export { Line, SourceSpan } from "./source_span";
 
 // need to do in two parts, so tsc understands that the simple/combo parsers below are of known type.
-import { Parser, parser } from "./parser";
-export { Parser, parser };
+import { LazyParser, Parser, parser } from "./parser";
+export { LazyParser, Parser, parser };
 
 import { simple } from "./simple";
 const end = simple.end();
