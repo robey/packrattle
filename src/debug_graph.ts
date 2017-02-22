@@ -93,7 +93,7 @@ export class DebugGraph {
   }
 
   toDot(maxLength: number = 40): string {
-    this.filterOut("map", "filter", "drop", "optional");
+    this.filterOut("map", "filter", "mapError");
 
     const data: string[] = [
       "digraph packrattle {",
