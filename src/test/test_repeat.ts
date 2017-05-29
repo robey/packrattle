@@ -1,9 +1,9 @@
-import { Match, matchRegex, matchString, MatchSuccess, repeat, seq } from "..";
+import { alt, Match, matchRegex, matchString, MatchSuccess, repeat, seq } from "..";
 
 import "should";
 import "source-map-support/register";
 
-function matchSpan<T>(m: Match<T>): [ T, number, number ] {
+function matchSpan<T>(m: Match<string, T>): [ T, number, number ] {
   if (!(m instanceof MatchSuccess)) throw new Error("failed");
   return [ m.value, m.span.start, m.span.end ];
 }

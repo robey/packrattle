@@ -9,7 +9,7 @@ export class ParseTask<A, Out> {
   cacheKey: string;
 
   // stream is known by the engine
-  constructor(public parser: Parser<A, Out>, public index: number, public result: PromiseSet<Match<Out>>) {
+  constructor(public parser: Parser<A, Out>, public index: number, public result: PromiseSet<Match<A, Out>>) {
     this.cacheKey = `${this.parser.id}:${this.index}`;
   }
 
@@ -55,9 +55,9 @@ export class Engine<A> {
   }
 
   // execute a parser over a string.
-  execute<Out>(parser: Parser<A, Out>): Match<Out> {
+  execute<Out>(parser: Parser<A, Out>): Match<A, Out> {
     const successes: MatchSuccess<Out>[] = [];
-    const failures: MatchFailure<Out>[] = [];
+    const failures: MatchFailure<A, Out>[] = [];
 
     if (this.options.logger) this.options.logger(`Try '${inspect(this.stream)}' in ${inspect(parser)}`);
 
@@ -157,7 +157,7 @@ export class Engine<A> {
         log(`      [${task.parser.id} @ ${task.index}] = ${text}`);
       };
     }
-    const task = new ParseTask<A, T>(parser, index, new PromiseSet<Match<T>>(options));
+    const task = new ParseTask<A, T>(parser, index, new PromiseSet<Match<A, T>>(options));
     this.cache[task.cacheKey] = task;
     this.unresolvedTasks[task.cacheKey] = task.cacheKey;
     task.result.then(() => {

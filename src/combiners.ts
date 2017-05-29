@@ -20,9 +20,9 @@ export function chain<A, T1, T2, R>(
     describe: list => `${list[0]} then ${list[1]}`
   }, children => {
     return (stream, index) => {
-      return schedule<A, T1, R>(children[0], index, (match1: Match<T1>) => {
+      return schedule<A, T1, R>(children[0], index, (match1: Match<A, T1>) => {
         return mapMatch<A, T1, R>(match1, (span1, value1) => {
-          return schedule<A, T2, R>(children[1], span1.end, (match2: Match<T2>) => {
+          return schedule<A, T2, R>(children[1], span1.end, (match2: Match<A, T2>) => {
             return mapMatch<A, T2, R>(match2, (span2, value2) => {
               return [ new MatchSuccess<R>(mergeSpan(span1, span2), combiner(value1, value2)) ];
             });
@@ -45,7 +45,7 @@ export function seq<A>(...parsers: LazyParser<A, any>[]): Parser<A, any[]> {
   }, children => {
     function next(i: number, start: number, index: number, rv: any[] = []): MatchResult<A, any[]> {
       if (i >= parsers.length) return success(start, index, rv);
-      return schedule<A, any, any[]>(children[i], index, (match: Match<any>) => {
+      return schedule<A, any, any[]>(children[i], index, (match: Match<A, any>) => {
         return mapMatch<A, any, any[]>(match, (span, value) => next(i + 1, start, span.end, rv.concat([ value ])));
       });
     }
@@ -66,11 +66,11 @@ export function alt<A, Out>(...parsers: LazyParser<A, Out>[]): Parser<A, Out> {
   }, children => {
     return (stream, index) => {
       let count = 0;
-      const fails: MatchFailure<any>[] = [];
+      const fails: MatchFailure<A, any>[] = [];
 
       // reverse so the first listed alternative is tried first.
       return children.map(p => {
-        return new Schedule<A, Out, Out>(p, index, (match: Match<Out>) => {
+        return new Schedule<A, Out, Out>(p, index, (match: Match<A, Out>) => {
           if (match instanceof MatchSuccess) {
             return [ match ];
           } else if (match instanceof MatchFailure) {
@@ -125,7 +125,7 @@ export function optionalOr<A, Out>(p: LazyParser<A, Out>, defaultValue: Out): Pa
 export function check<A, Out>(p: LazyParser<A, Out>): Parser<A, Out> {
   return new Parser<A, Out>("check", { children: [ p ], cacheable: true }, children => {
     return (stream, index) => {
-      return schedule<A, Out, Out>(children[0], index, (match: Match<Out>) => {
+      return schedule<A, Out, Out>(children[0], index, (match: Match<A, Out>) => {
         return mapMatch<A, Out, Out>(match, (span, value) => success(index, index, value));
       });
     };
@@ -138,7 +138,7 @@ export function check<A, Out>(p: LazyParser<A, Out>): Parser<A, Out> {
 export function not<A, Out>(p: LazyParser<A, Out>): Parser<A, null> {
   const parser: Parser<A, null> = new Parser<A, null>("not", { children: [ p ], cacheable: true }, children => {
     return (stream, index) => {
-      return schedule<A, Out, null>(children[0], index, (match: Match<Out>) => {
+      return schedule<A, Out, null>(children[0], index, (match: Match<A, Out>) => {
         if (match instanceof MatchSuccess) {
           return fail(index, parser);
         } else if (match instanceof MatchFailure) {
@@ -176,17 +176,17 @@ export function repeat<A, Out>(p: LazyParser<A, Out>, options: RepeatOptions = {
       function next(count: number, accumulator: Out[], pos: number): MatchResult<A, Out[]> {
         const rv: MatchResult<A, Out[]> = [];
         if (count >= min) rv.push(new MatchSuccess(new Span(index, pos), accumulator));
-        if (count < max) rv.push(new Schedule<A, Out, Out[]>(children[0], pos, (match: Match<Out>) => {
+        if (count < max) rv.push(new Schedule<A, Out, Out[]>(children[0], pos, (match: Match<A, Out>) => {
           return process(match, count, accumulator);
         }));
         return rv;
       }
 
       // process the next match.
-      function process(match: Match<Out>, count: number, accumulator: Out[]): MatchResult<A, Out[]> {
+      function process(match: Match<A, Out>, count: number, accumulator: Out[]): MatchResult<A, Out[]> {
         if (match instanceof MatchFailure) {
           if (count < min) {
-            return [ new MatchFailure(new Span(index, match.span.start), "Expected " + parser.description) ];
+            return [ new MatchFailure<A, Out[]>(new Span(index, match.span.start), "Expected " + parser.description) ];
           } else {
             return [];
           }

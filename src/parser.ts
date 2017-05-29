@@ -159,7 +159,7 @@ export class Parser<A, Out> {
     return this;
   }
 
-  execute(stream: Sequence<A>, options: EngineOptions = {}): Match<Out> {
+  execute(stream: Sequence<A>, options: EngineOptions = {}): Match<A, Out> {
     return new Engine(stream, options).execute(this.resolve());
   }
 
@@ -188,7 +188,7 @@ export class Parser<A, Out> {
   map<U>(f: U | ((item: Out, span: Span) => U)): Parser<A, U> {
     return new Parser<A, U>("map", { children: [ this ] }, children => {
       return (stream, index) => {
-        return schedule<A, Out, U>(children[0], index, (match: Match<Out>) => {
+        return schedule<A, Out, U>(children[0], index, (match: Match<A, Out>) => {
           return mapMatch<A, Out, U>(match, (span, value) => {
             return [ new MatchSuccess(span, (typeof f === "function") ? f(value, span) : f) ];
           });
@@ -201,7 +201,7 @@ export class Parser<A, Out> {
   filter(f: (value: Out, span: Span) => boolean, message?: string): Parser<A, Out> {
     return new Parser<A, Out>("filter", { children: [ this ] }, children => {
       return (stream, index) => {
-        return schedule<A, Out, Out>(children[0], index, (match: Match<Out>) => {
+        return schedule<A, Out, Out>(children[0], index, (match: Match<A, Out>) => {
           return mapMatch<A, Out, Out>(match, (span, value) => {
             return f(value, span) ? [ match ] : fail(span.start, message || children[0]);
           });
@@ -214,9 +214,9 @@ export class Parser<A, Out> {
   mapError(newMessage: string): Parser<A, Out> {
     return new Parser<A, Out>("mapError", { children: [ this ] }, children => {
       return (stream, index) => {
-        return schedule<A, Out, Out>(children[0], index, (match: Match<Out>) => {
+        return schedule<A, Out, Out>(children[0], index, (match: Match<A, Out>) => {
           if (match instanceof MatchFailure) {
-            return [ new MatchFailure(match.span, newMessage) ];
+            return [ new MatchFailure(match.span, newMessage, match.task) ];
           } else {
             return [ match ];
           }
@@ -228,9 +228,9 @@ export class Parser<A, Out> {
   named(description: string): Parser<A, Out> {
     return new Parser<A, Out>("mapError", { children: [ this ], describe: () => description }, children => {
       return (stream, index) => {
-        return schedule<A, Out, Out>(children[0], index, (match: Match<Out>) => {
+        return schedule<A, Out, Out>(children[0], index, (match: Match<A, Out>) => {
           if (match instanceof MatchFailure) {
-            return [ new MatchFailure(match.span, "Expected " + description) ];
+            return [ new MatchFailure(match.span, "Expected " + description, match.task) ];
           } else {
             return [ match ];
           }
