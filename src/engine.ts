@@ -132,6 +132,9 @@ export class Engine<A> {
             this.debugGraph.mark(this.lastExecuted.cacheKey, NodeState.FAILURE);
           }
         }
+        if (result instanceof MatchFailure && result.task === undefined) {
+          result.task = task;
+        }
         task.result.add(result);
       }
     });
