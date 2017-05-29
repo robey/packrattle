@@ -29,6 +29,12 @@ describe("Parser.repeat", () => {
     p.run("hihihip").should.eql([ [ "hi", "hi" ], "hip" ]);
   });
 
+  it("repeat/alt", () => {
+    const p = repeat(alt(matchString("("), matchString(")"), matchString("x")));
+    p.run("(xx))").should.eql([ "(", "x", "x", ")", ")" ]);
+    (() => p.run("(xx)y)")).should.throw(/end/);
+  });
+
   it("nested", () => {
     const p = seq(
       repeat(
