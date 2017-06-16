@@ -22,7 +22,7 @@
     "suppressImplicitAnyIndexErrors": true,
     "strictNullChecks": true
   },
-  "filesGlob": [
+  "include": [
     "src/**/*.ts"
   ],
   "compileOnSave": true,

@@ -18,7 +18,7 @@
     "build": "tsc",
     "clean": "rm -rf lib test/lib",
     "distclean": "npm run clean && rm -rf node_modules npm-debug.log",
-    "prepublish": "npm run build",
+    "prepare": "npm run build",
     "test": "npm run build && mocha -R spec --colors --recursive lib/test"
   },
   "dependencies": {},
@@ -31,7 +31,11 @@
     "source-map-support": "^0.3.3",
     "typescript": "^2.0.9"
   },
-  "main": "./lib",
+  "engines": {
+    "npm": "^5.0.0"
+  },
+  "main": "./lib/index",
+  "typings": "./lib/index.d.ts",
   "files": [
     "LICENSE.txt",
     "docs",
