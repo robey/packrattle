@@ -119,13 +119,28 @@ export function alt<A, Out>(...parsers: LazyParser<A, Out>[]): Parser<A, Out> {
           // if *all* of the alternatives fail, summarize it.
           count++;
           if (count == children.length && count == fails.length) {
-            return fail(index, parser);
+            return findBestFail(index, fails);
           }
           return [] as MatchResult<A, Out>;
         });
       }).reverse();
     };
   });
+
+  const findBestFail = (index: number, fails: MatchFailure<any>[]): Match<any>[] => {
+    let best = fails[0];
+    fails.forEach(f => {
+      if (f.span.start > best.span.start) best = f;
+    });
+    // if the best failure was the same index as we started, none of them
+    // were particularly good, so construct a new one.
+    if (best.span.start == index) {
+      return fail(index, parser);
+    } else {
+      return [ best ];
+    }
+  }
+
   return parser;
 }
 
