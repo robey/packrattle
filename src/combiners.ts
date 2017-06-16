@@ -33,6 +33,42 @@ export function chain<A, T1, T2, R>(
   });
 }
 
+// for convenience, static type sequences
+
+export function seq2<A, T1, T2>(
+  p1: LazyParser<A, T1>,
+  p2: LazyParser<A, T2>
+): Parser<A, [ T1, T2 ]> {
+  return chain(p1, p2, (r1, r2) => [ r1, r2 ] as [ T1, T2 ]);
+}
+
+export function seq3<A, T1, T2, T3>(
+  p1: LazyParser<A, T1>,
+  p2: LazyParser<A, T2>,
+  p3: LazyParser<A, T3>
+): Parser<A, [ T1, T2, T3 ]> {
+  return chain(seq2(p1, p2), p3, (rx, r3) => [ rx[0], rx[1], r3 ] as [ T1, T2, T3 ]);
+}
+
+export function seq4<A, T1, T2, T3, T4>(
+  p1: LazyParser<A, T1>,
+  p2: LazyParser<A, T2>,
+  p3: LazyParser<A, T3>,
+  p4: LazyParser<A, T4>
+): Parser<A, [ T1, T2, T3, T4 ]> {
+  return chain(seq3(p1, p2, p3), p4, (rx, r4) => [ rx[0], rx[1], rx[2], r4 ] as [ T1, T2, T3, T4 ]);
+}
+
+export function seq5<A, T1, T2, T3, T4, T5>(
+  p1: LazyParser<A, T1>,
+  p2: LazyParser<A, T2>,
+  p3: LazyParser<A, T3>,
+  p4: LazyParser<A, T4>,
+  p5: LazyParser<A, T5>
+): Parser<A, [ T1, T2, T3, T4, T5 ]> {
+  return chain(seq4(p1, p2, p3, p4), p5, (rx, r5) => [ rx[0], rx[1], rx[2], rx[3], r5 ] as [ T1, T2, T3, T4, T5 ]);
+}
+
 /*
  * chain together a series of parsers as in 'chain'. the match value is an
  * array of non-null match values from the inner parsers.
