@@ -190,7 +190,18 @@ export class Parser<A, Out> {
       return (stream, index) => {
         return schedule<A, Out, U>(children[0], index, (match: Match<Out>) => {
           return mapMatch<A, Out, U>(match, (span, value) => {
-            return [ new MatchSuccess(span, (typeof f === "function") ? f(value, span) : f) ];
+            let rv: MatchResult<A, U>;
+            if (typeof f === "function") {
+              try {
+                rv = [ new MatchSuccess(span, f(value, span)) ];
+              } catch (error) {
+                const priority = error["priority"] || 0;
+                rv = [ new MatchFailure(span, error.message, priority) ];
+              }
+            } else {
+              rv = [ new MatchSuccess(span, f) ];
+            }
+            return rv;
           });
         });
       };

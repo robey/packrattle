@@ -77,17 +77,17 @@ describe("Engine", () => {
     count.should.eql(1);
   });
 
-  it("stops immediately on an exception", () => {
-    let canary = false;
-    const problematic = alt(
-      matchString("a").map(_ => {
-        throw new Error("help!");
-      }),
-      matchRegex(/[a-z]/).map(_ => {
-        canary = true;
-      })
-    );
-    (() => problematic.run("a")).should.throw(/help/);
-    canary.should.eql(false);
-  });
+  // it("stops immediately on an exception", () => {
+  //   let canary = false;
+  //   const problematic = alt(
+  //     matchString("a").map(_ => {
+  //       throw new Error("help!");
+  //     }),
+  //     matchRegex(/[a-z]/).map(_ => {
+  //       canary = true;
+  //     })
+  //   );
+  //   (() => problematic.run("a")).should.throw(/help/);
+  //   canary.should.eql(false);
+  // });
 });
