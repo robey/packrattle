@@ -1,5 +1,5 @@
 import {
-  alt, chain, check, MatchFailure, matchRegex, matchString, MatchSuccess, not, optional, optionalOr, seq
+  alt, chain, check, MatchFailure, matchRegex, matchString, MatchSuccess, not, optional, optionalOr, seq, seq2
 } from "../";
 
 import "should";
@@ -27,6 +27,15 @@ describe("combiners", () => {
     (() => p.run("cat")).should.throw(/'hello'/);
     p.run("hello").should.eql("hello");
     p.run("goodbye").should.eql("goodbye");
+  });
+
+  it("alt messages", () => {
+    const p = alt(
+      matchString("hello"),
+      seq2(matchString("good"), matchString("bye")).map(([ a, b ]) => a + b).named("farewell")
+    ).named("greeting");
+    (() => p.run("x")).should.throw(/greeting/);
+    (() => p.run("goodluck")).should.throw(/'bye'/);
   });
 
   describe("optional", () => {

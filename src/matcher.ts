@@ -32,12 +32,12 @@ export class MatchSuccess<Out> {
 }
 
 export class MatchFailure<Out> {
-  constructor(public span: Span, public message: string) {
+  constructor(public span: Span, public message: string, public priority: number = 0) {
     // pass
   }
 
   toString() {
-    return `Failure(${this.span}, ${this.message})`;
+    return `Failure(${this.span}, ${this.priority}, ${this.message})`;
   }
 }
 
@@ -61,10 +61,11 @@ export type Matcher<A, Out> = (stream: Sequence<A>, index: number) => MatchResul
 
 // helpers:
 
-export function fail<A>(index: number, message: string | Parser<any, any>): Match<any>[] {
+export function fail<A>(index: number, message: string | Parser<any, any>, priority: number = 0): Match<any>[] {
   const match = new MatchFailure(
     new Span(index, index),
-    message instanceof Parser ? ("Expected " + message.description) : message
+    message instanceof Parser ? ("Expected " + message.description) : message,
+    priority
   );
   return [ match ];
 }

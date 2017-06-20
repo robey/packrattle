@@ -221,13 +221,14 @@ export class Parser<A, Out> {
     });
   }
 
-  // transforms the error message of a parser
-  mapError(newMessage: string): Parser<A, Out> {
-    return new Parser<A, Out>("mapError", { children: [ this ] }, children => {
+  // transforms the error message of a parser, if the previous error message
+  // has the same or lower priority, and didn't get any deeper into the string.
+  mapError(newMessage: string, priority: number = 0, describe?: () => string): Parser<A, Out> {
+    return new Parser<A, Out>("mapError", { children: [ this ], describe }, children => {
       return (stream, index) => {
         return schedule<A, Out, Out>(children[0], index, (match: Match<Out>) => {
-          if (match instanceof MatchFailure) {
-            return [ new MatchFailure(match.span, newMessage) ];
+          if ((match instanceof MatchFailure) && match.span.start == index && priority >= match.priority) {
+            return [ new MatchFailure(match.span, newMessage, priority) ];
           } else {
             return [ match ];
           }
@@ -236,18 +237,8 @@ export class Parser<A, Out> {
     });
   }
 
-  named(description: string): Parser<A, Out> {
-    return new Parser<A, Out>("mapError", { children: [ this ], describe: () => description }, children => {
-      return (stream, index) => {
-        return schedule<A, Out, Out>(children[0], index, (match: Match<Out>) => {
-          if (match instanceof MatchFailure) {
-            return [ new MatchFailure(match.span, "Expected " + description) ];
-          } else {
-            return [ match ];
-          }
-        });
-      };
-    });
+  named(description: string, priority: number = 0): Parser<A, Out> {
+    return this.mapError("Expected " + description, priority, () => description);
   }
 
   // create a dot graph of the parser nesting
