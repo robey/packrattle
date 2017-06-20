@@ -76,8 +76,8 @@ export class Parser<A, Out> {
    */
   constructor(
     public readonly name: string,
-    public readonly options: ParserOptions<A, Out>,
-    public readonly generateMatcher: (children: Parser<A, any>[]) => Matcher<A, Out>
+    public options: ParserOptions<A, Out>,
+    public generateMatcher: (children: Parser<A, any>[]) => Matcher<A, Out>
   ) {
     this.id = ParserId++;
   }
@@ -282,6 +282,7 @@ export class Parser<A, Out> {
 const ID = "__packrattle_cache_id";
 let LazyId = 0;
 export type FunctionCache<A, Out> = { [key: string]: Parser<A, Out> };
+type Cacheable = { __packrattle_cache_id?: string };
 
 /*
  * convert a "parser-like object" into an actual Parser object.
@@ -292,12 +293,12 @@ export type FunctionCache<A, Out> = { [key: string]: Parser<A, Out> };
  */
 function unlazy<A, Out>(parser: LazyParser<A, Out>, functionCache: FunctionCache<A, Out>): Parser<A, Out> {
   if (typeof parser == "function") {
-    if (!parser[ID]) {
+    let id = (parser as Cacheable).__packrattle_cache_id;
+    if (id === undefined) {
       // give every lazy parser an id so we can cache them.
-      parser[ID] = (LazyId++).toString();
+      (parser as Cacheable).__packrattle_cache_id = id = (LazyId++).toString();
     }
 
-    const id = parser[ID];
     if (functionCache[id]) {
       parser = functionCache[id];
     } else {

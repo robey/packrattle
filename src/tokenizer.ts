@@ -126,7 +126,7 @@ export function makeTokenizer(rules: TokenRules): Parser<string, Token[]> {
         rv[rv.length - 1].id == rules.fallback
       ) {
         const span = mergeSpan(rv[rv.length - 1].span, t.span);
-        rv[rv.length - 1] = new Token(rules.tokens, t.id, span, rv[rv.length - 1].value + t.value);
+        rv[rv.length - 1] = new Token(rules.tokens, t.id, span, (rv[rv.length - 1].value || "") + (t.value || ""));
       } else {
         rv.push(t);
       }

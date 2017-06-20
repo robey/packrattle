@@ -27,7 +27,10 @@ export class PromiseSet<T> {
 
   add(value: T) {
     this.values.push(value);
-    if (this.options.logger) this.options.logger(value["inspect"] ? value["inspect"]() : value.toString());
+    if (this.options.logger) {
+      const inspectable = (value as Inspectable);
+      this.options.logger(inspectable.inspect ? inspectable.inspect() : value.toString());
+    }
     this.listeners.forEach(f => f(value));
   }
 
@@ -39,4 +42,8 @@ export class PromiseSet<T> {
   get isSettled() {
     return (this.values.length > 0);
   }
+}
+
+type Inspectable = {
+  inspect?: () => string;
 }
