@@ -3,49 +3,50 @@ import { fail, mergeSpan, Span, success } from "./matcher";
 import { Parser } from "./parser";
 import { simple } from "./simple";
 
-/*
- * Tokens must come from a typescript enum or similar (name -> number) map.
- * Each token is represented by a number, and the enum object is used to
- * convert the numbers into strings for debug/display.
- *
- * You can create a typescript enum in raw js by doing something like:
- *
- *     // same as: enum Token { Identifier = 4 }
- *     Token[Token["Identifier"] = 4] = "Identifier";
- *
- * Tokens < 0 are reserved for internal use.
- */
-
-const TOKEN_WHITESPACE = -1;
 
 // the general type of typescript enums
 export interface Enumish {
   [id: number]: string;
 }
 
+const WHITESPACE = -1;
+
+export class TokenType {
+  shortName: string;
+
+  constructor(public tokenizer: Tokenizer, public id: number, public name: string) {
+    this.shortName = name;
+  }
+
+  match: Parser<Token, Token> = new Parser<Token, Token>(
+    "token",
+    { cacheable: true, describe: () => this.shortName },
+    children => {
+      return (stream, index) => {
+        if (index < 0 || index >= stream.length) return fail(index, this.match);
+        return stream[index].tokenType.id === this.id ?
+          success(index, index + 1, stream[index]) :
+          fail(index, this.match);
+      };
+    }
+  );
+}
+
 /*
- * A token has an id (usually an enum, or a number in raw js), a span of
- * text that it covers, and optionally a value (usually the parsed form of
- * the span of text).
+ * A token matches a TokenType, a span of text that it covers, and optionally
+ * a value (usually the parsed form of the span of text).
  */
 export class Token {
   // we track the Enumish too, for debugging.
-  constructor(public tokens: Enumish, public id: number, public span: Span, public value?: string) {
+  constructor(public tokenType: TokenType, public span: Span, public value?: string) {
     // pass
   }
 
   toString(): string {
-    if (this.tokens[this.id] === undefined) {
-      switch (this.id) {
-        case TOKEN_WHITESPACE: return "<whitespace>";
-        default: return "?";
-      }
-    }
-
     if (this.value === undefined || this.value == null) {
-      return this.tokens[this.id];
+      return this.tokenType.name;
     }
-    return this.tokens[this.id] + "(" + this.value.toString() + ")";
+    return this.tokenType.name + "(" + this.value.toString() + ")";
   }
 
   toStringWithSpan(): string {
@@ -57,11 +58,7 @@ export class Token {
   }
 }
 
-
 export interface TokenRules {
-  // table of all tokens, so we can print their names for debugging
-  tokens: Enumish;
-
   // list of regex to drop completely (usually whitespace)
   ignore?: RegExp[];
 
@@ -78,7 +75,6 @@ export interface TokenRules {
   fallback?: number;
 }
 
-
 export interface TokenRegexRule {
   // token id
   token: number;
@@ -91,60 +87,86 @@ export interface TokenRegexRule {
 }
 
 
-/*
- * A tokenizer parses a stream of tokens from a string.
- */
-export function makeTokenizer(rules: TokenRules): Parser<string, Token[]> {
-  // would be nice to merge all ignores into a single regex, but js makes that difficult.
-  const ignore = (rules.ignore || []).map(r => {
-    return simple.matchRegex(r).map((m, span) => new Token(rules.tokens, TOKEN_WHITESPACE, span));
-  });
-  const strings = (rules.strings || []).map(([ s, id ]) => {
-    return simple.matchString(s).map((m, span) => new Token(rules.tokens, id, span, s));
-  });
+export class Tokenizer {
+  public tokenTypes: TokenType[] = [];
+  public parser: Parser<string, Token[]>;
 
-  const regexes = (rules.regex || []).map(rule => {
-    // build a function out of rule.value if it's not already.
-    return simple.matchRegex(rule.regex).map((m, span) => {
-      return new Token(rules.tokens, rule.token, span, rule.value ? rule.value(m) : m[0]);
+  constructor(enumLike: { [id: number]: string }, public rules: TokenRules) {
+    // really awkward way to iterate over the enum:
+    Object.keys(enumLike).filter(key => key.match(/^\d+$/)).forEach(key => {
+      const id = parseInt(key, 10);
+      this.tokenTypes[id] = new TokenType(this, id, enumLike[id]);
+    })
+    this.tokenTypes[WHITESPACE] = new TokenType(this, WHITESPACE, "<whitespace>");
+
+    // give friendly names to any tokens that are just string matches
+    (this.rules.strings || []).forEach(([ s, id ]) => {
+      this.tokenTypes[id].shortName = "'" + s + "'";
     });
-  });
 
-  const fallback = (rules.fallback === undefined) ?
-    [] :
-    [ simple.matchRegex(/./).map((m, span) => new Token(rules.tokens, rules.fallback || 0, span, m[0])) ];
+    this.parser = this.makeParser();
+  }
 
-  return repeat(alt(...(ignore.concat(rules.parsers || [], strings, regexes, fallback)))).map(tokenList => {
-    // drop whitespace, and coalesce errors.
-    const rv: Token[] = [];
-    tokenList.forEach(t => {
-      if (t.id == TOKEN_WHITESPACE) return;
-      if (
-        rules.fallback !== undefined &&
-        t.id == rules.fallback &&
-        rv.length > 0 &&
-        rv[rv.length - 1].id == rules.fallback
-      ) {
-        const span = mergeSpan(rv[rv.length - 1].span, t.span);
-        rv[rv.length - 1] = new Token(rules.tokens, t.id, span, (rv[rv.length - 1].value || "") + (t.value || ""));
-      } else {
-        rv.push(t);
-      }
+  private makeParser(): Parser<string, Token[]> {
+    // would be nice to merge all ignores into a single regex, but js makes that difficult.
+    const ignore = (this.rules.ignore || []).map(r => {
+      return simple.matchRegex(r).map((m, span) => new Token(this.tokenTypes[WHITESPACE], span));
     });
-    return rv;
-  });
-}
+    const strings = (this.rules.strings || []).map(([ s, id ]) => {
+      return simple.matchString(s).map((m, span) => new Token(this.tokenTypes[id], span, s));
+    });
 
-// matches a literal string.
-export function matchToken(tokens: Enumish, id: number): Parser<Token, Token> {
-  const parser: Parser<Token, Token> = new Parser<Token, Token>(
-    "token",
-    { cacheable: true, describe: () => `Token(${tokens[id]})` },
-    children => {
-      return (stream, index) => {
-        return stream[index].id == id ? success(index, index + 1, stream[index]) : fail(index, parser);
-      };
+    const regexes = (this.rules.regex || []).map(rule => {
+      // build a function out of rule.value if it's not already.
+      return simple.matchRegex(rule.regex).map((m, span) => {
+        return new Token(this.tokenTypes[rule.token], span, rule.value ? rule.value(m) : m[0]);
+      });
+    });
+
+    let fallback: Parser<string, Token>[] = [];
+    const fallbackRule = this.rules.fallback;
+    if (fallbackRule !== undefined) {
+      fallback.push(simple.matchRegex(/./).map((m, span) => new Token(this.tokenTypes[fallbackRule], span, m[0])));
     }
-  );
-  return parser;
+
+    return repeat(alt(...(ignore.concat(this.rules.parsers || [], strings, regexes, fallback)))).map(tokenList => {
+      // drop whitespace, and coalesce errors.
+      const rv: Token[] = [];
+      tokenList.forEach(t => {
+        if (t.tokenType.id == WHITESPACE) return;
+        if (
+          this.rules.fallback !== undefined &&
+          t.tokenType.id == this.rules.fallback &&
+          rv.length > 0 &&
+          rv[rv.length - 1].tokenType.id == this.rules.fallback
+        ) {
+          const span = mergeSpan(rv[rv.length - 1].span, t.span);
+          rv[rv.length - 1] = new Token(t.tokenType, span, (rv[rv.length - 1].value || "") + (t.value || ""));
+        } else {
+          rv.push(t);
+        }
+      });
+      return rv;
+    });
+  }
+
+  match(id: number): Parser<Token, Token> {
+    return this.tokenTypes[id].match;
+  }
+
+  matchOneOf(...ids: number[]): Parser<Token, Token> {
+    const p: Parser<Token, Token> = new Parser<Token, Token>(
+      "token",
+      { cacheable: true, describe: () => ids.map(id => this.tokenTypes[id].shortName).join(" or ") },
+      children => {
+        return (stream, index) => {
+          if (index < 0 || index >= stream.length) return fail(index, p);
+          return ids.indexOf(stream[index].tokenType.id) >= 0 ?
+            success(index, index + 1, stream[index]) :
+            fail(index, p);
+        };
+      }
+    );
+    return p;
+  }
 }
