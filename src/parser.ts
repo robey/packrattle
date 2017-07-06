@@ -113,7 +113,7 @@ export class Parser<A, Out> {
   // flll in 'description'. recursive.
   private getDescription(): string {
     if (this.description) return this.description;
-    if (this.recursing) return "...";
+    if (this.recursing) return `[${this.id}]`;
     this.recursing = true;
     const list = this.children.map(p => {
       return (p.children && p.children.length > 1) ? ("(" + p.getDescription() + ")") : p.getDescription();
