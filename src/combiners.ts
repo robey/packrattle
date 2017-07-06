@@ -20,13 +20,9 @@ export function chain<A, T1, T2, R>(
     describe: list => `${list[0]} then ${list[1]}`
   }, children => {
     return (stream, index) => {
-      return schedule<A, T1, R>(children[0], index, (match1: Match<T1>) => {
-        return mapMatch<A, T1, R>(match1, (span1, value1) => {
-          return schedule<A, T2, R>(children[1], span1.end, (match2: Match<T2>) => {
-            return mapMatch<A, T2, R>(match2, (span2, value2) => {
-              return [ new MatchSuccess<R>(mergeSpan(span1, span2), combiner(value1, value2)) ];
-            });
-          });
+      return scheduleMap(children[0], index, (span1, value1) => {
+        return scheduleMap(children[1], span1.end, (span2, value2) => {
+          return [ new MatchSuccess<R>(mergeSpan(span1, span2), combiner(value1, value2)) ];
         });
       });
     };
@@ -35,11 +31,30 @@ export function chain<A, T1, T2, R>(
 
 // for convenience, static type sequences
 
+// schedule a parser, then map its result (if successful)
+function scheduleMap<A, T, R>(
+  p: Parser<A, T>, index: number, f: (span: Span, value: T) => MatchResult<A, R>
+): MatchResult<A, R> {
+  return schedule<A, T, R>(p, index, (m: Match<T>) => mapMatch<A, T, R>(m, f));
+}
+
 export function seq2<A, T1, T2>(
   p1: LazyParser<A, T1>,
   p2: LazyParser<A, T2>
 ): Parser<A, [ T1, T2 ]> {
-  return chain(p1, p2, (r1, r2) => [ r1, r2 ] as [ T1, T2 ]);
+  return new Parser<A, [ T1, T2 ]>("seq2", {
+    cacheable: true,
+    children: [ p1, p2 ],
+    describe: list => `seq2(${list[0]}, ${list[1]})`
+  }, children => {
+    return (stream, index) => {
+      return scheduleMap(children[0], index, (span1, value1) => {
+        return scheduleMap(children[1], span1.end, (span2, value2) => {
+          return [ new MatchSuccess<[ T1, T2 ]>(mergeSpan(span1, span2), [ value1, value2 ]) ];
+        });
+      });
+    };
+  });
 }
 
 export function seq3<A, T1, T2, T3>(
@@ -47,7 +62,21 @@ export function seq3<A, T1, T2, T3>(
   p2: LazyParser<A, T2>,
   p3: LazyParser<A, T3>
 ): Parser<A, [ T1, T2, T3 ]> {
-  return chain(seq2(p1, p2), p3, (rx, r3) => [ rx[0], rx[1], r3 ] as [ T1, T2, T3 ]);
+  return new Parser<A, [ T1, T2, T3 ]>("seq3", {
+    cacheable: true,
+    children: [ p1, p2, p3 ],
+    describe: list => `seq3(${list[0]}, ${list[1]}, ${list[2]})`
+  }, children => {
+    return (stream, index) => {
+      return scheduleMap(children[0], index, (span1, value1) => {
+        return scheduleMap(children[1], span1.end, (span2, value2) => {
+          return scheduleMap(children[2], span2.end, (span3, value3) => {
+            return [ new MatchSuccess<[ T1, T2, T3 ]>(mergeSpan(span1, span3), [ value1, value2, value3 ]) ];
+          });
+        });
+      });
+    };
+  });
 }
 
 export function seq4<A, T1, T2, T3, T4>(
@@ -56,7 +85,25 @@ export function seq4<A, T1, T2, T3, T4>(
   p3: LazyParser<A, T3>,
   p4: LazyParser<A, T4>
 ): Parser<A, [ T1, T2, T3, T4 ]> {
-  return chain(seq3(p1, p2, p3), p4, (rx, r4) => [ rx[0], rx[1], rx[2], r4 ] as [ T1, T2, T3, T4 ]);
+  return new Parser<A, [ T1, T2, T3, T4 ]>("seq4", {
+    cacheable: true,
+    children: [ p1, p2, p3, p4 ],
+    describe: list => `seq4(${list[0]}, ${list[1]}, ${list[2]}, ${list[3]})`
+  }, children => {
+    return (stream, index) => {
+      return scheduleMap(children[0], index, (span1, value1) => {
+        return scheduleMap(children[1], span1.end, (span2, value2) => {
+          return scheduleMap(children[2], span2.end, (span3, value3) => {
+            return scheduleMap(children[3], span3.end, (span4, value4) => {
+              return [
+                new MatchSuccess<[ T1, T2, T3, T4 ]>(mergeSpan(span1, span4), [ value1, value2, value3, value4 ])
+              ];
+            });
+          });
+        });
+      });
+    };
+  });
 }
 
 export function seq5<A, T1, T2, T3, T4, T5>(
@@ -66,7 +113,30 @@ export function seq5<A, T1, T2, T3, T4, T5>(
   p4: LazyParser<A, T4>,
   p5: LazyParser<A, T5>
 ): Parser<A, [ T1, T2, T3, T4, T5 ]> {
-  return chain(seq4(p1, p2, p3, p4), p5, (rx, r5) => [ rx[0], rx[1], rx[2], rx[3], r5 ] as [ T1, T2, T3, T4, T5 ]);
+  return new Parser<A, [ T1, T2, T3, T4, T5 ]>("seq5", {
+    cacheable: true,
+    children: [ p1, p2, p3, p4, p5 ],
+    describe: list => `seq5(${list[0]}, ${list[1]}, ${list[2]}, ${list[3]}, ${list[4]})`
+  }, children => {
+    return (stream, index) => {
+      return scheduleMap(children[0], index, (span1, value1) => {
+        return scheduleMap(children[1], span1.end, (span2, value2) => {
+          return scheduleMap(children[2], span2.end, (span3, value3) => {
+            return scheduleMap(children[3], span3.end, (span4, value4) => {
+              return scheduleMap(children[4], span4.end, (span5, value5) => {
+                return [
+                  new MatchSuccess<[ T1, T2, T3, T4, T5 ]>(
+                    mergeSpan(span1, span5),
+                    [ value1, value2, value3, value4, value5 ]
+                  )
+                ];
+              });
+            });
+          });
+        });
+      });
+    };
+  });
 }
 
 /*
