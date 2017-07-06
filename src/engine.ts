@@ -46,9 +46,6 @@ export class Engine<A> {
   // for debugging, we want to mark success/failure of the primary task in the debug groph.
   primaryTask: ParseTask<A, any>;
 
-  // for debugging, when tracking a success/failure, what is the last task we *scheduled*?
-  lastExecuted: ParseTask<A, any>;
-
 
   constructor(public stream: Sequence<A>, public options: EngineOptions = {}) {
     if (options.makeDot) this.debugGraph = new DebugGraph();
@@ -77,8 +74,6 @@ export class Engine<A> {
     while (Object.keys(this.unresolvedTasks).length > 0 && successes.length == 0) {
       while (this.workQueue.length > 0 && successes.length == 0) {
         const task = this.workQueue.get();
-        this.lastExecuted = task;
-
         this.ticks++;
         if (this.options.logger) {
           const ticks = ("    " + this.ticks.toString()).slice(-4);
@@ -86,7 +81,9 @@ export class Engine<A> {
         }
 
         try {
-          this.processResult(task, task.parser.matcher(this.stream, task.index));
+          const matchResult = task.parser.matcher(this.stream, task.index);
+          matchResult.forEach(r => r.taskKey = task.cacheKey);
+          this.processResult(task, matchResult);
         } catch (error) {
           if (this.options.logger) this.options.logger(`Parser ${task.parser.id} threw error: ${error.message}`);
           throw error;
@@ -118,18 +115,22 @@ export class Engine<A> {
       if (result instanceof Schedule) {
         const newTask = this.schedule(result.parser, result.index);
         newTask.result.then(match => {
-          this.processResult(task, result.handler(match));
+          const newResult = result.handler(match);
+          newResult.forEach(r => r.taskKey = match.taskKey);
+          this.processResult(task, newResult);
         });
 
-        if (this.debugGraph) this.debugGraph.step(this.lastExecuted, newTask);
+        if (this.debugGraph) this.debugGraph.step(result.taskKey || "", newTask);
       } else {
-        if (this.debugGraph && this.lastExecuted) {
+        if (this.debugGraph) {
           if (result instanceof MatchSuccess) {
-            if (this.primaryTask.cacheKey == task.cacheKey) {
-              this.debugGraph.mark(this.lastExecuted.cacheKey, NodeState.SUCCESS);
+            if (this.primaryTask.cacheKey == task.cacheKey && result.taskKey !== undefined) {
+              this.debugGraph.mark(result.taskKey, NodeState.SUCCESS);
             }
           } else {
-            this.debugGraph.mark(this.lastExecuted.cacheKey, NodeState.FAILURE);
+            if (result.taskKey !== undefined) {
+              this.debugGraph.mark(result.taskKey, NodeState.FAILURE);
+            }
           }
         }
         task.result.add(result);

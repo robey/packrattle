@@ -22,6 +22,9 @@ export function mergeSpan(span1: Span, span2: Span): Span {
 }
 
 export class MatchSuccess<Out> {
+  // breadcrumb used for debugging: the id of the parser/index that generated this match.
+  taskKey?: string;
+
   constructor(public span: Span, public value: Out) {
     // pass
   }
@@ -32,6 +35,9 @@ export class MatchSuccess<Out> {
 }
 
 export class MatchFailure<Out> {
+  // breadcrumb used for debugging: the id of the parser/index that generated this match.
+  taskKey?: string;
+
   constructor(public span: Span, public message: string, public priority: number = 0) {
     // pass
   }
@@ -45,6 +51,9 @@ export type Match<Out> = MatchSuccess<Out> | MatchFailure<Out>;
 
 // request to schedule another parser and respond to its result
 export class Schedule<A, R, Out> {
+  // breadcrumb used for debugging: the id of the parser/index that generated this match.
+  taskKey?: string;
+
   constructor(
     public parser: Parser<A, R>,
     public index: number,

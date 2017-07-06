@@ -39,9 +39,9 @@ export class DebugGraph {
     this.addEdge("start", task.cacheKey);
   }
 
-  step(task: ParseTask<any, any>, newTask: ParseTask<any, any>) {
+  step(fromKey: string, newTask: ParseTask<any, any>) {
     this.addNode(newTask.cacheKey, newTask.parser, newTask.index);
-    this.addEdge(task.cacheKey, newTask.cacheKey);
+    this.addEdge(fromKey, newTask.cacheKey);
   }
 
   addEdge(from: string, to: string) {
@@ -51,6 +51,7 @@ export class DebugGraph {
   }
 
   addNode(name: string, parser: Parser<any, any>, index: number) {
+    if (this.nodes[name] !== undefined) return;
     const node = new Node(parser, index);
     this.edges.forEach(edge => {
       if (edge.from == name) node.children.push(edge.to);
@@ -111,7 +112,7 @@ export class DebugGraph {
       if (description.length > maxLength) description = description.slice(0, maxLength) + "...";
       description = description.replace(/\\/g, "\\\\").replace(/"/g, "\\\"");
       // const around = node.span.around(4).replace(/\\/g, "\\\\").replace(/"/g, "\\\"");
-      const label = `label="@${node.index}: ${description}"`;
+      const label = `label="[${node.parser.id} @ ${node.index}]: ${description}"`;
 
       let style: string[] = [];
       switch (node.state) {
