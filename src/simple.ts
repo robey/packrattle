@@ -1,5 +1,6 @@
 import { fail, success } from "./matcher";
 import { Parser } from "./parser";
+import { quote } from "./strings";
 
 /*
  * simple "building block" parsers.
@@ -13,7 +14,7 @@ export class Simple {
     return parser;
   }
 
-    // never matches anything.
+  // never matches anything.
   reject(): Parser<any, null> {
     const parser: Parser<any, null> = new Parser<any, null>(
       "reject",
@@ -25,9 +26,14 @@ export class Simple {
 
   // always matches without consuming input and yields the given value.
   succeed<T>(value: T): Parser<any, T> {
-    return new Parser<any, T>("succeed", { cacheable: true }, children => (stream, index) => {
-      return success(index, index, value);
-    });
+    const cacheable = value == null || typeof value == "string" || typeof value == "number";
+    return new Parser<any, T>(
+      "succeed",
+      { cacheable, describe: () => `succeed(${quote(value)})` },
+      children => (stream, index) => {
+        return success(index, index, value);
+      }
+    );
   }
 
   // matches a literal string.
