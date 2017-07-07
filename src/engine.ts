@@ -213,6 +213,5 @@ export class Engine<A> {
 function inspect(x: any): string {
   if (x == null) return "(null)";
   if (x["inspect"] && typeof x["inspect"] == "function") return x["inspect"]();
-  if (typeof x == "string") return quote(x as string);
-  return x.toString();
+  return quote(x);
 }

@@ -3,10 +3,10 @@ const SQUOTE = "\'".charCodeAt(0);
 const BACKSLASH = "\\".charCodeAt(0);
 
 // quote a string so it can be displayed.
-export function quote(s?: string | null): string {
-  if (s === undefined) return "undefined";
-  if (s === null) return "null";
-  return s.toString().replace(/[^\u0020-\u007e]|\"|\'/g, c => {
+export function quote(thing: any): string {
+  if (thing === undefined) return "undefined";
+  if (thing === null) return "null";
+  const s = thing.toString().replace(/[^\u0020-\u007e]|\"|\'/g, (c: string) => {
     const n = c.charCodeAt(0);
     switch (n) {
       case DQUOTE: return "\\\"";
@@ -18,4 +18,7 @@ export function quote(s?: string | null): string {
       }
     }
   });
+
+  if (typeof thing === "string") return `"${s}"`;
+  return s;
 }
