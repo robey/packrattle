@@ -2,6 +2,7 @@ import {
   defer, fail, mapMatch, Match, MatchFailure, MatchResult, MatchSuccess, mergeSpan, Schedule, schedule, Span, success
 } from "./matcher";
 import { LazyParser, Parser } from "./parser";
+import { simple } from "./simple";
 import { quote } from "./strings";
 
 /*
@@ -227,15 +228,8 @@ export function optional<A, Out>(p: LazyParser<A, Out>): Parser<A, Out | undefin
  * if no other value is provided).
  */
 export function optionalOr<A, Out>(p: LazyParser<A, Out>, defaultValue: Out): Parser<A, Out> {
-  return new Parser<A, Out>("optionalOr", {
-    children: [ p ],
-    cacheable: (defaultValue == null || typeof defaultValue == "string" || typeof defaultValue == "number"),
-    describe: children => `optionalOr(${children[0]}, ${quote(defaultValue ? defaultValue.toString() : defaultValue)})`
-  }, children => {
-    return (stream, index) => {
-      // always succeed, but also try the optional parser.
-      return defer<A, Out>(children[0], index).concat(success(index, index, defaultValue) as MatchResult<A, Out>);
-    };
+  return alt(simple.succeed(defaultValue), p).withDescribe(children => {
+    return `optionalOr(${children[1]}, ${quote(defaultValue)})`;
   });
 }
 

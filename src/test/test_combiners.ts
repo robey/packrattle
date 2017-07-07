@@ -107,6 +107,22 @@ describe("combiners", () => {
       const rv3 = p.execute("49y",);
       (rv3 instanceof MatchFailure).should.eql(true);
     });
+
+    it("counts alternatives correctly", () => {
+      const p = alt(
+        seq2(optionalOr(matchString("x"), "?"), matchString("y")).map(([ a, b ]) => a + b),
+        matchString("z"),
+        matchString("q").named("yikes!", 1)
+      );
+
+      const rv1 = p.execute("v");
+      (rv1 instanceof MatchFailure).should.eql(true);
+      if (rv1 instanceof MatchFailure) {
+        rv1.message.should.eql("Expected yikes!");
+      }
+      const rv2 = p.execute("q");
+      (rv2 instanceof MatchSuccess).should.eql(true);
+    });
   });
 
   it("check", () => {

@@ -30,6 +30,14 @@ export interface ParserOptions<A, Out> {
   cacheable?: boolean;
 }
 
+function duplicateOptions<A, Out>(options: ParserOptions<A, Out>): ParserOptions<A, Out> {
+  const rv: ParserOptions<A, Out> = {};
+  if (options.children !== undefined) rv.children = options.children.slice();
+  if (options.describe !== undefined) rv.describe = options.describe;
+  if (options.cacheable !== undefined) rv.cacheable = options.cacheable;
+  return rv;
+}
+
 function defaultDescribe(name: string): (children: string[]) => string {
   return (children: string[]) => {
     if (children.length == 0) return name;
@@ -239,6 +247,13 @@ export class Parser<A, Out> {
 
   named(description: string, priority: number = 0): Parser<A, Out> {
     return this.mapError("Expected " + description, priority, () => description);
+  }
+
+  // allow internal combiners to copy a parser and change the description.
+  withDescribe(describe: (children: string[]) => string): Parser<A, Out> {
+    const options: ParserOptions<A, Out> = duplicateOptions(this.options);
+    options.describe = describe;
+    return new Parser<A, Out>(this.name, options, this.generateMatcher);
   }
 
   // create a dot graph of the parser nesting
