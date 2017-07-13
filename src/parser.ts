@@ -251,9 +251,8 @@ export class Parser<A, Out> {
 
   // allow internal combiners to copy a parser and change the description.
   withDescribe(describe: (children: string[]) => string): Parser<A, Out> {
-    const options: ParserOptions<A, Out> = duplicateOptions(this.options);
-    options.describe = describe;
-    return new Parser<A, Out>(this.name, options, this.generateMatcher);
+    this.options.describe = describe;
+    return this;
   }
 
   // create a dot graph of the parser nesting
