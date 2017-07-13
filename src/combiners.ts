@@ -162,8 +162,7 @@ export function seq<A>(...parsers: LazyParser<A, any>[]): Parser<A, any[]> {
 }
 
 /*
- * try each of these parsers, in order (starting from the same position),
- * looking for the first match.
+ * try each of these parsers, in order (starting from the same position).
  */
 export function alt<A, Out>(...parsers: LazyParser<A, Out>[]): Parser<A, Out> {
   const parser: Parser<A, Out> = new Parser<A, Out>("alt", {
@@ -172,45 +171,23 @@ export function alt<A, Out>(...parsers: LazyParser<A, Out>[]): Parser<A, Out> {
     describe: list => list.join(" or ")
   }, children => {
     return (stream, index) => {
-      let count = 0;
-      const fails: MatchFailure<any>[] = [];
-
+      const genericFail = fail(index, parser);
       // reverse so the first listed alternative is tried first.
       return children.map(p => {
         return new Schedule<A, Out, Out>(p, index, (match: Match<Out>) => {
-          if (match instanceof MatchSuccess) {
-            return [ match ];
-          } else if (match instanceof MatchFailure) {
-            fails.push(match);
-          } else {
-            throw new Error("impossible");
+          if (match instanceof MatchFailure) {
+            // if this failure was the same index as we started, it failed
+            // utterly, so construct a summary failure instead.
+            if (match.span.start == index && match.priority == 0) {
+              // console.log("use generic, was", match.message, "now", parser.id, parser.description);
+              return genericFail;
+            }
           }
-
-          // save up all the fails.
-          // if *all* of the alternatives fail, summarize it.
-          count++;
-          if (count == children.length && count == fails.length) {
-            return findBestFail(index, fails);
-          }
-          return [] as MatchResult<A, Out>;
+          return [ match ];
         });
       }).reverse();
     };
   });
-
-  const findBestFail = (index: number, fails: MatchFailure<any>[]): Match<any>[] => {
-    let best = fails[0];
-    fails.forEach(f => {
-      if (f.priority > best.priority || (f.priority == best.priority && f.span.start > best.span.start)) best = f;
-    });
-    // if the best failure was the same index as we started, none of them
-    // were particularly good, so construct a new one.
-    if (best.span.start == index && best.priority == 0) {
-      return fail(index, parser);
-    } else {
-      return [ best ];
-    }
-  }
 
   return parser;
 }

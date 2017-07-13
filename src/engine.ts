@@ -93,7 +93,10 @@ export class Engine<A> {
       if (successes.length == 0) this.flushUnresolvedTask();
     }
 
-    failures.sort((a, b) => b.span.start - a.span.start);
+    failures.sort((a, b) => {
+      if (a.span.start != b.span.start) return b.span.start - a.span.start;
+      return b.priority - a.priority;
+    });
 
     if (this.options.logger) {
       if (successes.length > 0) {
