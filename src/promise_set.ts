@@ -26,6 +26,9 @@ export class PromiseSet<T> {
   }
 
   add(value: T) {
+    // don't store the same (===) value twice. that will cause loops.
+    if (this.values.indexOf(value) >= 0) return;
+
     this.values.push(value);
     if (this.options.logger) {
       const inspectable = (value as Inspectable);
