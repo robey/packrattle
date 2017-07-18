@@ -18,5 +18,5 @@ const succeed = simple.succeed;
 export { end, matchRegex, matchString, reject, succeed };
 
 export { alt, chain, check, not, optional, optionalOr, repeat, RepeatOptions, seq } from "./combiners";
-export { seq2, seq3, seq4, seq5 } from "./combiners";
+export { seq2, seq3, seq4, seq5, seq6, seq7, seq8 } from "./seq_n";
 export { reduce, ReduceOptions, repeatIgnore, repeatSeparated, seqIgnore } from "./convenience";
