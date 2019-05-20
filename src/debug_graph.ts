@@ -108,7 +108,7 @@ export class DebugGraph {
     Object.keys(this.nodes).forEach(name => {
       const node = this.nodes[name];
       if (!node.parser) return;
-      let description = node.parser.description;
+      let description = node.parser.description || "?";
       if (description.length > maxLength) description = description.slice(0, maxLength) + "...";
       description = description.replace(/\\/g, "\\\\").replace(/"/g, "\\\"");
       // const around = node.span.around(4).replace(/\\/g, "\\\\").replace(/"/g, "\\\"");

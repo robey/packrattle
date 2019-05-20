@@ -107,6 +107,13 @@ export class Tokenizer {
     this.parser = this.makeParser();
   }
 
+  /*
+   * generate a token at a span, in case you want to forge some tokens.
+   */
+  token(id: number, span: Span, value?: string): Token {
+    return new Token(this.tokenTypes[id], span, value);
+  }
+
   private makeParser(): Parser<string, Token[]> {
     // would be nice to merge all ignores into a single regex, but js makes that difficult.
     const ignore = (this.rules.ignore || []).map(r => {

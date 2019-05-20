@@ -1,4 +1,4 @@
-import { alt, LazyParser, matchRegex, matchString, Parser, reduce, seq, seqIgnore } from "..";
+import { alt, matchRegex, matchString, Parser, reduce, seq } from "..";
 
 class Binary {
   constructor(public left: Node, public op: string, public right: Node) {

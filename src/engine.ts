@@ -43,8 +43,8 @@ export class Engine<A> {
   // build a debug graph so we can generate a dot file?
   debugGraph?: DebugGraph;
 
-  // for debugging, we want to mark success/failure of the primary task in the debug groph.
-  primaryTask: ParseTask<A, any>;
+  // for debugging, we want to mark success/failure of the primary task in the debug graph.
+  primaryTask?: ParseTask<A, any>;
 
 
   constructor(public stream: Sequence<A>, public options: EngineOptions = {}) {
@@ -81,6 +81,7 @@ export class Engine<A> {
         }
 
         try {
+          if (!task.parser.matcher) throw new Error("Unresolved parser");
           const matchResult = task.parser.matcher(this.stream, task.index);
           matchResult.forEach(r => r.taskKey = task.cacheKey);
           this.processResult(task, matchResult);
@@ -110,6 +111,7 @@ export class Engine<A> {
 
     if (this.options.makeDot && this.debugGraph) this.options.makeDot(this.debugGraph.toDot());
 
+    delete this.primaryTask;
     return successes.length > 0 ? successes[0] : failures[0];
   }
 
@@ -127,7 +129,7 @@ export class Engine<A> {
       } else {
         if (this.debugGraph) {
           if (result instanceof MatchSuccess) {
-            if (this.primaryTask.cacheKey == task.cacheKey && result.taskKey !== undefined) {
+            if (this.primaryTask && this.primaryTask.cacheKey == task.cacheKey && result.taskKey !== undefined) {
               this.debugGraph.mark(result.taskKey, NodeState.SUCCESS);
             }
           } else {

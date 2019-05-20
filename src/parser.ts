@@ -61,16 +61,16 @@ export class Parser<A, Out> {
   readonly id: number;
 
   // actual children, once we've resolved them
-  children: Parser<A, any>[];
+  children?: Parser<A, any>[];
 
   // actual matcher, once we've resolved children
-  matcher: Matcher<A, Out>;
+  matcher?: Matcher<A, Out>;
 
   // cache description once we've computed it
-  description: string;
+  description?: string;
 
   // if this parser is cacheable, this is its unique key:
-  private cacheKey: string;
+  private cacheKey?: string;
 
   // detect and avoid loops when displaying debug strings:
   private recursing = false;
@@ -106,7 +106,7 @@ export class Parser<A, Out> {
     return this.uniqify();
   }
 
-  // fill in 'childen' so we have a tree of actual Parsers instead of LazyParsers.
+  // fill in 'children' so we have a tree of actual Parsers instead of LazyParsers.
   private unlazyChildren(functionCache: FunctionCache<A, Out> = {}) {
     if (this.children) return;
     try {
@@ -118,8 +118,9 @@ export class Parser<A, Out> {
     }
   }
 
-  // flll in 'description'. recursive.
+  // fill in 'description'. recursive.
   private getDescription(): string {
+    if (!this.children) throw new Error("Unresolved parser");
     if (this.description) return this.description;
     if (this.recursing) return `[${this.id}]`;
     this.recursing = true;
@@ -139,6 +140,7 @@ export class Parser<A, Out> {
    */
   private uniqify(): Parser<A, Out> {
     if (this.cacheKey) return __cache[this.cacheKey];
+    if (!this.children) throw new Error("Unresolved parser");
 
     if (this.recursing || !this.options) return this;
     this.recursing = true;
@@ -201,7 +203,7 @@ export class Parser<A, Out> {
             let rv: MatchResult<A, U>;
             if (typeof f === "function") {
               try {
-                rv = [ new MatchSuccess(span, f(value, span)) ];
+                rv = [ new MatchSuccess(span, (f as (item: Out, span: Span) => U)(value, span)) ];
               } catch (error) {
                 const priority = error["priority"] || 0;
                 rv = [ new MatchFailure(span, error.message, priority) ];
@@ -262,6 +264,7 @@ export class Parser<A, Out> {
     const edges: { from: number, to: number }[] = [];
 
     function traverse(parser: Parser<A, any>) {
+      if (!parser.children || !parser.description) throw new Error("Unresolved parser");
       seen[parser.id] = true;
       nodes.push({ id: parser.id, name: parser.name, description: parser.description });
       parser.children.forEach(p => {
