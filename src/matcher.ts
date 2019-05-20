@@ -105,10 +105,7 @@ export function mapMatch<A, T1, T2>(
 ): MatchResult<A, T2> {
   if (match instanceof MatchFailure) {
     return [ match as MatchFailure<T2> ];
-  } else if (match instanceof MatchSuccess) {
-    return f(match.span, match.value);
   } else {
-    // typescript bug
-    throw new Error("impossible");
+    return f(match.span, match.value);
   }
 }
