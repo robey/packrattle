@@ -95,8 +95,8 @@ export class Engine<A> {
     }
 
     failures.sort((a, b) => {
-      if (a.span.start != b.span.start) return b.span.start - a.span.start;
-      return b.priority - a.priority;
+      if (b.priority != a.priority) return b.priority - a.priority;
+      return b.span.start - a.span.start;
     });
 
     if (this.options.logger) {
