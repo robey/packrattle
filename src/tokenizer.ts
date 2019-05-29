@@ -17,19 +17,6 @@ export class TokenType {
   constructor(public tokenizer: Tokenizer, public id: number, public name: string) {
     this.shortName = name;
   }
-
-  match: Parser<Token, Token> = new Parser<Token, Token>(
-    "token",
-    { cacheable: true, describe: () => this.shortName },
-    children => {
-      return (stream, index) => {
-        if (index < 0 || index >= stream.length) return fail(index, this.match);
-        return stream[index].tokenType.id === this.id ?
-          success(index, index + 1, stream[index]) :
-          fail(index, this.match);
-      };
-    }
-  );
 }
 
 /*
@@ -38,7 +25,7 @@ export class TokenType {
  */
 export class Token {
   // we track the Enumish too, for debugging.
-  constructor(public tokenType: TokenType, public span: Span, public value?: string) {
+  constructor(public tokenType: TokenType, public span: Span, public value: string) {
     // pass
   }
 
@@ -91,7 +78,7 @@ export class Tokenizer {
   public tokenTypes: TokenType[] = [];
   public parser: Parser<string, Token[]>;
 
-  constructor(enumLike: { [id: number]: string }, public rules: TokenRules) {
+  constructor(enumLike: Enumish, public rules: TokenRules) {
     // really awkward way to iterate over the enum:
     Object.keys(enumLike).filter(key => key.match(/^\d+$/)).forEach(key => {
       const id = parseInt(key, 10);
@@ -110,21 +97,21 @@ export class Tokenizer {
   /*
    * generate a token at a span, in case you want to forge some tokens.
    */
-  token(id: number, span: Span, value?: string): Token {
+  token(id: number, span: Span, value: string): Token {
     return new Token(this.tokenTypes[id], span, value);
   }
 
   private makeParser(): Parser<string, Token[]> {
     // would be nice to merge all ignores into a single regex, but js makes that difficult.
     const ignore = (this.rules.ignore || []).map(r => {
-      return simple.matchRegex(r).map((m, span) => new Token(this.tokenTypes[WHITESPACE], span));
+      return simple.matchRegex(r).map((m, span) => new Token(this.tokenTypes[WHITESPACE], span, m[0]));
     });
+    // FIXME: shouldn't this prioritize long strings before short?
     const strings = (this.rules.strings || []).map(([ s, id ]) => {
       return simple.matchString(s).map((m, span) => new Token(this.tokenTypes[id], span, s));
     });
 
     const regexes = (this.rules.regex || []).map(rule => {
-      // build a function out of rule.value if it's not already.
       return simple.matchRegex(rule.regex).map((m, span) => {
         return new Token(this.tokenTypes[rule.token], span, rule.value ? rule.value(m) : m[0]);
       });
@@ -158,7 +145,7 @@ export class Tokenizer {
   }
 
   match(id: number): Parser<Token, Token> {
-    return this.tokenTypes[id].match;
+    return this.matchOneOf(id);
   }
 
   matchOneOf(...ids: number[]): Parser<Token, Token> {
