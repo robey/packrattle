@@ -14,7 +14,7 @@ describe("PromiseSet", () => {
   });
 
   it("notifies an early listener of a value", done => {
-    const p = new PromiseSet();
+    const p = new PromiseSet<number>();
     p.then(v => {
       v.should.eql(23);
       done();

@@ -46,7 +46,7 @@ describe("PriorityQueue", () => {
   });
 
   it("gets items sorted", () => {
-    const q = new PriorityQueue();
+    const q = new PriorityQueue<string>();
     q.put("a", 3);
     q.put("b", 2);
     q.put("c", 6);
@@ -63,7 +63,7 @@ describe("PriorityQueue", () => {
   });
 
   it("preserves ordering with the same priority", () => {
-    const q = new PriorityQueue();
+    const q = new PriorityQueue<string>();
     q.put("a", 0);
     q.put("b", 0);
     q.put("c", 0);

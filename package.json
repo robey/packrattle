@@ -23,13 +23,13 @@
   },
   "dependencies": {},
   "devDependencies": {
-    "@types/mocha": "^5.2.6",
-    "@types/node": "^12.0.2",
+    "@types/mocha": "^5.2.7",
+    "@types/node": "^12.6.9",
     "@types/should": "^13.0.0",
-    "mocha": "^6.1.4",
+    "mocha": "^6.2.0",
     "should": "^13.2.3",
-    "source-map-support": "^0.5.12",
-    "typescript": "^3.4.5"
+    "source-map-support": "^0.5.13",
+    "typescript": "^3.5.3"
   },
   "engines": {
     "npm": "^5.0.0"

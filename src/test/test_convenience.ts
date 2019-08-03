@@ -1,5 +1,5 @@
 import {
-  alt, matchRegex, matchString, MatchSuccess, reduce, repeatIgnore, repeatSeparated, seq, seqIgnore, Span
+  alt, matchRegex, matchString, MatchSuccess, Parser, reduce, repeatIgnore, repeatSeparated, seq, seqIgnore, Span
 } from "..";
 
 import "should";
@@ -139,7 +139,7 @@ describe("convenience", () => {
 
   describe("reduce", () => {
     it("basic", () => {
-      const p = reduce(
+      const p: Parser<string, string> = reduce(
         matchRegex(/\d+/),
         matchRegex(/[a-z]+/),
         {
@@ -158,7 +158,7 @@ describe("convenience", () => {
         alt(matchString("+"), matchString("-")),
         ws
       ).map(m => m[1]);
-      const algebra = reduce(operator, operand, {
+      const algebra: Parser<string, any> = reduce(operator, operand, {
         first: x => x,
         next: (left, op, right) => ({ binary: op, left, right })
       });
